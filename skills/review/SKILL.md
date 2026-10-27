@@ -35,8 +35,8 @@ Issue the sub-agent calls together, in the foreground, and aggregate the reports
 
 **Spec sub-agent prompt** should include:
 
-- The ticket's question, pre-registration (with any dated amendments) and Answer.
-- The brief: "Report: (a) is the pre-registered rule applied exactly as written (the metric, the comparison, the threshold)? (b) any claim beyond what the numbers show: a wider scope, a cause credited to one of several changes, a single run treated as replicated; (c) deviations made but not recorded. Quote the pre-registration for each finding. Under 400 words."
+- The ticket's question, its pre-registration (with any dated amendments) or, for a `task`, its acceptance, and its Answer.
+- The brief: "Report: (a) is the pre-registered rule applied exactly as written (the metric, the comparison, the threshold), or for a task, does the output meet its acceptance, checked on the output itself? (b) any claim beyond what the numbers show: a wider scope, a cause credited to one of several changes, a single run treated as replicated; (c) deviations made but not recorded. Quote the pre-registration for each finding. Under 400 words."
 
 **Code sub-agent prompt** should include:
 

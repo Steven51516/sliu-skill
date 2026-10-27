@@ -34,7 +34,7 @@ Break the work into **questions**.
 
 </question-rules>
 
-Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Contract.
+Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Contract; a `task` that builds something later tickets use gets its **acceptance**: what done means, and the commands that verify it.
 
 Stop and say which applies if an idea is already answered (a line in Decisions so far) or already an open ticket; an asset of an existing ticket (add it to that ticket's Assets instead); or beyond the destination (out of scope, or the start of a different map).
 
@@ -78,14 +78,18 @@ The question, in one sentence: what would change what we do next.
 
 - Reference recipe and deviations: what this follows (from the map's Contract) and each deviation, with why
 - Arms / comparison: the reference run and every difference from it, on the map's benchmark (`rigor`); controls only if the benchmark or pipeline is new
-- Primary metric and test:
+- Primary metric, repeats, and the smallest gap that matters (a screen or a confirmation, `rigor`):
 - Success:
 - Stop: the result that retires the idea
 - Deviations allowed without asking (e.g. execution fixes before any result):
 
+## Acceptance
+
+(`task` only.) What done means for the thing it builds (counts, coverage, paths), and the commands that verify it on the actual output.
+
 ## Assets
 
-(`experiment` only.) One row per run, arm, smoke test, probe or script made while answering the question.
+(`experiment` and `task`.) One row per run, arm, smoke test, probe or script made while answering the question.
 
 | name | what it is | where | result |
 |---|---|---|---|

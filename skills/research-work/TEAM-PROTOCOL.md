@@ -1,1 +1,0 @@
-../team/TEAM-PROTOCOL.md

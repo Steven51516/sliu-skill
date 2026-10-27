@@ -56,7 +56,6 @@ render "../skills/research-init/issue-tracker-$TRACKER.md" "$DIR/docs/agents/iss
 render ../skills/research-init/domain.md "$DIR/docs/agents/domain.md"
 render STATUS.md    "$DIR/STATUS.md"
 render decisions.md "$DIR/docs/decisions.md"
-render OVERVIEW.md  "$DIR/OVERVIEW.md"
 for f in BRIEF.md LINKS.md README.md INTAKE.md; do render "resources/$f" "$DIR/resources/$f"; done
 touch "$DIR"/resources/{papers,prior-work,other}/.gitkeep
 cp "$HARNESS/templates/gitignore" "$DIR/.gitignore"

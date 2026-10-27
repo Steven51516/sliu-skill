@@ -5,7 +5,7 @@
 set -euo pipefail
 [[ "${HERDR_ENV:-}" == 1 ]] || { echo "run team-up inside herdr"; exit 1; }
 T="${1:?usage: team-up <map, e.g. T8> [implementers]}"; N="${2:-3}"
-[[ -d "$T" ]] || T="$(ls -d maps/"$T"-* tracks/"$T"-* 2>/dev/null | head -1)"
+if [[ ! -d "$T" ]]; then for d in maps/"$T"-* tracks/"$T"-*; do [[ -d "$d" ]] && { T="$d"; break; }; done; fi
 [[ -f "$T/map.md" || -f "$T/track.md" ]] || { echo "no map '$1' in $PWD/maps"; exit 1; }
 P="$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | cut -c1-20)"   # agent-name prefix
 

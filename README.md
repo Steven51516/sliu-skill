@@ -72,6 +72,8 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **`research-drive` grows the graph.** Matt's `implement-spec` works a fixed set of tickets to completion and merges branches. Here one call is one pass (repeat with `/loop`): merge finished tickets after their review, dispatch the frontier, and when it runs dry, file the next tickets from the fog inside the map's Contract. What needs the human becomes a `grilling` ticket.
 
+**Milestones and closing maps.** A map closes (`status: closed`) when its destination is reached or a measured answer says it can't be, as Matt's map issue closes. An answer that changes the project's route is a milestone: one line in `docs/decisions.md`, the cross-map log `domain-modeling` keeps. The local tracker's generated `STATUS.md` opens with the newest of those lines, then the open maps, what is running and the frontier; `research-status --check` also catches dependency cycles, unknown statuses, prerequisites that are parked or superseded by an unfinished replacement, and resolved tickets without an answer.
+
 **Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (`scopes/`), so the skills never name a machine.
 
 **Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer.
@@ -99,7 +101,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 skills/      one folder per skill
 rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
 scopes/      where projects run: README.md (what a scope answers), one file per cluster
-templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, OVERVIEW.md, STATUS.md (seeds for docs/agents/ live in skills/research-init/)
+templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/research-init/)
 tools/       status.py (research-status), migrate_to_maps.py (research-migrate), team-up.sh
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again

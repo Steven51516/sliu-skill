@@ -8,7 +8,7 @@
   comparison. A number from another eval set is not a baseline until re-scored on ours.
 - Negative and null results get recorded with the same care as wins. They are how the search prunes.
 - A result that looks too good is a bug until ruled out. Check for leakage, eval on train data, wrong baseline config, and seed luck.
-- Baselines get the same tuning budget as our method. Report mean ± std over seeds (≥3 for any claim).
+- Baselines get the same tuning budget as our method. Report the spread over repeats; when a gap counts as a claim is `rigor`'s rule.
 - Choose stop or success criteria **before** looking at a result, and keep them.
 - Pick settings on validation data. The test set is for final numbers only. Splits and metrics stay fixed once results are in;
   any analysis chosen after seeing results is labeled post-hoc.
@@ -38,7 +38,7 @@
 
 ## Docs upkeep
 - `STATUS.md` is generated: after changing a map or ticket, run `research-status`. Never hand-edit it.
-- `OVERVIEW.md` (the project's map: destination, one line per phase or map, now, ≤25 lines) and each `map.md` (≤80 lines) are **rewritten** to stay current,
+- Each `map.md` (≤80 lines) is **rewritten** to stay current,
   not appended to. A fact lives in one place (usually a ticket); everything above it is a one-line gist and a link.
 - When a finding changes, update its tag in the map; when a ticket's approach dies, its answer says so and its line in the
   map's Decisions so far shows it. Consolidate closed tickets rather than letting indexes grow.

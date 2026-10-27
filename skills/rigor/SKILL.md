@@ -25,6 +25,6 @@ An answer counts when it can be trusted. This skill is the reference for produci
 
 ## Rules of the result
 
-- **Gains beat the noise.** A gain on a fair comparison is a win when it is larger than the noise between repeat runs (seeds or sampling draws). A smaller gap needs repeats first; a single run is preliminary.
+- **Screen, then confirm.** A single run or a fixed cheap budget is a **screen**: its answer is `[tentative]`. A claim the map stands on is **confirmed**: before results, the pre-registration fixes the repeats (seeds or draws; 3 by default), the comparison (paired where possible), the smallest gap that matters, and how the spread is reported. It is `[established]` when the gap clears both that threshold and the spread between repeats.
 - **Criteria before results.** The pre-registration's success and stop rules are fixed before anything runs; amendments are dated and come before the numbers they touch.
 - **Classify a failure before calling it negative.** Execution, measurement, data, method or hypothesis: only the last two are negative; the rest are inconclusive, with the fix.

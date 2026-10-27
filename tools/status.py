@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""research-status: generate a project's STATUS.md from OVERVIEW.md + maps/*/map.md + maps/*/tickets/*/ticket.md.
+"""research-status: generate a project's STATUS.md from maps/*/map.md, maps/*/tickets/*/ticket.md and docs/decisions.md.
 
 The local issue tracker's view and checker (docs/agents/issue-tracker.md). STATUS.md is a VIEW: nobody edits it by hand.
-Edit OVERVIEW.md and the map/ticket files, then rerun, so parallel sessions never collide on one shared file.
+Edit the map/ticket files and docs/decisions.md, then rerun, so parallel sessions never collide on one shared file.
 Projects still on the old layout (tracks/*/track.md) are read too.
 
 Usage (from the project root, or pass it):
     research-status [PROJECT] [--print] [--check] [--frontier]
       --print     write to stdout instead of STATUS.md
-      --check     only report problems (unknown blockers, stale claims, missing fields, resolved tickets missing
-                  from their map); exit 1 if any
+      --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
+                  missing fields, resolved tickets missing from their map or their answer); exit 1 if any
       --frontier  only list the frontier (open, unblocked, unclaimed tickets), one per line
 Pure standard library.
 """
@@ -20,14 +20,18 @@ import os
 import re
 import sys
 
-RESOLVED = {"resolved", "parked", "superseded"}
+CLOSED = {"resolved", "parked", "superseded"}     # off the frontier
+STATUSES = {"open", "claimed", "running", "resolved", "parked", "superseded"}
+MAP_STATUSES = {"open", "closed"}
+MAX_MILESTONES = 6
 ACTIVE = {"claimed", "running"}
 HITL = {"grilling", "prototype"}
 TYPES = {"experiment", "research", "prototype", "grilling", "task"}
 STALE_HOURS = 36
 MAX_WAITING = 8
 # older words for the same states and types, read as the canonical ones
-STATUS_ALIASES = {"done": "resolved", "final": "resolved", "planned": "open", "stale": "open"}
+STATUS_ALIASES = {"done": "resolved", "final": "resolved", "planned": "open", "stale": "open", "approved": "open",
+                  "handed-off": "open"}
 TYPE_ALIASES = {"lit": "research", "decision": "grilling", "baseline": "experiment", "diagnostic": "experiment",
                 "analysis": "experiment"}
 CHECKBOX = re.compile(r"^- \[[ xX]\] ")
@@ -50,8 +54,11 @@ def parse_front_matter(path):
     m = re.match(r"^---\n(.*?)\n---\n?(.*)$", text, re.S)
     if not m:
         return {}, text
-    meta = {}
+    meta, last = {}, None
     for line in m.group(1).splitlines():
+        if line.startswith((" ", "\t")) and line.strip().startswith("- ") and last and meta.get(last) in (None, []):
+            meta[last] = (meta.get(last) or []) + [line.strip()[2:].strip().strip("'\"")]   # block-list item
+            continue
         if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
             continue
         key, val = line.split(":", 1)
@@ -64,7 +71,8 @@ def parse_front_matter(path):
             val = [v.strip().strip("'\"") for v in val[1:-1].split(",") if v.strip()]
         elif len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
             val = val[1:-1]
-        meta[key.strip()] = val
+        last = key.strip()
+        meta[last] = val
     return meta, m.group(2)
 
 
@@ -87,6 +95,16 @@ def destination(body):
         if line.strip():
             return line.strip()
     return ""
+
+
+def milestones(project):
+    """Newest one-line entries of docs/decisions.md (cross-map decisions and milestones)."""
+    path = os.path.join(project, "docs", "decisions.md")
+    if not os.path.exists(path):
+        return []
+    with open(path) as f:
+        text = re.sub(r"<!--.*?-->", "", f.read(), flags=re.S)
+    return [l[2:].strip() for l in text.splitlines() if l.startswith("- ")][:MAX_MILESTONES]
 
 
 def legacy_needs(body):
@@ -139,8 +157,9 @@ def load(project):
         mdir = os.path.dirname(mpath)
         tickets = []
         for kpath in sorted(glob.glob(os.path.join(mdir, "tickets", "*", "ticket.md"))):
-            kmeta, _ = parse_front_matter(kpath)
+            kmeta, kbody = parse_front_matter(kpath)
             kmeta["_path"] = os.path.relpath(kpath, project)
+            kmeta["_answered"] = bool(re.search(r"^## (Answer|Verdict|Result)\b.*\n\s*\S", kbody, re.M))   # Verdict/Result: older tickets
             tickets.append(kmeta)
         archived = []                     # consolidated tickets still resolve the blockers that name them
         for kpath in sorted(glob.glob(os.path.join(mdir, "archive", "**", "ticket.md"), recursive=True)):
@@ -156,6 +175,36 @@ def load(project):
         meta["_archived"] = archived
         maps.append(meta)
     return maps
+
+
+def blocker_met(b, by_id, seen=()):
+    """A blocker is met when it is resolved; a superseded one only when its replacement is."""
+    k = by_id.get(b)
+    if not k or b in seen:
+        return False
+    if status_of(k) == "resolved":
+        return True
+    if status_of(k) == "superseded" and k.get("superseded_by"):
+        return blocker_met(k["superseded_by"], by_id, seen + (b,))
+    return False
+
+
+def cycles(tickets):
+    graph = {k.get("id"): [b for b in (k.get("blocked_by") or [])] for k in tickets}
+    graph = {i: ([v] if isinstance(v, str) else v) for i, v in graph.items()}
+    found, state = [], {}
+    def visit(n, path):
+        state[n] = 1
+        for b in graph.get(n, []):
+            if state.get(b) == 1:
+                found.append(" -> ".join(path[path.index(b):] + [b]) if b in path else f"{n} -> {b}")
+            elif b in graph and not state.get(b):
+                visit(b, path + [b])
+        state[n] = 2
+    for n in graph:
+        if not state.get(n):
+            visit(n, [n])
+    return found
 
 
 def analyse(maps):
@@ -175,10 +224,14 @@ def analyse(maps):
             if prev:
                 problems.append(f"{k['_path']}: duplicate ticket id `{k.get('id')}` (also {prev})")
             ticket_seen[k.get("id")] = k["_path"]
+    for c in cycles([k for m in maps for k in m["_tickets"]]):
+        problems.append(f"dependency cycle: {c}")
     for m in maps:
         for f in ("id", "title"):
             if not m.get(f):
                 problems.append(f"{m['_path']}: missing `{f}`")
+        if m.get("status") and m.get("status") not in MAP_STATUSES:
+            problems.append(f"{m['_path']}: unknown map status `{m.get('status')}` (open or closed)")
         age = claim_age_hours(m.get("claimed"))
         if age is not None and age > STALE_HOURS:
             problems.append(f"{m['_path']}: claim is {age:.0f} h old (stale?)")
@@ -189,6 +242,10 @@ def analyse(maps):
             for f in ("id", "title", "type", "status"):
                 if not k.get(f):
                     problems.append(f"{k['_path']}: missing `{f}`")
+            if k.get("status") and status_of(k) not in STATUSES:
+                problems.append(f"{k['_path']}: unknown status `{k.get('status')}` (one of {', '.join(sorted(STATUSES))})")
+            if status_of(k) == "resolved" and not k["_answered"]:
+                problems.append(f"{k['_path']}: resolved without an answer under `## Answer`")
             if not m["_legacy"] and k.get("type") and k.get("type") not in TYPES:
                 problems.append(f"{k['_path']}: unknown type `{k.get('type')}` (one of {', '.join(sorted(TYPES))})")
             blockers = k.get("blocked_by") or []
@@ -197,6 +254,8 @@ def analyse(maps):
             for b in blockers:
                 if b not in by_id:
                     problems.append(f"{k['_path']}: unknown blocker `{b}`")
+                elif status_of(k) == "open" and status_of(by_id[b]) == "parked":
+                    problems.append(f"{k['_path']}: blocked by parked `{b}`: waive the edge or unpark it")
             if k.get("status") == "superseded" and not k.get("superseded_by"):
                 problems.append(f"{k['_path']}: superseded without `superseded_by`")
             # the map records every resolved ticket in Decisions so far, a parked one there or in Out of scope
@@ -210,8 +269,8 @@ def analyse(maps):
                 problems.append(f"{k['_path']}: claimed {age:.0f} h ago with no jobs (stale?)")
             if bad_claim_date(k.get("claimed")):
                 problems.append(f"{k['_path']}: `claimed` has an invalid date: {k.get('claimed')}")
-            unblocked = all(status_of(by_id.get(b) or {}) in RESOLVED for b in blockers)
-            if status_of(k) == "open" and not k.get("claimed") and unblocked:
+            unblocked = all(blocker_met(b, by_id) for b in blockers)
+            if status_of(k) == "open" and not k.get("claimed") and unblocked and m.get("status") != "closed":
                 fr.append(k)
         frontier[m.get("id")] = fr
     return problems, frontier
@@ -220,17 +279,14 @@ def analyse(maps):
 def render(project, maps, frontier, problems):
     today = dt.date.today().isoformat()
     out = [f"# Status: {os.path.basename(os.path.abspath(project))}",
-           f"_Generated {today} by `research-status` — do not edit; edit `OVERVIEW.md` and the maps under `maps/`, "
-           f"then rerun._", ""]
-    ov = os.path.join(project, "OVERVIEW.md")
-    if os.path.exists(ov):
-        with open(ov) as f:
-            txt = f.read().strip()
-        txt = re.sub(r"<!--.*?-->", "", txt, flags=re.S)
-        out += [re.sub(r"^# .*\n", "", txt).strip(), ""]
+           f"_Generated {today} by `research-status` — do not edit; edit the maps under `maps/` and "
+           f"`docs/decisions.md`, then rerun._", ""]
+    ms = milestones(project)
+    if ms:
+        out += ["## Decisions and milestones (newest first, from docs/decisions.md)"] + [f"- {x}" for x in ms] + [""]
 
     waiting = [(m.get("id"), f"[{k.get('title')}]({k['_path']})") for m in maps for k in m["_tickets"]
-               if type_of(k) in HITL and status_of(k) not in RESOLVED]
+               if type_of(k) in HITL and status_of(k) not in CLOSED]
     waiting += [(m.get("id"), n) for m in maps for n in m["_needs"]]
     out.append("## Waiting on you")
     if not waiting:
@@ -242,11 +298,15 @@ def render(project, maps, frontier, problems):
     out.append("")
 
     out += ["## Maps", "| map | destination | next on the frontier | claimed |", "|---|---|---|---|"]
-    for m in maps:
+    for m in [m for m in maps if m.get("status") != "closed"]:
         link = f"[{m.get('id')} {m.get('title')}]({m['_path']})"
         fr = frontier.get(m.get("id")) or []
         nxt = f"[{fr[0].get('title')}]({fr[0]['_path']})" if fr else ""
         out.append(f"| {link} | {m['_destination']} | {nxt} | {m.get('claimed') or ''} |")
+    closed = [m for m in maps if m.get("status") == "closed"]
+    if closed:
+        out.append("")
+        out.append("Closed: " + "; ".join(f"[{m.get('id')} {m.get('title')}]({m['_path']})" for m in closed))
     out.append("")
 
     running = [k for m in maps for k in m["_tickets"] if k.get("status") in ACTIVE]
