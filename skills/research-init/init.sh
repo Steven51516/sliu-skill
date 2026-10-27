@@ -51,7 +51,7 @@ render() {  # render <template> <dest>
 }
 render AGENTS.md    "$DIR/AGENTS.md"
 render CLAUDE.md    "$DIR/CLAUDE.md"
-render ../skills/research-init/team.md "$DIR/docs/agents/team.md"
+render ../skills/research-init/delegation.md "$DIR/docs/agents/delegation.md"
 render "../skills/research-init/issue-tracker-$TRACKER.md" "$DIR/docs/agents/issue-tracker.md"
 render ../skills/research-init/domain.md "$DIR/docs/agents/domain.md"
 render STATUS.md    "$DIR/STATUS.md"

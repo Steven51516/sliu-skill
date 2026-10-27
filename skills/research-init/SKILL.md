@@ -1,6 +1,6 @@
 ---
 name: research-init
-description: "Configure a project for the research skills: set up its scope, issue tracker, team and domain doc layout. Run once before first use of the other research skills."
+description: "Configure a project for the research skills: set up its scope, issue tracker, delegation and domain doc layout. Run once before first use of the other research skills."
 argument-hint: "<project-name> [optional one-line direction]"
 disable-model-invocation: true
 ---
@@ -11,7 +11,7 @@ Scaffold the per-project configuration that the research skills assume:
 
 - **Scope**: where the project runs (machines, storage, GPUs, network): one scope file the project imports
 - **Issue tracker**: where maps and tickets live (local markdown for a folder without a remote; GitHub and GitLab are also supported out of the box)
-- **Team**: who plans, works and reviews, and how each is called
+- **Delegation**: where delegated work goes (code, analysis, reading, review), and how each agent is called
 - **Domain docs**: where `GLOSSARY.md` and decisions live, and the consumer rules for reading them
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write. The direction itself is discussed later, in a session inside the project, so it gets recorded there.
@@ -53,7 +53,7 @@ If a `git remote` points at GitHub, propose that. If a `git remote` points at Gi
 
 Record the choice in `docs/agents/issue-tracker.md`.
 
-**Section D: Team.** Default to the [team.md](team.md) table: every session is the planner (Claude Code), which calls the worker and the reviewer (Codex). Change any role's agent, model or effort only on the user's word.
+**Section D: Delegation.** Where delegated work goes: who writes code, runs analyses, reads papers and reviews results. Default to the [delegation.md](delegation.md) table: every session delegates to background subagents of its own agent. If the user wants a routing (by topic, by kind of work, or by role, e.g. "biology-related coding, analysis, reading and reviews go to Codex; other coding to a Claude subagent"), write it as rows of that table, with each agent's model and effort.
 
 **Section E: Domain docs.** Default to one `GLOSSARY.md` + `docs/decisions.md` at the project root. Write it without asking.
 
@@ -62,7 +62,7 @@ Record the choice in `docs/agents/issue-tracker.md`.
 Show the user a draft of:
 
 - `AGENTS.md` (read by every agent: read-first pointers, code location, project notes) and `CLAUDE.md` (`@AGENTS.md` plus the Claude-only imports and session rules), or the block to add to an existing `CLAUDE.md`
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/team.md` and `docs/agents/domain.md`
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/delegation.md` and `docs/agents/domain.md`
 
 Let them edit before writing.
 
@@ -77,7 +77,7 @@ Write the docs files using the seed templates in this skill folder as a starting
 - [issue-tracker-github.md](./issue-tracker-github.md): GitHub issue tracker
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md): GitLab issue tracker
 - [issue-tracker-local.md](./issue-tracker-local.md): local-markdown issue tracker
-- [team.md](./team.md): planner, worker, reviewer
+- [delegation.md](./delegation.md): where delegated work and reviews go
 - [domain.md](./domain.md): domain doc consumer rules + layout
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.

@@ -14,7 +14,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the map, tickets, research notes, and result files. Don't duplicate information already available via pointers.
 
-**Worker subagents** should be run in the background where possible for maximum concurrency, at most 6 at once. In a team, the `team` skill swaps them for worker panes and the user for the desk.
+**Implementer subagents** should be run in the background where possible for maximum concurrency, at most 6 at once; spin them up as `docs/agents/delegation.md` says.
 
 Research runs for hours, so this skill works in **passes**: one call is one pass, and `/loop /research-drive <map>` repeats it. You do no ticket work yourself, so any fresh session can take over from the tracker.
 
@@ -24,15 +24,15 @@ Each pass:
 
 1. Read the map and its tickets to understand the task graph. On the first pass, claim the map; if another live session holds it, stop and say so.
 
-2. Check each running job the way the scope file says (alive, step moving, finished), and the GPUs of the nodes in use (owner, utilization, foreign processes on ours, step time against its reference). Idle granted GPUs are a finding. A finished job whose ticket nobody is working goes back to a worker for its evaluation or close.
+2. Check each running job the way the scope file says (alive, step moving, finished), and the GPUs of the nodes in use (owner, utilization, foreign processes on ours, step time against its reference). Idle granted GPUs are a finding. A finished job whose ticket nobody is working goes back to an implementer for its evaluation or close.
 
-3. Once a **worker subagent** reports `done`, open the ticket and trust it, not the report. If its `rigor` review passed, resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to a worker.
+3. Once an **implementer subagent** reports `done`, open the ticket and trust it, not the report. If its `rigor` review passed, resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to an implementer.
 
-4. Use **worker subagents** to work each frontier ticket that fits the map's Notes and is not on hold, each told: "Call the Skill tool with `research-work` on <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`." Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Notes). `grilling` and `prototype` tickets go to the user instead. At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
+4. Use **implementer subagents** to work each frontier ticket that fits the map's Notes and is not on hold. Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Notes). `grilling` and `prototype` tickets go to the user instead (ask the user). At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
 
-5. If the frontier is empty and the destination not reached, draft the next tickets from the fog and the latest answers (call the Skill tool with "to-tickets"), approve those inside the Notes, and kick off more **worker subagents** on them. If every ticket is dead and nothing credible is left, recommend closing or re-scoping the map.
+5. If the frontier is empty and the destination not reached, draft the next tickets from the fog and the latest answers (call the Skill tool with "to-tickets"), approve those inside the Notes, and kick off more **implementer subagents** on them. If every ticket is dead and nothing credible is left, recommend closing or re-scoping the map.
 
-6. Put what needs the user to them as a `grilling` ticket on the map, with one line and a pointer: a decision, a cost on the always-ask list, a failure, nothing left inside the Notes, or, at once and even while tickets remain, enough evidence that the destination or Notes should change (the benchmark cannot show the effect, a baseline turns out invalid, the destination looks unreachable, results point to a better route). The user decides; re-charting is `/wayfinder <map> --rechart`.
+6. Put what needs the user on the map as a `grilling` ticket, and tell the user in one line with a pointer: a decision, a cost on the always-ask list, a failure, nothing left inside the Notes, or, at once and even while tickets remain, enough evidence that the destination or Notes should change (the benchmark cannot show the effect, a baseline turns out invalid, the destination looks unreachable, results point to a better route). The user decides; re-charting is `/wayfinder <map> --rechart`.
 
 7. Past ~10 closed tickets, consolidate as `wayfinder --rechart` describes. It changes no decision, so do it without asking.
 

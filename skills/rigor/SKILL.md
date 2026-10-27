@@ -26,8 +26,8 @@ the number), needs a positive control (a known answer it must reproduce) and a n
 An established benchmark on unchanged code does not. Add a control when a result looks too good, sits at the floor or
 ceiling, or cannot be explained.
 
-**Checked by someone else, once per ticket.** Before an answer goes into the map, the reviewer in `docs/agents/team.md`, in
-a fresh session that did not do the work, is briefed with this file, the ticket, its result paths and the code diff that
+**Checked by someone else, once per ticket.** Before an answer goes into the map, a review is delegated as `docs/agents/delegation.md`
+says, to a fresh session that did not do the work, briefed with this file, the ticket, its result paths and the code diff that
 produced the numbers. It writes one PASS/FAIL line each under the answer, in three parts:
 - **Fair:** checks 1-4 and the noise rule.
 - **Answers the question:** the pre-registered rule applied as written, and no claim beyond what the numbers show.

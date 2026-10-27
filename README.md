@@ -21,7 +21,7 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 
 | You want to… | Run |
 |---|---|
-| set up a project (scope, issue tracker, team) | `/research-init <name>` |
+| set up a project (scope, issue tracker, delegation) | `/research-init <name>` |
 | pick a project back up ("where are we?") | `/resume` (a new session calls it on its own) |
 | open a new map from what you already discussed | `/to-map` |
 | open a new map from a loose idea (it interviews you) | `/wayfinder "<loose idea>"` |
@@ -29,7 +29,7 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | work one ticket | `/research-work <ticket>` |
 | work a map's frontier in parallel, or overnight | `/research-drive <map>` (`/loop` it) |
 | re-plan a map | `/wayfinder <map> --rechart` |
-| run a long-lived team (desk, driver, workers) | `team-up <map>` in a herdr pane, or `/team <role>` |
+| run a long-lived team (desk, driver, implementers) | `team-up <map>` in a herdr pane, or `/team <role>` |
 
 ## Skills
 
@@ -42,11 +42,11 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | `codebase-design`, `handoff`, `writing-for-agents` | copied | deep-module vocabulary; compact a session; writing for agents |
 | `diagnose` | adapted from `diagnosing-bugs` | a feedback loop before any bug or wrong-looking result is called fixed |
 | `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture` | adapted | glossary and decisions; retrospectives; re-pitch; deep modules for research code |
-| `research-init` | counterpart of `setup-matt-pocock-skills` | set up a project: scope, issue tracker, team |
+| `research-init` | counterpart of `setup-matt-pocock-skills` | set up a project: scope, issue tracker, delegation |
 | `to-map` | adapted from `to-spec` | turn the conversation into a map, without an interview |
 | `to-tickets` | adapted from `to-tickets` | question tickets with blocking edges and pre-registrations |
 | `research-work` | counterpart of `implement` | work one ticket end to end |
-| `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel workers |
+| `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel implementer subagents |
 | `rigor` | counterpart of `tdd` + `code-review` | check a result is fair before it counts; one review per ticket |
 | `run-card`, `diagnosis-record` | none | reproduction record of an important run; diagnosis record of evaluation results |
 | `resume`, `team` | none | report where a project stands; run a project as several long-lived sessions |
@@ -73,7 +73,9 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (`scopes/`), so the skills never name a machine.
 
-**Team layer.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, a driver running `research-drive` under `/loop`, and workers running `research-work`, with a roster and short messages (`skills/team/TEAM-PROTOCOL.md`). Who plans, works and reviews (e.g. Claude plans, Codex works and reviews) is a per-project table, `docs/agents/team.md`.
+**Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent*, *spin up an implementer subagent* (a session that works one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Its routing table can be anything: one agent for everything (the default), roles, or topics (e.g. biology-related coding, analysis, reading and reviews to Codex; other coding to a Claude subagent). Any session may delegate, including an implementer.
+
+**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, a driver running `research-drive` under `/loop`, and implementers running `research-work`, with a roster and short messages (`skills/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team inside team sessions: an implementer subagent becomes an implementer pane, and asking the user goes through the desk. The core skills never mention the team, and the team layer only depends on them.
 
 **Per-skill differences**, beyond the vocabulary above:
 
@@ -81,7 +83,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `to-tickets`: tickets are questions, not vertical slices; the fog-or-ticket test and "runs are assets" replace the slicing and wide-refactor rules; the quiz also checks success and stop criteria; an experiment's body carries its pre-registration.
 - `research-work` (vs `implement`): no TDD or commits per ticket; jobs, smoke checks, failure classification and the `rigor` review as above.
 - `to-tickets`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
-- `research-init` (vs `setup-matt-pocock-skills`): adds the scope and team sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
+- `research-init` (vs `setup-matt-pocock-skills`): adds the scope and delegation sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
 - `diagnose` (vs `diagnosing-bugs`): also covers results that look wrong; a tiny-config run and an invariant probe replace the HTTP and browser loops; the regression check is a check script, re-run on the production path (real launcher, data and GPU count); a bug that invalidated results is a failure class, not a negative answer.
 - `domain-modeling`: every cross-map decision is one line in `docs/decisions.md`, with a longer note only when Matt's three ADR conditions hold; terms are defined on first use.
 - `improve-codebase-architecture`: checks are the test surface, the scope is the shared research code (ticket code is throwaway), code may live on a remote server, and a refactor waits for live runs that import the code.
@@ -109,7 +111,7 @@ install.sh   (re)creates the links; safe to run again
 | change a machine's rules (scheduler, storage, GPU sharing, network) | that scope file, e.g. `scopes/engaging.md` |
 | change how the agent writes code, commits, reports, or what always needs my OK | `rules/style.md` |
 | change where one project's maps live | that project's `docs/agents/issue-tracker.md` |
-| change who plans, works and reviews in one project | that project's `docs/agents/team.md` |
+| change where delegated work and reviews go in one project | that project's `docs/agents/delegation.md` |
 | add a rule for one project only | that project's `AGENTS.md`, under "Project notes" |
 | add a skill | `skills/<name>/SKILL.md`, then `./install.sh` |
 

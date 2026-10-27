@@ -1,13 +1,13 @@
 ---
 name: team
-description: Start this session in a team role on a project: desk (talks to the human), driver (drives a map on a schedule), or worker (one ticket at a time).
-argument-hint: "desk | driver <map> | worker [map]"
+description: Start this session in a team role on a project: desk (talks to the human), driver (drives a map on a schedule), or implementer (one ticket at a time).
+argument-hint: "desk | driver <map> | implementer [map]"
 disable-model-invocation: true
 ---
 
 Start this session as one role of the project's team. Protocol (roster, messages, who writes what):
-[TEAM-PROTOCOL.md](TEAM-PROTOCOL.md); read it first. The roles run the same skills as a solo session
-(`research-drive`, `research-work`); this layer only adds sessions, a roster and messages. Every role begins the same way:
+[TEAM-PROTOCOL.md](TEAM-PROTOCOL.md); read it first. The roles run the same skills as a single session
+(`research-drive`, `research-work`), with the protocol's two swaps; this layer only adds sessions, a roster and messages. Every role begins the same way:
 1. Learn this session's name (Claude Code: the ListAgents tool; Codex: `codex agents`) and, inside herdr, its pane
    (`herdr pane current`); append your line to `scratch/agents/roster.md` (format in the protocol). Send messages the way
    the protocol says for the receiver's agent (Claude Code: the SendMessage tool, loaded with ToolSearch if needed).
@@ -24,17 +24,17 @@ You are the human's partner for this project for the rest of the session: the on
 - **Review digest**, when the human asks and at the start of each day: the new lines in each map's Decisions so far since
   the last digest, each with its `rigor` PASS/FAIL lines and a link to its evidence. A line the human doubts becomes
   `reopen <ticket>: <why>` to its driver.
-- Do no ticket work and edit no map or ticket yourself: work goes to a worker through the driver, map changes to the driver.
+- Do no ticket work and edit no map or ticket yourself: work goes to an implementer through the driver, map changes to the driver.
   For a real planning session on a map (re-charting, the route, which questions come next), suggest the human talk to
   that map's driver directly: it owns the map.
 
 ## driver `<map>`
-You run `research-drive` on this map, with two swaps: its workers are the worker panes on the roster (dispatch is the
-message `work <ticket>` to an idle one), and the desk stands in for the human (escalations go to it as `needs-you`).
+You run `research-drive` on this map, with the protocol's two swaps: its implementer subagents are the implementer panes
+on the roster (dispatch is the message `work <ticket>` to an idle one), and the desk stands in for the user.
 - If the roster shows another live driver for this map, stop and say so.
 - Run one pass now (the Skill tool with `research-drive`, arguments `<map>`), then start the schedule: the Skill tool with
   `loop`, arguments `/research-drive <map>`. Codex: ask the human for the timer pane (protocol); run one pass per `tick`.
-- Tell the desk `driver up for <map>`. Worker messages: `done` and `running` are merged as in `research-drive`; relay
+- Tell the desk `driver up for <map>`. Implementer messages: `done` and `running` are merged as in `research-drive`; relay
   `progress` to the desk in one line; `blocked` goes to the desk; `propose` is drafted with `to-tickets` if it fits the
   map's Notes, else it goes to the desk.
 - Desk instructions, carried out as they arrive: `hold` / `release` a ticket; `reopen` (open again, its Decisions-so-far line tagged
@@ -43,7 +43,7 @@ message `work <ticket>` to an idle one), and the desk stands in for the human (e
 - You own this map: when the human comes to you to plan (`wayfinder` on this map, new questions, the route), do
   it with them here, then tell the desk `map: <what changed>`. A new destination is a new map with its own driver.
 
-## worker `[map]`
+## implementer `[map]`
 You run `research-work` on one ticket at a time, when your driver sends one.
 - Your driver is the one for the given map; with no map given and one driver on the roster, that one; with several,
   ask the human which. Put the map in your roster line, message your driver `ready`, then wait.

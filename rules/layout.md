@@ -3,10 +3,11 @@
 Projects live under the projects root named by the project's scope file (`~/projects/<name>/` on Engaging). Work is organised by **map** (one destination, e.g. "baselines", "transfer", "pathway priors") and **ticket** (one sharp question on that map; its runs are assets inside it, not tickets). Where maps and tickets live is the project's issue tracker (`docs/agents/issue-tracker.md`); with the local tracker it is the `maps/` folder below. Create directories when first needed.
 
 ```
-AGENTS.md       read by every agent: read-first pointers (scope, style, team, issue tracker), code location, project notes
+AGENTS.md       read by every agent: read-first pointers (scope, style, delegation, issue tracker, domain docs), code location, project notes
 CLAUDE.md       @AGENTS.md + the Claude-only imports and session rules
-docs/agents/    team.md: planner, worker, reviewer (agent, model, effort), how to call each
+docs/agents/    delegation.md: where delegated work and reviews go (by topic, kind or role), how each agent is called
                 issue-tracker.md: where maps and tickets live and how to claim, block, query and resolve them
+                domain.md: how skills read GLOSSARY.md and docs/decisions.md
 docs/decisions.md   cross-map decisions, one line each, newest first. Map decisions live in each map's Decisions so far
 GLOSSARY.md     project terms (created when the first one settles)
 OVERVIEW.md     the project's overview, ≤25 lines: destination, one line per phase or map (linked), now, reference points

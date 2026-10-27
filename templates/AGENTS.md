@@ -6,7 +6,8 @@ A research project run with the research harness (`~/research-harness`). For eve
 
 - **Read first:** the scope file `{{SCOPE_PATH}}` (where things run: machines, storage, GPUs, network) and
   `~/research-harness/rules/style.md`.
-- **Roles:** planner, worker and reviewer, and how to call each: `docs/agents/team.md`.
+- **Delegation:** where delegated work and reviews go, and how each agent is called: `docs/agents/delegation.md`.
+- **Domain docs:** how to read `GLOSSARY.md` and the decisions: `docs/agents/domain.md`.
 - **Issue tracker:** where maps and tickets live and how to claim, block, query and resolve them: `docs/agents/issue-tracker.md`.
 - **Code:** {{CODE_LOCATION}}
 - **Records:** one map per destination and its tickets (one question each, with their runs as assets), in the issue

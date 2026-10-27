@@ -11,7 +11,8 @@ What it does (a tar.gz backup of every file it may touch goes to docs/archive/ f
   resolved; `driver:` dropped; `## Verdict` -> `## Answer`
 - every other .md in the project: project-relative `tracks/` -> `maps/` and `track.md` -> `map.md` (server paths such as
   `~/code/<p>/tracks/...` are left alone), and "call the Skill tool with `research`" -> `resume`
-- writes docs/agents/issue-tracker.md from the local template if missing, then regenerates STATUS.md
+- writes docs/agents/issue-tracker.md, delegation.md and domain.md from the research-init seeds if missing, then
+  regenerates STATUS.md
 """
 import argparse
 import datetime as dt
@@ -216,6 +217,13 @@ def main():
             os.makedirs(os.path.dirname(tracker), exist_ok=True)
             with open(os.path.join(HERE, "..", "skills", "research-init", "issue-tracker-local.md")) as src, open(tracker, "w") as dst:
                 dst.write(src.read())
+    for name in ("delegation.md", "domain.md"):
+        dst = os.path.join(project, "docs", "agents", name)
+        if not os.path.exists(dst):
+            plan.append(f"docs/agents/{name} from the research-init seed")
+            if write:
+                with open(os.path.join(HERE, "..", "skills", "research-init", name)) as src, open(dst, "w") as out:
+                    out.write(src.read())
     print("\n".join(("would: " if a.dry_run else "") + p.replace(project + "/", "") for p in plan))
     if write:
         subprocess.run([sys.executable, os.path.join(HERE, "status.py"), project])
