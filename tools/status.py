@@ -7,7 +7,9 @@ Projects still on the old layout (tracks/*/track.md) are read too.
 
 Usage (from the project root, or pass it):
     research-status [PROJECT] [--print] [--check] [--frontier]
-      --print     write to stdout instead of STATUS.md
+      (none)      write STATUS.md, the project page: milestones (closed maps' outcomes) and open maps
+      --print     the same page to stdout instead
+      --now       print what is live: waiting on you, running or claimed, the frontier (never stored)
       --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
                   missing fields, resolved tickets missing from their map or their answer); exit 1 if any
       --frontier  only list the frontier (open, unblocked, unclaimed tickets), one per line
@@ -96,17 +98,6 @@ def destination(body):
     return ""
 
 
-def milestone_lines(body, mdir_rel):
-    """Decisions-so-far lines tagged [milestone], with their ticket links made relative to the project root."""
-    clean = re.sub(r"<!--.*?-->", "", body, flags=re.S)
-    out = []
-    for line in section(clean, "Decisions so far"):
-        if line.startswith("- ") and "[milestone]" in line:
-            text = line[2:].strip().replace(" [milestone]", "").replace("[milestone]", "").strip()
-            out.append(re.sub(r"\]\((tickets/[^)]+)\)", lambda m: f"]({mdir_rel}/{m.group(1)})", text))
-    return out
-
-
 def legacy_needs(body):
     """Open `- [ ]` items in an old map's `## Needs you` (new maps hold these as grilling tickets)."""
     items, cur = [], None
@@ -170,7 +161,6 @@ def load(project):
         meta["_legacy"] = mpath.endswith("track.md")
         meta["_destination"] = destination(body)
         meta["_needs"] = legacy_needs(body)
-        meta["_milestones"] = milestone_lines(body, os.path.relpath(mdir, project))
         meta["_map_links"] = map_links(body)
         meta["_tickets"] = tickets
         meta["_archived"] = archived
@@ -233,6 +223,8 @@ def analyse(maps):
                 problems.append(f"{m['_path']}: missing `{f}`")
         if m.get("status") and m.get("status") not in MAP_STATUSES:
             problems.append(f"{m['_path']}: unknown map status `{m.get('status')}` (open or closed)")
+        if m.get("status") == "closed" and not m.get("outcome"):
+            problems.append(f"{m['_path']}: closed without an `outcome:` line")
         age = claim_age_hours(m.get("claimed"))
         if age is not None and age > STALE_HOURS:
             problems.append(f"{m['_path']}: claim is {age:.0f} h old (stale?)")
@@ -277,69 +269,48 @@ def analyse(maps):
     return problems, frontier
 
 
-def render(project, maps, frontier, problems):
+def render_page(project, maps):
+    """STATUS.md: the project page. Changes only when a map is opened, re-charted or closed."""
     today = dt.date.today().isoformat()
     out = [f"# Status: {os.path.basename(os.path.abspath(project))}",
-           f"_Generated {today} by `research-status` — do not edit; edit the maps under `maps/`, then rerun._", ""]
-    ms = [(m.get("id"), x) for m in maps for x in m["_milestones"]]
-    if ms:
-        out += ["## Milestones (the maps' `[milestone]` lines)"] + [f"- **{mid}** {x}" for mid, x in ms] + [""]
+           f"_Generated {today} by `research-status` — do not edit. What is live now (waiting on you, running, "
+           f"the frontier): `research-status --now`._", ""]
+    closed = [m for m in maps if m.get("status") == "closed"]
+    out.append("## Milestones (closed maps and their outcomes)")
+    if not closed:
+        out.append("- none yet")
+    for m in closed:
+        out.append(f"- [{m.get('id')} {m.get('title')}]({m['_path']}): {m.get('outcome') or '(no outcome recorded)'}")
+    out += ["", "## Open maps", "| map | destination | driven by |", "|---|---|---|"]
+    for m in [m for m in maps if m.get("status") != "closed"]:
+        out.append(f"| [{m.get('id')} {m.get('title')}]({m['_path']}) | {m['_destination']} | {m.get('claimed') or ''} |")
+    return "\n".join(out) + "\n"
 
-    waiting = [(m.get("id"), f"[{k.get('title')}]({k['_path']})") for m in maps for k in m["_tickets"]
+
+def render_now(maps, frontier, problems):
+    """What is live: printed, never stored."""
+    out = []
+    waiting = [(m.get("id"), f"{k.get('title')} ({k['_path']})") for m in maps for k in m["_tickets"]
                if type_of(k) in HITL and status_of(k) not in CLOSED]
     waiting += [(m.get("id"), n) for m in maps for n in m["_needs"]]
-    out.append("## Waiting on you")
-    if not waiting:
-        out.append("- nothing open")
-    for mid, w in waiting[:MAX_WAITING]:
-        out.append(f"- **{mid}** {w}")
+    out.append("Waiting on you:")
+    out += [f"  {mid}  {w}" for mid, w in waiting[:MAX_WAITING]] or ["  nothing open"]
     if len(waiting) > MAX_WAITING:
-        out.append(f"- … {len(waiting) - MAX_WAITING} more")
-    out.append("")
-
-    out += ["## Maps", "| map | destination | next on the frontier | claimed |", "|---|---|---|---|"]
-    for m in [m for m in maps if m.get("status") != "closed"]:
-        link = f"[{m.get('id')} {m.get('title')}]({m['_path']})"
-        fr = frontier.get(m.get("id")) or []
-        nxt = f"[{fr[0].get('title')}]({fr[0]['_path']})" if fr else ""
-        out.append(f"| {link} | {m['_destination']} | {nxt} | {m.get('claimed') or ''} |")
-    closed = [m for m in maps if m.get("status") == "closed"]
-    if closed:
-        out.append("")
-        out.append("Closed: " + "; ".join(f"[{m.get('id')} {m.get('title')}]({m['_path']})" for m in closed))
-    out.append("")
-
+        out.append(f"  … {len(waiting) - MAX_WAITING} more")
     running = [k for m in maps for k in m["_tickets"] if k.get("status") in ACTIVE]
-    out.append("## Running / claimed")
-    if not running:
-        out.append("- none")
+    out.append("Running / claimed:")
     for k in running:
         jobs = k.get("jobs") or []
         jobs = jobs if isinstance(jobs, list) else [jobs]
-        who = k.get("claimed") or ""
-        out.append(f"- [{k.get('id')}]({k['_path']}) {k.get('title')} · {k.get('status')}"
-                   + (f" · jobs {', '.join(jobs[-3:])}" if jobs else "") + (f" · {who}" if who else ""))
-    out.append("")
-
-    out.append("## Frontier (open, unblocked, unclaimed)")
-    anyf = False
-    for m in maps:
-        fr = frontier.get(m.get("id")) or []
-        if fr:
-            anyf = True
-            out.append(f"- **{m.get('id')}**: " + "; ".join(f"[{k.get('id')}]({k['_path']}) {k.get('title')}" for k in fr[:5])
-                       + (f"; … +{len(fr) - 5}" if len(fr) > 5 else ""))
-    if not anyf:
-        out.append("- empty")
-    out.append("")
-
-    counts = {}
-    for m in maps:
-        for k in m["_tickets"]:
-            counts[k.get("status")] = counts.get(k.get("status"), 0) + 1
-    out.append("_Tickets: " + ", ".join(f"{v} {s}" for s, v in sorted(counts.items(), key=lambda x: str(x[0]))) + "._")
+        out.append(f"  {k.get('id')}  {k.get('title')} · {k.get('status')}"
+                   + (f" · jobs {', '.join(jobs[-3:])}" if jobs else "") + (f" · {k.get('claimed')}" if k.get("claimed") else ""))
+    if not running:
+        out.append("  none")
+    out.append("Frontier (open, unblocked, unclaimed):")
+    fr = [k for m in maps for k in frontier.get(m.get("id")) or []]
+    out += [f"  {k.get('id')}  {k.get('title')}" for k in fr] or ["  empty"]
     if problems:
-        out += ["", "## Tracker warnings"] + [f"- {p}" for p in problems[:10]]
+        out.append(f"Tracker warnings ({len(problems)}): research-status --check")
     return "\n".join(out) + "\n"
 
 
@@ -347,6 +318,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("project", nargs="?", default=".")
     ap.add_argument("--print", action="store_true")
+    ap.add_argument("--now", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--frontier", action="store_true")
     a = ap.parse_args()
@@ -362,7 +334,10 @@ def main():
             for k in frontier.get(m.get("id")) or []:
                 print(f"{k.get('id')}\t{type_of(k)}\t{k['_path']}\t{k.get('title')}")
         return
-    text = render(a.project, maps, frontier, problems)
+    if a.now:
+        sys.stdout.write(render_now(maps, frontier, problems))
+        return
+    text = render_page(a.project, maps)
     if a.print:
         sys.stdout.write(text)
     else:

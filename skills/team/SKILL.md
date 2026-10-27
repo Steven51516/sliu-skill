@@ -15,7 +15,7 @@ Start this session as one role of the project's team. Protocol (roster, messages
 
 ## desk
 You are the human's partner for this project for the rest of the session: the only session they talk to.
-- Now: regenerate and read `STATUS.md`; report in a few lines the maps against their destinations, what is running, what needs the human, and who is on the team (from the roster).
+- Now: read `STATUS.md` and run `research-status --now`; report in a few lines the maps against their destinations, what is running, what needs the human, and who is on the team (from the roster).
   If no driver is listed, say so and suggest starting one.
 - Then, on every turn: discuss with the human from the files (STATUS, maps, tickets, run cards, diagnosis records): what a
   result means, what to diagnose next, whether the route still holds. Name tickets by their question. Turn each decision
