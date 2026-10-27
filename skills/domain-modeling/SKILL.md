@@ -49,7 +49,7 @@ When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up:
 
 ### Record decisions sparingly
 
-Every cross-map decision gets one line in `docs/decisions.md` (date, decision, why; newest first), and so does every **milestone**: a map closing with an answer that changes the project's route; a map's own decisions are dated lines in its Decisions so far. Only offer a longer rationale note, linked from that line, when all three are true:
+Every cross-map decision gets one line in `docs/decisions.md` (date, decision, why; newest first); a map's own decisions are dated lines in its Decisions so far. Only offer a longer rationale note, linked from that line, when all three are true:
 
 1. **Hard to reverse**: the cost of changing your mind later is meaningful
 2. **Surprising without context**: a future reader will wonder "why did they do it this way?"

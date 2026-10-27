@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""research-status: generate a project's STATUS.md from maps/*/map.md, maps/*/tickets/*/ticket.md and docs/decisions.md.
+"""research-status: generate a project's STATUS.md from maps/*/map.md and maps/*/tickets/*/ticket.md.
 
 The local issue tracker's view and checker (docs/agents/issue-tracker.md). STATUS.md is a VIEW: nobody edits it by hand.
-Edit the map/ticket files and docs/decisions.md, then rerun, so parallel sessions never collide on one shared file.
+Edit the map/ticket files, then rerun, so parallel sessions never collide on one shared file.
 Projects still on the old layout (tracks/*/track.md) are read too.
 
 Usage (from the project root, or pass it):
@@ -23,7 +23,6 @@ import sys
 CLOSED = {"resolved", "parked", "superseded"}     # off the frontier
 STATUSES = {"open", "claimed", "running", "resolved", "parked", "superseded"}
 MAP_STATUSES = {"open", "closed"}
-MAX_MILESTONES = 6
 ACTIVE = {"claimed", "running"}
 HITL = {"grilling", "prototype"}
 TYPES = {"experiment", "research", "prototype", "grilling", "task"}
@@ -97,14 +96,15 @@ def destination(body):
     return ""
 
 
-def milestones(project):
-    """Newest one-line entries of docs/decisions.md (cross-map decisions and milestones)."""
-    path = os.path.join(project, "docs", "decisions.md")
-    if not os.path.exists(path):
-        return []
-    with open(path) as f:
-        text = re.sub(r"<!--.*?-->", "", f.read(), flags=re.S)
-    return [l[2:].strip() for l in text.splitlines() if l.startswith("- ")][:MAX_MILESTONES]
+def milestone_lines(body, mdir_rel):
+    """Decisions-so-far lines tagged [milestone], with their ticket links made relative to the project root."""
+    clean = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+    out = []
+    for line in section(clean, "Decisions so far"):
+        if line.startswith("- ") and "[milestone]" in line:
+            text = line[2:].strip().replace(" [milestone]", "").replace("[milestone]", "").strip()
+            out.append(re.sub(r"\]\((tickets/[^)]+)\)", lambda m: f"]({mdir_rel}/{m.group(1)})", text))
+    return out
 
 
 def legacy_needs(body):
@@ -170,6 +170,7 @@ def load(project):
         meta["_legacy"] = mpath.endswith("track.md")
         meta["_destination"] = destination(body)
         meta["_needs"] = legacy_needs(body)
+        meta["_milestones"] = milestone_lines(body, os.path.relpath(mdir, project))
         meta["_map_links"] = map_links(body)
         meta["_tickets"] = tickets
         meta["_archived"] = archived
@@ -279,11 +280,10 @@ def analyse(maps):
 def render(project, maps, frontier, problems):
     today = dt.date.today().isoformat()
     out = [f"# Status: {os.path.basename(os.path.abspath(project))}",
-           f"_Generated {today} by `research-status` — do not edit; edit the maps under `maps/` and "
-           f"`docs/decisions.md`, then rerun._", ""]
-    ms = milestones(project)
+           f"_Generated {today} by `research-status` — do not edit; edit the maps under `maps/`, then rerun._", ""]
+    ms = [(m.get("id"), x) for m in maps for x in m["_milestones"]]
     if ms:
-        out += ["## Decisions and milestones (newest first, from docs/decisions.md)"] + [f"- {x}" for x in ms] + [""]
+        out += ["## Milestones (the maps' `[milestone]` lines)"] + [f"- **{mid}** {x}" for mid, x in ms] + [""]
 
     waiting = [(m.get("id"), f"[{k.get('title')}]({k['_path']})") for m in maps for k in m["_tickets"]
                if type_of(k) in HITL and status_of(k) not in CLOSED]

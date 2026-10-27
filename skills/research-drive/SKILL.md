@@ -36,4 +36,4 @@ Each pass:
 
 7. Past ~10 closed tickets, consolidate as `wayfinder --rechart` describes. It changes no decision, so do it without asking.
 
-8. Log one line in `scratch/agents/driver.log` (time, what changed). Under `/loop`, wake at the next thing worth seeing (a job's expected finish or milestone), else in 20-30 min, and hourly when everything waits on the user. When the destination is reached, or a measured answer says it can't be, close the map as the tracker doc says and end the loop; also end it when the user says stop.
+8. Run `research-status` and log one line in `scratch/agents/driver.log` (time, what changed). Under `/loop`, wake at the next thing worth seeing (a job's expected finish or milestone), else in 20-30 min, and hourly when everything waits on the user. When the destination is reached, or a measured answer says it can't be, close the map as the tracker doc says and end the loop; also end it when the user says stop.
