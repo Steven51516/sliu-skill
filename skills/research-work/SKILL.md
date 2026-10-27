@@ -8,7 +8,7 @@ Work the ticket described by the user, or handed over by the map's driver.
 
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask. If it names a map rather than a ticket, call the Skill tool with "research-drive" instead (or read [its SKILL.md](../research-drive/SKILL.md) if that skill isn't loaded). The issue tracker should have been provided to you. If not, tell the user to run `/research-init`.
 
-Claim the ticket before any work. An `experiment` runs only once its pre-registration is approved; if it isn't, call the Skill tool with "research-ticket" to put it to the user.
+Claim the ticket before any work. An `experiment` runs only once its pre-registration is approved; if it isn't, call the Skill tool with "to-tickets" to put it to the user.
 
 Hand each bounded task to the worker in `docs/agents/team.md`, and call the Skill tool with "rigor" on what comes back.
 

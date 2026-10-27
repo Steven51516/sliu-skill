@@ -30,7 +30,7 @@ Each pass:
 
 4. Use **worker subagents** to work each frontier ticket that fits the map's Notes and is not on hold, each told: "Call the Skill tool with `research-work` on <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`." Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Notes). `grilling` and `prototype` tickets go to the user instead. At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
 
-5. If the frontier is empty and the destination not reached, draft the next tickets from the fog and the latest answers (call the Skill tool with "research-ticket"), approve those inside the Notes, and kick off more **worker subagents** on them. If every ticket is dead and nothing credible is left, recommend closing or re-scoping the map.
+5. If the frontier is empty and the destination not reached, draft the next tickets from the fog and the latest answers (call the Skill tool with "to-tickets"), approve those inside the Notes, and kick off more **worker subagents** on them. If every ticket is dead and nothing credible is left, recommend closing or re-scoping the map.
 
 6. Put what needs the user to them as a `grilling` ticket on the map, with one line and a pointer: a decision, a cost on the always-ask list, a failure, nothing left inside the Notes, or, at once and even while tickets remain, enough evidence that the destination or Notes should change (the benchmark cannot show the effect, a baseline turns out invalid, the destination looks unreachable, results point to a better route). The user decides; re-charting is `/wayfinder <map> --rechart`.
 

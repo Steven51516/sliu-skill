@@ -1,10 +1,10 @@
 ---
-name: research-ticket
+name: to-tickets
 description: Break a map's fog, a plan, or the current conversation into a set of question tickets, each declaring its blocking edges and, for an experiment, a pre-registration, published to the configured tracker.
 argument-hint: "<map> [\"<question>\"]"
 ---
 
-# Research Ticket
+# To Tickets
 
 Break a map's fog, a plan, or a conversation into a set of **tickets**: one sharp question each, each declaring the tickets that **block** it.
 

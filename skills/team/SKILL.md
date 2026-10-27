@@ -35,10 +35,10 @@ message `work <ticket>` to an idle one), and the desk stands in for the human (e
 - Run one pass now (the Skill tool with `research-drive`, arguments `<map>`), then start the schedule: the Skill tool with
   `loop`, arguments `/research-drive <map>`. Codex: ask the human for the timer pane (protocol); run one pass per `tick`.
 - Tell the desk `driver up for <map>`. Worker messages: `done` and `running` are merged as in `research-drive`; relay
-  `progress` to the desk in one line; `blocked` goes to the desk; `propose` is drafted with `research-ticket` if it fits the
+  `progress` to the desk in one line; `blocked` goes to the desk; `propose` is drafted with `to-tickets` if it fits the
   map's Notes, else it goes to the desk.
 - Desk instructions, carried out as they arrive: `hold` / `release` a ticket; `reopen` (open again, its Decisions-so-far line tagged
-  `[challenged]` until it closes again); `new` (`research-ticket`); `rechart` (`wayfinder --rechart`); `pause` (no
+  `[challenged]` until it closes again); `new` (`to-tickets`); `rechart` (`wayfinder --rechart`); `pause` (no
   dispatch) / `resume`; `stop` (end the loop and say why).
 - You own this map: when the human comes to you to plan (`wayfinder` on this map, new questions, the route), do
   it with them here, then tell the desk `map: <what changed>`. A new destination is a new map with its own driver.

@@ -23,8 +23,9 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 |---|---|
 | set up a project (scope, issue tracker, team) | `/research-init <name>` |
 | pick a project back up ("where are we?") | `/resume` (a new session calls it on its own) |
-| open a new map | `/wayfinder "<loose idea>"` |
-| add a ticket | `/research-ticket <map> "<question>"` |
+| open a new map from what you already discussed | `/to-map` |
+| open a new map from a loose idea (it interviews you) | `/wayfinder "<loose idea>"` |
+| add a ticket | `/to-tickets <map> "<question>"` |
 | work one ticket | `/research-work <ticket>` |
 | work a map's frontier in parallel, or overnight | `/research-drive <map>` (`/loop` it) |
 | re-plan a map | `/wayfinder <map> --rechart` |
@@ -42,7 +43,8 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | `diagnose` | adapted from `diagnosing-bugs` | a feedback loop before any bug or wrong-looking result is called fixed |
 | `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture` | adapted | glossary and decisions; retrospectives; re-pitch; deep modules for research code |
 | `research-init` | counterpart of `setup-matt-pocock-skills` | set up a project: scope, issue tracker, team |
-| `research-ticket` | counterpart of `to-tickets` | tickets with blocking edges and pre-registrations |
+| `to-map` | adapted from `to-spec` | turn the conversation into a map, without an interview |
+| `to-tickets` | adapted from `to-tickets` | question tickets with blocking edges and pre-registrations |
 | `research-work` | counterpart of `implement` | work one ticket end to end |
 | `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel workers |
 | `rigor` | counterpart of `tdd` + `code-review` | check a result is fair before it counts; one review per ticket |
@@ -75,9 +77,10 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Per-skill differences**, beyond the vocabulary above:
 
-- `research-ticket` (vs `to-tickets`): tickets are questions, not vertical slices; the fog-or-ticket test and "runs are assets" replace the slicing and wide-refactor rules; the quiz also checks success and stop criteria; an experiment's body carries its pre-registration.
+- `to-map` (vs `to-spec`): it writes a map, not a spec: the benchmark replaces the test seams, the questions you can see coming (Not yet specified) replace the user stories, the decisions already made open Decisions so far, and it ends by calling `to-tickets` for the questions that are already sharp.
+- `to-tickets`: tickets are questions, not vertical slices; the fog-or-ticket test and "runs are assets" replace the slicing and wide-refactor rules; the quiz also checks success and stop criteria; an experiment's body carries its pre-registration.
 - `research-work` (vs `implement`): no TDD or commits per ticket; jobs, smoke checks, failure classification and the `rigor` review as above.
-- `research-ticket`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
+- `to-tickets`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
 - `research-init` (vs `setup-matt-pocock-skills`): adds the scope and team sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
 - `diagnose` (vs `diagnosing-bugs`): also covers results that look wrong; a tiny-config run and an invariant probe replace the HTTP and browser loops; the regression check is a check script, re-run on the production path (real launcher, data and GPU count); a bug that invalidated results is a failure class, not a negative answer.
 - `domain-modeling`: every cross-map decision is one line in `docs/decisions.md`, with a longer note only when Matt's three ADR conditions hold; terms are defined on first use.
@@ -114,4 +117,4 @@ Skill descriptions load when a session starts, so a new skill or a changed `desc
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `5beb35b`): copied `research`, `grilling`, `prototype`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `diagnose` (from `diagnosing-bugs`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch).
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `5beb35b`): copied `research`, `grilling`, `prototype`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `diagnose` (from `diagnosing-bugs`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch).

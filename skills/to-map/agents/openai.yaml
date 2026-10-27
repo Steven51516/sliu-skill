@@ -1,0 +1,5 @@
+interface:
+  display_name: "To Map"
+  short_description: "Turn a conversation into a map"
+policy:
+  allow_implicit_invocation: false

@@ -29,7 +29,7 @@ the others there. A line whose session no longer exists is stale; the next sessi
 
 ## Messages
 Sent with SendMessage to a session name. Short, and a **pointer**, never the result itself:
-- desk → driver: `hold <ticket>` · `release <ticket>` · `reopen <ticket>: <why>` (the human challenges a result) · `new <question>` (draft a ticket with `research-ticket`) ·
+- desk → driver: `hold <ticket>` · `release <ticket>` · `reopen <ticket>: <why>` (the human challenges a result) · `new <question>` (draft a ticket with `to-tickets`) ·
   `rechart: <what to change>` (the `wayfinder --rechart` procedure) · `pause` · `resume` · `stop`
 - driver → desk: `map: <what changed>` (after the human worked on the map with the driver) · `propose <ticket>: <why next>` · `needs-you <pointer>: <one line>` · `closed <ticket name>: <answer in
   one line>` · `progress <ticket name>: <one line>` (relayed from a worker) · `stopped: <why>`

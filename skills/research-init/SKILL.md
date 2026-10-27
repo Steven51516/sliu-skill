@@ -42,7 +42,7 @@ Lead each section with the recommended answer so the user can accept it in a wor
 
 **Section C: Issue tracker.**
 
-> Explainer: The "issue tracker" is where maps and tickets live for this project. Skills like `wayfinder`, `research-ticket`, `research-work` and `research-drive` read from and write to it. They need to know whether to call `gh issue create`, write a markdown file under `maps/`, or follow some other workflow you describe. Pick the place you actually track work for this project.
+> Explainer: The "issue tracker" is where maps and tickets live for this project. Skills like `wayfinder`, `to-tickets`, `research-work` and `research-drive` read from and write to it. They need to know whether to call `gh issue create`, write a markdown file under `maps/`, or follow some other workflow you describe. Pick the place you actually track work for this project.
 
 If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Otherwise (or if the user prefers), offer:
 
