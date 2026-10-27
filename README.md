@@ -15,7 +15,7 @@ git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 
 Research is a search, not a build, so the plan never stops changing. The vocabulary is Matt's:
 
-- A **map** charts the way to one **destination**: the decisions made so far, the **fog** not yet sharp enough to ticket (*Not yet specified*), and what is *Out of scope*. Its **Notes** name the benchmark every ticket is scored on.
+- A **map** charts the way to one **destination**: the decisions made so far, the **fog** not yet sharp enough to ticket (*Not yet specified*), and what is *Out of scope*. Its **Notes** hold the domain and standing preferences; its **Contract** names the benchmark every ticket is scored on (or `none`), the reference recipe, and what may be done without asking.
 - A **ticket** is one question on the map, sized to one agent session. An `experiment` ticket resolves by measurement against a **pre-registration**, its success and stop criteria written before anything runs. Runs, arms and smoke tests are **assets** of a ticket, never tickets.
 - Maps and tickets live in the project's **issue tracker** (`docs/agents/issue-tracker.md`): GitHub, GitLab, or local markdown under `maps/`.
 
@@ -55,13 +55,13 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 
 Only differences in logic; renamed paths, examples and tracker wiring are not listed.
 
-**Maps execute.** Matt's `wayfinder` plans by default and lets an effort's Notes carry execution into the map. A research map always does: its Notes name the benchmark (eval set and N, metric, scorer, decoding), the baselines on it, the reference recipe and what may be done without asking, and an added ticket type, **`experiment`**, resolves by measurement through `research-work`.
+**Maps execute, under a Contract.** Matt's `wayfinder` plans by default and lets an effort's Notes carry execution into the map. A research map always does, through a section Matt doesn't have, `## Contract`, after his Notes: the **benchmark** (eval set and N, metric, scorer, decoding) and the baselines on it, or `none` when the map measures nothing or hasn't chosen yet; the **reference recipe**; and what may be done **without asking**. Only the user changes it. Matt's Notes keep their meaning (domain, skills to consult, standing preferences). An added ticket type, **`experiment`**, resolves by measurement through `research-work`.
 
 **Pre-registration.** An experiment ticket's success and stop criteria are written and approved before it runs, and never edited after results are seen (amendments are appended and dated). Matt's tickets have no such gate.
 
 **Runs are assets.** Every run, arm, smoke test or variant is a row in its ticket's Assets table; a new run never gets a new ticket, a new question does.
 
-**Re-chart.** `wayfinder` has a third mode, `--rechart`: change the destination or Notes on evidence (the human decides), split a second destination into a new map, rebuild Decisions so far, consolidate closed tickets.
+**Re-chart.** `wayfinder` has a third mode, `--rechart`: change the destination or Contract on evidence (the human decides), split a second destination into a new map, rebuild Decisions so far, consolidate closed tickets.
 
 **The local tracker keeps code with tickets.** `maps/<id>-<slug>/map.md`, and one *folder* per ticket (`tickets/NN-<slug>/ticket.md` plus its code and small results), with YAML front matter. `research-status` generates `STATUS.md`, lists the frontier and checks the maps. Matt's local tracker is `.scratch/<effort>/map.md` with one file per ticket. `research-init` proposes GitHub or GitLab when the folder has such a remote, else local markdown (Matt defaults to GitHub).
 
@@ -69,7 +69,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **`research-work` runs jobs, not a red-green loop.** Smoke-test only code never run before; otherwise the real run's first steps are the smoke check; jobs run the way the project's scope file says; failures are classified (execution, measurement, data, method, hypothesis) before anything is called negative. No commits per ticket.
 
-**`research-drive` grows the graph.** Matt's `implement-spec` works a fixed set of tickets to completion and merges branches. Here one call is one pass (repeat with `/loop`): merge finished tickets after their review, dispatch the frontier, and when it runs dry, file the next tickets from the fog inside the map's Notes. What needs the human becomes a `grilling` ticket.
+**`research-drive` grows the graph.** Matt's `implement-spec` works a fixed set of tickets to completion and merges branches. Here one call is one pass (repeat with `/loop`): merge finished tickets after their review, dispatch the frontier, and when it runs dry, file the next tickets from the fog inside the map's Contract. What needs the human becomes a `grilling` ticket.
 
 **Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (`scopes/`), so the skills never name a machine.
 

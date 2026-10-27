@@ -12,7 +12,7 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 1. Explore the project to understand where it stands (its other maps, and the code and results the new one builds on), if you haven't already. Use the project's domain glossary vocabulary throughout the map, and respect any decisions in `docs/decisions.md` in the area you're touching. If an existing map already heads to this destination, add tickets to it instead (call the Skill tool with "to-tickets") and stop.
 
-2. Sketch out the benchmark every ticket on this map will be scored on: eval set and N, metric, scorer, decoding, and the baselines on it. An existing benchmark should be preferred to a new one. If a new one is needed, say what it measures that the existing ones can't. The fewer benchmarks across the project, the better - the ideal number is one.
+2. If this map will measure anything, sketch out the benchmark every ticket on it will be scored on: eval set and N, metric, scorer, decoding, and the baselines on it. If it measures nothing (a data build, a survey, a tool) or what to measure is still open, the benchmark is `none`, with why, and choosing one may be its first question. An existing benchmark should be preferred to a new one. If a new one is needed, say what it measures that the existing ones can't. The fewer benchmarks across the project, the better - the ideal number is one.
 
 Check with the user that this benchmark matches their expectations.
 
@@ -28,10 +28,15 @@ What reaching the end of this map looks like, from the user's perspective, with 
 
 ## Notes
 
-- **Benchmark**: the one from step 2 (eval set and N, metric, scorer, decoding), and the baselines to beat with their numbers on it. Name data versions and eval sets exactly: every comparison on this map depends on them.
+Domain; skills every session should consult; standing preferences for this effort.
+
+## Contract
+
+- **Benchmark**: the one from step 2 (eval set and N, metric, scorer, decoding), and the baselines to beat with their numbers on it; or `none`, with why. Name data versions and eval sets exactly: every comparison on this map depends on them.
 - **Reference recipe**: the paper, repo or run the tickets follow unless a ticket records a deviation.
-- **What may be done without asking**: methods, compute cap, and what to ask first.
-- Domain; skills every session should consult; standing preferences for this effort.
+- **Without asking**: the methods and compute cap the agent may use on its own, and what to ask first.
+
+Only the user changes this section.
 
 ## Decisions so far
 

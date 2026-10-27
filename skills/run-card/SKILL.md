@@ -16,14 +16,14 @@ table; a long run's row gets its launch command and config at launch (the proces
 it can become a card later.
 
 **Where:** `<ticket folder>/runs/<run-name>.md`, one per run, its name stable for life. The ticket's Assets row links it;
-once it is a reference, the map's Notes link it next to its numbers.
+once it is a reference, the map's Contract links it next to its numbers.
 
 ## When to write it
 1. **At launch** (or right after), for a run known to matter: fill *As launched* from the running process, not from the
    plan. A run promoted later fills it from its Assets row's launch capture.
 2. **At milestones and at the end:** add results and lineage entries. Dated, in place.
 3. **When it becomes a reference:** set `status: reference`, check *Reproduce* against the current entrypoint, and link the
-   card from the map's Notes.
+   card from the map's Contract.
 
 ## Capture from the source
 - The resolved configuration is what the process actually read: its command line and the config variables in its

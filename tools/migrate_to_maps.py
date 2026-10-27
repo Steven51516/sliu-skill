@@ -5,7 +5,7 @@
 
 What it does (a tar.gz backup of every file it may touch goes to docs/archive/ first):
 - tracks/ -> maps/, with a `tracks` symlink back so old links keep resolving; each track.md -> map.md
-- map front matter keeps id, title, claimed, updated (drops driver, headline, next); `## Contract` -> `## Notes`;
+- map front matter keeps id, title, claimed, updated (drops driver, headline, next); `## Contract` stays;
   open `- [ ]` items in `## Needs you` become grilling tickets, and the section goes
 - tickets: type lit -> research, decision -> grilling, baseline/diagnostic/analysis -> experiment; status done ->
   resolved; `driver:` dropped; `## Verdict` -> `## Answer`
@@ -78,9 +78,6 @@ def migrate_map(path, plan, write):
         keep.append(line)
     new_secs, needs = [], []
     for head, lines in sections(body):
-        if head and head.lower() == "contract":
-            lines[0] = "## Notes\n"
-            plan.append(f"{path}: ## Contract -> ## Notes")
         if head and head.lower() == "needs you":
             needs = open_needs(lines)
             plan.append(f"{path}: drop ## Needs you ({len(needs)} open item(s) -> grilling tickets)")

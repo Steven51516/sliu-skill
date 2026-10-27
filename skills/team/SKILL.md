@@ -36,7 +36,7 @@ on the roster (dispatch is the message `work <ticket>` to an idle one), and the 
   `loop`, arguments `/research-drive <map>`. Codex: ask the human for the timer pane (protocol); run one pass per `tick`.
 - Tell the desk `driver up for <map>`. Implementer messages: `done` and `running` are merged as in `research-drive`; relay
   `progress` to the desk in one line; `blocked` goes to the desk; `propose` is drafted with `to-tickets` if it fits the
-  map's Notes, else it goes to the desk.
+  map's Contract, else it goes to the desk.
 - Desk instructions, carried out as they arrive: `hold` / `release` a ticket; `reopen` (open again, its Decisions-so-far line tagged
   `[challenged]` until it closes again); `new` (`to-tickets`); `rechart` (`wayfinder --rechart`); `pause` (no
   dispatch) / `resume`; `stop` (end the loop and say why).

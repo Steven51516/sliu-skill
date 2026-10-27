@@ -14,7 +14,7 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 ### 1. Gather context
 
-Work from whatever is already in the conversation context. If the user passes a reference (a map, a ticket id or path) as an argument, fetch it and read its full body: the map's Destination, Notes, Decisions so far and Not yet specified, and the tickets the new ones may depend on. Ticket titles should use the project's domain glossary vocabulary (`GLOSSARY.md`).
+Work from whatever is already in the conversation context. If the user passes a reference (a map, a ticket id or path) as an argument, fetch it and read its full body: the map's Destination, Notes, Contract, Decisions so far and Not yet specified, and the tickets the new ones may depend on. Ticket titles should use the project's domain glossary vocabulary (`GLOSSARY.md`).
 
 ### 2. Explore the code and results (optional)
 
@@ -34,7 +34,7 @@ Break the work into **questions**.
 
 </question-rules>
 
-Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Notes.
+Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Contract.
 
 Stop and say which applies if an idea is already answered (a line in Decisions so far) or already an open ticket; an asset of an existing ticket (add it to that ticket's Assets instead); or beyond the destination (out of scope, or the start of a different map).
 
@@ -56,7 +56,7 @@ Ask the user:
 - Should any tickets be merged or split further?
 - Do the success and stop criteria hold?
 
-Iterate until the user approves the breakdown. When a session drives the map (`research-drive`), it approves a ticket that fits the map's Notes itself, with a dated line; anything on the always-ask list in the style rules still goes to the user.
+Iterate until the user approves the breakdown. When a session drives the map (`research-drive`), it approves a ticket that fits the map's Contract itself, with a dated line; anything on the always-ask list in the style rules still goes to the user.
 
 ### 5. Publish the tickets to the configured tracker
 
@@ -76,7 +76,7 @@ The question, in one sentence: what would change what we do next.
 
 (`experiment` only.) Written and dated before any run; never edited afterwards (amendments are appended, dated, with the reason).
 
-- Reference recipe and deviations: what this follows (from the map's Notes) and each deviation, with why
+- Reference recipe and deviations: what this follows (from the map's Contract) and each deviation, with why
 - Arms / comparison: the reference run and every difference from it, on the map's benchmark (`rigor`); controls only if the benchmark or pipeline is new
 - Primary metric and test:
 - Success:
@@ -92,4 +92,4 @@ The question, in one sentence: what would change what we do next.
 
 </ticket-template>
 
-The answer is not part of the ticket when it is published; it is recorded on resolution, under `## Answer`, with the `rigor` check's PASS/FAIL lines. Name data versions, eval sets and baselines as the map's Notes do; avoid code snippets: they go stale fast.
+The answer is not part of the ticket when it is published; it is recorded on resolution, under `## Answer`, with the `rigor` check's PASS/FAIL lines. Name data versions, eval sets and baselines as the map's Contract does; avoid code snippets: they go stale fast.

@@ -8,7 +8,8 @@ description: Check a research result can be trusted before it counts - same esta
 A result counts when the comparison is fair. Check these four before a number goes into an answer or a map.
 
 1. **Same benchmark.** The runs compared are scored on the same established benchmark: eval set and N, metric, scorer,
-   decoding (the map's Notes name it). A number from another benchmark is not comparable until re-scored on this one.
+   decoding (the map's Contract names it; with `Benchmark: none`, the eval the ticket's pre-registration fixes, the same for every arm).
+   A number from another benchmark is not comparable until re-scored on this one.
    When the benchmark itself changes, re-score the reference too.
 2. **Numbers from files.** Every number is read from a saved result file, with N checked, and written with its source:
    `0.2699 (rollout TM, eval_ctrl52 N=52, single draw; gate/g7final-2000/ar.dec.score.json)`.

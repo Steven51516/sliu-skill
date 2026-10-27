@@ -22,7 +22,7 @@ The user has asked for a **retrospective**. You are suggesting improvements to t
 - **No-ops**: look for instructions in steering files that don't modify the agent's behavior. _Use when_ the steering files are large and unwieldy.
 - **Orientation**: turns spent re-orienting a new session (pasting paths, recaps). Fix: a current map, a navigation pointer, a resolved ticket missing from its map. _Use when_ a session started with the human explaining where things stand.
 - **Repeated instructions**: the same instruction given in several sessions (which nodes, which account, which proxy). Fix: one line in the project's notes or scope file, or a check in the launcher. _Use when_ the human said the same thing twice.
-- **Judgement slips**: a premature answer, a component the agent invented, a re-run of a result the human trusts. Fix: a pre-registration field, the reference recipe in the map's Notes, an `[established]` line in Decisions so far. _Use when_ the human corrected a conclusion, not a mistake in code.
+- **Judgement slips**: a premature answer, a component the agent invented, a re-run of a result the human trusts. Fix: a pre-registration field, the reference recipe in the map's Contract, an `[established]` line in Decisions so far. _Use when_ the human corrected a conclusion, not a mistake in code.
 - **Vocabulary**: terms the human had to ask about. Fix: `GLOSSARY.md` (call the Skill tool with "domain-modeling"). _Use when_ the human asked what a word meant.
 - **Information access**: look for opportunities to increase the agent's access to information. Teeing dev server logs, readonly access to third-party services. _Use when_ a crucial piece of information was not available to the agent.
 

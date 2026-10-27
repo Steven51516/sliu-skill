@@ -11,7 +11,7 @@ re-charting, choosing the next questions), since the driver owns the map.
 | role | started with | does | writes | never |
 |---|---|---|---|---|
 | **desk** (A) | `/team desk` | the human's partner: reports state, discusses results, diagnoses and the route, turns the human's decisions into instructions for the driver, relays what the driver reports | its roster line | ticket work, maps |
-| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`, with the implementer panes as its implementer subagents and the desk as the user: approves and sends tickets within the map's Notes, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, the Now line of `OVERVIEW.md` for its map, `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
+| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`, with the implementer panes as its implementer subagents and the desk as the user: approves and sends tickets within the map's Contract, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, the Now line of `OVERVIEW.md` for its map, `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
 | **implementer** (C) | `/team implementer` | `/research-work <ticket>` on each `work` message, delegating inside it as `docs/agents/delegation.md` says | its ticket folder | `map.md`, other tickets |
 
 ## The two swaps
@@ -21,10 +21,10 @@ In a team session, two verbs in the skills resolve to the team instead of `docs/
   its driver `blocked` or `progress`, which the driver relays. The desk puts it to the human.
 
 ## Control
-- **A map runs on its own inside its Notes.** The driver approves each ticket's pre-registration within the Notes (a
+- **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
   dated line), sends approved tickets to idle implementers, and records results. Anything on the always-ask list in
-  `rules/style.md`, or outside the Notes, goes to the desk first.
-- **The human steers** by planning with the driver (wayfinder: destination, route, new questions, what the Notes allow)
+  `rules/style.md`, or outside the Contract, goes to the desk first.
+- **The human steers** by planning with the driver (wayfinder: destination, route, new questions, what the Contract allows)
   and through the desk: `hold` a ticket, `pause` or `stop` the map.
 
 ## Roster

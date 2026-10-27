@@ -47,6 +47,7 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 
 ## Research additions
 
+- **The map body** adds a `## Contract` section after Notes (benchmark or `none`, reference recipe, what may be done without asking); only the user changes it.
 - **Experiment tickets** carry the `wayfinder:experiment` label; their body adds a `## Pre-registration` (the success and stop criteria, written before anything runs) and, as they run, an `## Assets` table (runs, arms, smoke tests, variants: never tickets of their own).
 - A ticket's code and small results live in the repo under `experiments/<issue number>-<slug>/`, linked from the issue.
 - The answer is the resolution comment, with its numbers and the `rigor` check's PASS/FAIL lines.
