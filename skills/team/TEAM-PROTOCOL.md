@@ -16,7 +16,7 @@ re-charting, choosing the next questions), since the driver owns the map.
 
 ## The two swaps
 In a team session, two verbs in the skills resolve to the team instead of `docs/agents/delegation.md`'s defaults:
-- **"spin up an implementer subagent"** (the driver): send `work <ticket>` to an idle implementer on the roster.
+- **"use implementer subagents"** (the driver): send `work <ticket>` to an idle implementer on the roster.
 - **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>`; an implementer sends
   its driver `blocked` or `progress`, which the driver relays. The desk puts it to the human.
 

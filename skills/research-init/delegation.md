@@ -17,11 +17,11 @@ Delegating is optional. A session does a task itself, or delegates it when that 
 
 A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file: the goal, input paths (not contents), outputs, stop conditions, the commands that verify it, and what good enough means for this task (the delegate judges whether a defect blocks it). Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (the `rigor` skill).
 
-## When a skill says "spin up a subagent" or "a background agent"
+## When a skill says "spin up a subagent", "a background agent" or "parallel sub-agents"
 
 As a delegated task: a matching rule decides; otherwise you do.
 
-## When a skill says "spin up an implementer subagent"
+## When a skill says "use implementer subagents" or "kick off more implementer subagents"
 
 A session that works one ticket end to end, and delegates inside it as it judges: a background subagent of this session's own agent, told "Call the Skill tool with `research-work` on <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`."
 
