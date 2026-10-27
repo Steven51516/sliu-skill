@@ -92,4 +92,4 @@ The question, in one sentence: what would change what we do next.
 
 </ticket-template>
 
-The answer is not part of the ticket when it is published; it is recorded on resolution, under `## Answer`, with the `rigor` check's PASS/FAIL lines. Name data versions, eval sets and baselines as the map's Contract does; avoid code snippets: they go stale fast.
+The answer is not part of the ticket when it is published; it is recorded on resolution, under `## Answer`, with the `review`'s PASS/FAIL lines. Name data versions, eval sets and baselines as the map's Contract does; avoid code snippets: they go stale fast.

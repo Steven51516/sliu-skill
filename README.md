@@ -47,7 +47,8 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | `to-tickets` | adapted from `to-tickets` | question tickets with blocking edges and pre-registrations |
 | `research-work` | counterpart of `implement` | work one ticket end to end |
 | `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel implementer subagents |
-| `rigor` | counterpart of `tdd` + `code-review` | check a result is fair before it counts; one review per ticket |
+| `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
+| `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `run-card`, `diagnosis-record` | none | reproduction record of an important run; diagnosis record of evaluation results |
 | `resume`, `team` | none | report where a project stands; run a project as several long-lived sessions |
 
@@ -65,7 +66,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **The local tracker keeps code with tickets.** `maps/<id>-<slug>/map.md`, and one *folder* per ticket (`tickets/NN-<slug>/ticket.md` plus its code and small results), with YAML front matter. `research-status` generates `STATUS.md`, lists the frontier and checks the maps. Matt's local tracker is `.scratch/<effort>/map.md` with one file per ticket. `research-init` proposes GitHub or GitLab when the folder has such a remote, else local markdown (Matt defaults to GitHub).
 
-**One review per ticket, on the result.** `rigor` replaces `tdd` and `code-review` for research: while working, the four checks (same benchmark, numbers from files, no leakage, every difference from the reference recorded) and controls only for a new or changed pipeline; at close, one fresh reviewer session writes PASS/FAIL lines for *Fair*, *Answers the question* (no claim beyond the numbers) and *Code*. Matt reviews a diff on Standards and Spec.
+**Rigor and review, on the result.** `rigor` stands where `tdd` does: rules followed while working (verify the measurement, same benchmark, numbers from files with the full denominator, no leakage, every difference recorded, gains beat the noise), applied by ticket type: all of them for an experiment, the measurement and numbers for a task others rely on, none for reading or grilling. `review` adapts `code-review`: Matt's Standards and Spec axes become **Fair** (the `rigor` rules) and **Spec** (the pre-registered rule, and no claim beyond the numbers), plus a **Code** axis on the code behind the result, each in a parallel sub-agent; it runs once per ticket whose answer later work relies on.
 
 **`research-work` runs jobs, not a red-green loop.** Smoke-test only code never run before; otherwise the real run's first steps are the smoke check; jobs run the way the project's scope file says; failures are classified (execution, measurement, data, method, hypothesis) before anything is called negative. No commits per ticket.
 
@@ -81,7 +82,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 - `to-map` (vs `to-spec`): it writes a map, not a spec: the benchmark replaces the test seams, the questions you can see coming (Not yet specified) replace the user stories, the decisions already made open Decisions so far, and it ends by calling `to-tickets` for the questions that are already sharp.
 - `to-tickets`: tickets are questions, not vertical slices; the fog-or-ticket test and "runs are assets" replace the slicing and wide-refactor rules; the quiz also checks success and stop criteria; an experiment's body carries its pre-registration.
-- `research-work` (vs `implement`): no TDD or commits per ticket; jobs, smoke checks, failure classification and the `rigor` review as above.
+- `research-work` (vs `implement`): no TDD or commits per ticket; jobs, smoke checks, failure classification, `rigor` and `review` as above.
 - `to-tickets`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
 - `research-init` (vs `setup-matt-pocock-skills`): adds the scope and delegation sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
 - `diagnose` (vs `diagnosing-bugs`): also covers results that look wrong; a tiny-config run and an invariant probe replace the HTTP and browser loops; the regression check is a check script, re-run on the production path (real launcher, data and GPU count); a bug that invalidated results is a failure class, not a negative answer.
@@ -119,4 +120,4 @@ Skill descriptions load when a session starts, so a new skill or a changed `desc
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `5beb35b`): copied `research`, `grilling`, `prototype`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `diagnose` (from `diagnosing-bugs`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch).
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `5beb35b`): copied `research`, `grilling`, `prototype`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `diagnose` (from `diagnosing-bugs`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch).

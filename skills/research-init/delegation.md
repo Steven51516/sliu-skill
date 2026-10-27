@@ -15,7 +15,7 @@ Delegating is optional. A session does a task itself, or delegates it when that 
 
 ## When a skill says "delegate" a task
 
-A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file: the goal, input paths (not contents), outputs, stop conditions, the commands that verify it, and what good enough means for this task (the delegate judges whether a defect blocks it). Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (call the Skill tool with "rigor").
+A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file: the goal, input paths (not contents), outputs, stop conditions, the commands that verify it, and what good enough means for this task (the delegate judges whether a defect blocks it). Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (the `rigor` skill).
 
 ## When a skill says "spin up a subagent" or "a background agent"
 
@@ -27,7 +27,7 @@ A session that works one ticket end to end, and delegates inside it as it judges
 
 ## When a skill says "review"
 
-Required once per ticket (`rigor`): a fresh session that did not do the work, where a matching rule says, else one you choose, briefed with the `rigor` skill, the ticket, its result paths and the code diff behind them. It writes only its PASS/FAIL lines under the answer.
+Once per ticket that `rigor`'s table says needs it: a fresh session that did not do the work, where a matching rule says, else one you choose. It calls the Skill tool with "review" on the ticket, and writes only its PASS/FAIL lines under the answer.
 
 ## When a skill says "ask the user" or "tell the user"
 

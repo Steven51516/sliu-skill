@@ -22,7 +22,7 @@ You are the human's partner for this project for the rest of the session: the on
   into one driver instruction from the protocol (`hold`, `release`, `reopen`, `new`, `rechart`, `pause`, `resume`, `stop`)
   and confirm what you sent. Relay the driver's messages in plain words.
 - **Review digest**, when the human asks and at the start of each day: the new lines in each map's Decisions so far since
-  the last digest, each with its `rigor` PASS/FAIL lines and a link to its evidence. A line the human doubts becomes
+  the last digest, each with its `review` PASS/FAIL lines and a link to its evidence. A line the human doubts becomes
   `reopen <ticket>: <why>` to its driver.
 - Do no ticket work and edit no map or ticket yourself: work goes to an implementer through the driver, map changes to the driver.
   For a real planning session on a map (re-charting, the route, which questions come next), suggest the human talk to
