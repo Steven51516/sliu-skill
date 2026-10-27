@@ -143,8 +143,9 @@ def migrate_ticket(path, plan, write):
 
 def local_ref(base, rest):
     """A `tracks/<rest>` reference is to this project's maps only if it exists here; else it names the code repo."""
-    rest = re.sub(r"track\.md$", "map.md", rest.rstrip(".,;:"))
-    return rest in ("", "tickets") or os.path.exists(os.path.join(base, rest))
+    rest = rest.rstrip(".,;:")
+    alt = re.sub(r"track\.md$", "map.md", rest)
+    return rest in ("", "tickets") or any(os.path.exists(os.path.join(base, r)) for r in (rest, alt))
 
 
 def rewrite_refs(project, base, plan, write):
