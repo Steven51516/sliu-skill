@@ -21,7 +21,7 @@ Before going further, confirm the answer exists and every result file it cites r
 
 ### 2. Pick the axes
 
-Read the `rigor` skill and its table: which rules apply to this ticket type, and which axes run. An `experiment` gets all three; a `task` whose output later work uses gets Spec and Code; a ticket with no code behind its result skips Code. Read the map's Contract (benchmark, baselines, reference recipe).
+Read the `rigor` skill and its table: which rules apply to this ticket type, and which axes run. An `experiment` gets all three; a `task` that builds something later tickets use gets Spec and Code; a ticket with no code behind its result skips Code. Read the map's Contract (benchmark, baselines, reference recipe).
 
 ### 3. Spawn the sub-agents in parallel
 
