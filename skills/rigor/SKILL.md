@@ -13,8 +13,7 @@ An answer counts when it can be trusted. This skill is the reference for produci
 |---|---|---|
 | `experiment` (compares runs) | all of the rules below | yes: Fair, Spec, Code |
 | `task` that builds something later tickets use (a data version, an encoded store, a tokenizer, a launcher) | the measurement, numbers from files | yes: Spec, Code |
-| `research` (reading) | the `research` skill's own rule: every claim cites the primary source that owns it | no |
-| `grilling`, `prototype`, any other `task` (getting access, setting up an environment) | none | no |
+| `research`, `grilling`, `prototype`, any other `task` (getting access, setting up an environment) | none | no |
 
 ## The rules
 
