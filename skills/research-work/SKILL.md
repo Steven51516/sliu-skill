@@ -10,7 +10,7 @@ If the user passes a ticket reference, fetch it from the issue tracker and state
 
 Claim the ticket before any work. An `experiment` runs only once its pre-registration is approved; if it isn't, call the Skill tool with "to-tickets" to put it to the user.
 
-Delegate bounded tasks (code, data, analysis, reading) as `docs/agents/delegation.md` says, and call the Skill tool with "rigor" on what comes back.
+Do the work yourself, or delegate parts of it as you judge; work that matches a rule in `docs/agents/delegation.md` goes where the rule says. Call the Skill tool with "rigor" on what comes back.
 
 Run jobs the way the scope file says. Smoke-test only code never run before (train, predict and score on a tiny config); anything else launches on its real config, and its first steps are the smoke check. A launch waits only on the inputs it reads, so granted GPUs never sit idle; stop only processes you started, by PID. Record each job in `jobs:`, and each run, arm or variant as a row in the ticket's Assets, with a long run's launch command and config; a run that will affect a milestone gets a run card (call the Skill tool with "run-card").
 

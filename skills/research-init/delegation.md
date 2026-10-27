@@ -1,35 +1,33 @@
 # Delegation
 
-Where delegated work goes in this project. Any session may delegate: the one the user talks to, an implementer working a ticket, a driver. Edit the routing freely; the skills read it every time.
+Where delegated work goes in this project. Any session may delegate: the one the user talks to, an implementer working a ticket, a driver. Edit the rules freely; the skills read them every time.
 
 ## Routing
 
-The first row that matches a piece of work decides who does it.
+Delegating is optional. A session does a task itself, or delegates it when that helps (parallel work, a long task, a fresh pair of eyes), to whom it judges best. A rule below is a must: work it matches goes where the rule says.
 
 | work | goes to | how |
 |---|---|---|
-| anything a skill delegates | a background subagent of this session's own agent | Claude Code: the Agent tool, in the background · Codex: a subagent, or `codex exec` |
 
-<!-- Examples of other routings (replace the table above):
-| biology-related coding, analysis, paper reading, and every review | Codex, gpt-6.1-sol, xhigh | `codex exec` (below) |
-| any other coding (tooling, launchers, glue) | a Claude subagent | the Agent tool, in the background |
+<!-- No rules yet: every session decides for itself. Example of a rule:
+| biology-related coding, analysis, paper reading and review | Codex, gpt-6.1-sol, xhigh | `codex exec` (below) |
 -->
 
 ## When a skill says "delegate" a task
 
-A bounded task: code, data, an analysis, a reading. Route it by the table. Brief it in a file: the goal, input paths (not contents), outputs, stop conditions, the commands that verify it, and what good enough means for this task (the delegate judges whether a defect blocks it). Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (call the Skill tool with "rigor").
+A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file: the goal, input paths (not contents), outputs, stop conditions, the commands that verify it, and what good enough means for this task (the delegate judges whether a defect blocks it). Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (call the Skill tool with "rigor").
 
 ## When a skill says "spin up a subagent" or "a background agent"
 
-Route it by the table, as a delegated task.
+As a delegated task: a matching rule decides; otherwise you do.
 
 ## When a skill says "spin up an implementer subagent"
 
-A session that works one ticket end to end: a background subagent of this session's own agent, told "Call the Skill tool with `research-work` on <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`."
+A session that works one ticket end to end, and delegates inside it as it judges: a background subagent of this session's own agent, told "Call the Skill tool with `research-work` on <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`."
 
 ## When a skill says "review"
 
-Route it by the table, to a fresh session that did not do the work, briefed with the `rigor` skill, the ticket, its result paths and the code diff behind them. It writes only its PASS/FAIL lines under the answer.
+Required once per ticket (`rigor`): a fresh session that did not do the work, where a matching rule says, else one you choose, briefed with the `rigor` skill, the ticket, its result paths and the code diff behind them. It writes only its PASS/FAIL lines under the answer.
 
 ## When a skill says "ask the user" or "tell the user"
 

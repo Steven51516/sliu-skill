@@ -53,7 +53,7 @@ If a `git remote` points at GitHub, propose that. If a `git remote` points at Gi
 
 Record the choice in `docs/agents/issue-tracker.md`.
 
-**Section D: Delegation.** Where delegated work goes: who writes code, runs analyses, reads papers and reviews results. Default to the [delegation.md](delegation.md) table: every session delegates to background subagents of its own agent. If the user wants a routing (by topic, by kind of work, or by role, e.g. "biology-related coding, analysis, reading and reviews go to Codex; other coding to a Claude subagent"), write it as rows of that table, with each agent's model and effort.
+**Section D: Delegation.** Where delegated work goes: who writes code, runs analyses, reads papers and reviews results. Default to [delegation.md](delegation.md) with no rules: each session decides whether to delegate and to whom. If the user has rules (by topic, by kind of work, or by role, e.g. "biology-related coding, analysis, paper reading and review go to Codex"), write each as a row, with the agent's model and effort.
 
 **Section E: Domain docs.** Default to one `GLOSSARY.md` + `docs/decisions.md` at the project root. Write it without asking.
 
