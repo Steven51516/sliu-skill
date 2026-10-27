@@ -1,0 +1,5 @@
+interface:
+  display_name: "research-init"
+  short_description: "Set up a research project for the harness, new or existing: its name, scope (where it..."
+policy:
+  allow_implicit_invocation: false

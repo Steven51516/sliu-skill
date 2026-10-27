@@ -1,0 +1,5 @@
+interface:
+  display_name: "team"
+  short_description: "Start this session in a team role on a project: desk (talks to the human), driver..."
+policy:
+  allow_implicit_invocation: false

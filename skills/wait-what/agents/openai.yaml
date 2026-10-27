@@ -1,0 +1,5 @@
+interface:
+  display_name: "wait-what"
+  short_description: "Stop"
+policy:
+  allow_implicit_invocation: false

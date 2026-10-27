@@ -1,0 +1,5 @@
+interface:
+  display_name: "retro"
+  short_description: "Retrospective on research sessions, a ticket or a map: find where the human had to..."
+policy:
+  allow_implicit_invocation: false
