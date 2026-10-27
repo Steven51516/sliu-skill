@@ -13,7 +13,8 @@ chmod +x "$HERE/tools/status.py"; ln -sfn "$HERE/tools/status.py" "$HOME/.local/
 chmod +x "$HERE/tools/migrate_to_maps.py"; ln -sfn "$HERE/tools/migrate_to_maps.py" "$HOME/.local/bin/research-migrate"
 # drop links left by skills that were removed or renamed here
 for d in "$DEST" "$AGENTS_DEST"; do for l in "$d"/*; do
-  [[ -L "$l" && ! -e "$l" && "$(readlink "$l")" == "$HERE"/* ]] && { rm "$l"; echo "removed stale $(basename "$l")"; }
+  [[ -L "$l" && ! -e "$l" ]] || continue
+  case "$(readlink "$l")" in "$HERE"/*|"$HOME/research-harness"/*) rm "$l"; echo "removed stale $(basename "$l")";; esac
 done; done
 chmod +x "$HERE"/skills/*/*.sh 2>/dev/null || true
 for s in "$HERE"/skills/*/; do
