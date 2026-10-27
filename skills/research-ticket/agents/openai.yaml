@@ -1,0 +1,3 @@
+interface:
+  display_name: "Research Ticket"
+  short_description: "Split a map's fog into question tickets"

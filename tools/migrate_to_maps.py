@@ -214,7 +214,7 @@ def main():
         plan.append("docs/agents/issue-tracker.md from the local template")
         if write:
             os.makedirs(os.path.dirname(tracker), exist_ok=True)
-            with open(os.path.join(HERE, "..", "templates", "issue-tracker-local.md")) as src, open(tracker, "w") as dst:
+            with open(os.path.join(HERE, "..", "skills", "research-init", "issue-tracker-local.md")) as src, open(tracker, "w") as dst:
                 dst.write(src.read())
     print("\n".join(("would: " if a.dry_run else "") + p.replace(project + "/", "") for p in plan))
     if write:

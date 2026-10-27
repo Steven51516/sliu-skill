@@ -1,39 +1,58 @@
 ---
 name: domain-modeling
-description: Build and sharpen a project's shared vocabulary in GLOSSARY.md (metrics, quantities, data versions, model arms, gates) and decide when a choice belongs in docs/decisions.md. Use when a term is coined, overloaded or unclear, when writing or editing GLOSSARY.md, or when recording a cross-map decision.
+description: Build and sharpen a project's domain model. Use when discussing project terminology (metrics, data versions, model arms), writing or editing a GLOSSARY.md, or recording a decision in docs/decisions.md.
 ---
 
-# Domain modeling
+# Domain Modeling
 
-Glossary format: [GLOSSARY-FORMAT.md](GLOSSARY-FORMAT.md).
+Actively build and sharpen the project's domain model as you design. This is the *active* discipline: challenging terms, inventing edge-case scenarios, and writing the glossary and decisions down the moment they crystallise. (Merely *reading* `GLOSSARY.md` for vocabulary is not this skill: that's a one-line habit any skill can do. This skill is for when you're changing the model, not just consuming it.)
 
-The vocabulary is how the human reads every report. A term the agent coins and never defines ("z_relk", "gate 3", "the
-store") forces the human to ask; a term used two ways breaks comparisons. This skill is the *active* discipline: challenge
-terms, probe them with scenarios, and write them down the moment they settle. Merely reading `GLOSSARY.md` is a habit
-every skill has, not this skill.
+## File structure
+
+```
+/
+├── GLOSSARY.md
+├── docs/
+│   └── decisions.md
+└── maps/
+```
+
+Create files lazily: only when you have something to write. If no `GLOSSARY.md` exists, create one when the first term is resolved. If no `docs/decisions.md` exists, create it when the first decision is recorded.
 
 ## During the session
-- **Define on first use.** In anything the human reads, a project term gets a short definition the first time it appears.
-  A term you coin that will be used again goes into `GLOSSARY.md` the moment you coin it.
-- **Challenge against the glossary.** When a term is used in a way that conflicts with `GLOSSARY.md`, say so at once:
-  "The glossary defines z_rel on teacher-forced draws; you seem to mean the rollout. Which is it?"
-- **Sharpen fuzzy language.** For an overloaded term, propose one canonical name and list the others under _Avoid_
-  ("TM" against which reference? "the null" — which of the two?).
-- **Probe with concrete scenarios** that force the boundary of a concept: "Does a decode variant of the same checkpoint
-  count as a new arm?"
-- **Cross-check with the code and the records.** When a stated definition disagrees with what the code computes or a ticket
-  reports, surface the contradiction.
-- **Update `GLOSSARY.md` inline**, one term at a time, as each one settles. Create the file lazily, at the project root.
 
-`GLOSSARY.md` holds definitions only: what a thing IS (a metric's formula is its definition). No file paths, flags, results
-or plans; those live in tickets.
+### Define on first use
 
-## Decisions
-Every cross-map decision gets one line in `docs/decisions.md` (date, decision, why; newest first); a map decision is a dated
-line in the map's Decisions so far. Link a longer rationale note from that line only when all three hold:
-1. **Hard to reverse:** changing your mind later is costly (a data version, a tokenizer, an evaluation protocol).
-2. **Surprising without context:** a future reader would wonder why it was done this way.
-3. **A real trade-off:** there were genuine alternatives and one was chosen for specific reasons.
+In anything the human reads, a project term gets a short definition the first time it appears. A term you coin that will be used again goes into `GLOSSARY.md` the moment you coin it.
 
-Worth recording: deliberate deviations from the reference recipe, constraints not visible in the code (which nodes,
-licences, budgets), scope decisions, and rejected alternatives whose rejection is not obvious.
+### Challenge against the glossary
+
+When the user uses a term that conflicts with the existing language in `GLOSSARY.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y. Which is it?"
+
+### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account': do you mean the Customer or the User? Those are different things."
+
+### Discuss concrete scenarios
+
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+
+### Cross-reference with code
+
+When the user states how something works, check whether the code, or a ticket's recorded result, agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible. Which is right?"
+
+### Update GLOSSARY.md inline
+
+When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up: capture them as they happen. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
+
+`GLOSSARY.md` should be totally devoid of implementation details. Do not treat `GLOSSARY.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+
+### Record decisions sparingly
+
+Every cross-map decision gets one line in `docs/decisions.md` (date, decision, why; newest first); a map's own decisions are dated lines in its Decisions so far. Only offer a longer rationale note, linked from that line, when all three are true:
+
+1. **Hard to reverse**: the cost of changing your mind later is meaningful
+2. **Surprising without context**: a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off**: there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, the line is enough.

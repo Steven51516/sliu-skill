@@ -72,7 +72,17 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Team layer.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, a driver running `research-drive` under `/loop`, and workers running `research-work`, with a roster and short messages (`skills/team/TEAM-PROTOCOL.md`). Who plans, works and reviews (e.g. Claude plans, Codex works and reviews) is a per-project table, `docs/agents/team.md`.
 
-**Research code, not product code.** `improve-codebase-architecture` and `domain-modeling` keep decisions in `docs/decisions.md` instead of ADRs, scope to the shared research code, and treat checks as the test surface; `diagnose` works on research code and results that look wrong, not only bugs.
+**Per-skill differences**, beyond the vocabulary above:
+
+- `research-ticket` (vs `to-tickets`): tickets are questions, not vertical slices; the fog-or-ticket test and "runs are assets" replace the slicing and wide-refactor rules; the quiz also checks success and stop criteria; an experiment's body carries its pre-registration.
+- `research-work` (vs `implement`): no TDD or commits per ticket; jobs, smoke checks, failure classification and the `rigor` review as above.
+- `research-ticket`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
+- `research-init` (vs `setup-matt-pocock-skills`): adds the scope and team sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
+- `diagnose` (vs `diagnosing-bugs`): also covers results that look wrong; a tiny-config run and an invariant probe replace the HTTP and browser loops; the regression check is a check script, re-run on the production path (real launcher, data and GPU count); a bug that invalidated results is a failure class, not a negative answer.
+- `domain-modeling`: every cross-map decision is one line in `docs/decisions.md`, with a longer note only when Matt's three ADR conditions hold; terms are defined on first use.
+- `improve-codebase-architecture`: checks are the test surface, the scope is the shared research code (ticket code is throwaway), code may live on a remote server, and a refactor waits for live runs that import the code.
+- `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
+- `wait-what`: also defines each project term on first use.
 
 **Run cards and diagnosis records.** A run that affects a milestone gets a one-page reproduction record (`run-card`); diagnosing evaluation results gets a structured record (`diagnosis-record`).
 
@@ -82,7 +92,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 skills/      one folder per skill
 rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
 scopes/      where projects run: README.md (what a scope answers), one file per cluster
-templates/   files research-init writes into a project: AGENTS.md, CLAUDE.md, OVERVIEW.md, team.md, issue-tracker-*.md
+templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, OVERVIEW.md, STATUS.md (seeds for docs/agents/ live in skills/research-init/)
 tools/       status.py (research-status), migrate_to_maps.py (research-migrate), team-up.sh
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
@@ -103,4 +113,4 @@ Skill descriptions load when a session starts, so a new skill or a changed `desc
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `5beb35b`): copied `research`, `grilling`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted `wayfinder`, `diagnose` (from `diagnosing-bugs`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch).
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `5beb35b`): copied `research`, `grilling`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `diagnose` (from `diagnosing-bugs`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch).

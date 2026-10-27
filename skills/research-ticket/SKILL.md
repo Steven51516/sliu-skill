@@ -1,38 +1,81 @@
 ---
 name: research-ticket
-description: Create one or more tickets (one sharp question each) on a research map, with blocking edges and, for an experiment, a pre-registration; or break a map's fog into tickets. Use when the user proposes a test or an idea inside an existing map, or says "make this a ticket".
-argument-hint: "<map id> \"<question>\"  |  <map id> --breakdown"
+description: Break a map's fog, a plan, or the current conversation into a set of question tickets, each declaring its blocking edges and, for an experiment, a pre-registration, published to the configured tracker.
+argument-hint: "<map> [\"<question>\"]"
 ---
 
-A **ticket** is one question on a map, stated sharply, whose answer changes what we do next: verifiable on its own, sized to one fresh agent session, declaring the tickets that **block** it. Draft from the conversation; don't interview.
+# Research Ticket
+
+Break a map's fog, a plan, or a conversation into a set of **tickets**: one sharp question each, each declaring the tickets that **block** it.
 
 The issue tracker should have been provided to you. If not, tell the user to run `/research-init`.
 
-**Not a ticket: the work done to answer one.** Runs, arms, smoke tests, preflights, re-runs, decode or sampling variants, probes, scripts and plots are **assets** of the ticket whose question they serve, rows in its `## Assets` table. A new run never gets a new ticket; a new _question_ does.
-
 ## Process
 
-1. **Orient.** Read the map (destination, Notes, Decisions so far, fog) and the tickets the new one may depend on. Stop and say which applies if the idea is:
-   - already answered (a line in Decisions so far) or already an open ticket;
-   - **an asset of an existing ticket**: a run, arm, smoke test, re-run or variant serving a question that already has a ticket. Add it to that ticket's Assets instead;
-   - **fog**: it can't yet be stated as a precise question. Add it to the map's Not yet specified instead;
-   - beyond the destination: out of scope, or the start of a different map.
-2. **Draft** each ticket and publish it to the issue tracker: the title is the question in plain words; a type (`experiment`, `research`, `prototype`, `grilling`, `task`); blocking edges (only tickets whose **result or code** this one needs); for an experiment, a cost cap and the body below, its pre-registration proposed from the map's Notes.
-   - `--breakdown`: draft the set as a numbered list first (question · type · blocked by · what it decides). Only questions that are sharp now become tickets; the rest goes to Not yet specified. Iterate with the user on granularity and edges, then publish the approved ones. Prefer the cheapest decisive question first.
-3. **Gate.** An experiment's criteria are fixed before anything runs: this is the one gate it passes. With the user in the session, show the pre-registration and ask them to approve or edit it. When a session drives the map (`research-drive`), it approves the ticket if it fits the map's Notes (a dated line); anything on the always-ask list in the style rules still goes to the user.
-4. If it graduates fog, remove that patch from the map's Not yet specified, and update the tracker as its doc says.
-5. Say who will pick it up: the map's driver (`/research-drive <map>`), or a window (`/research-work <ticket>`). A `grilling` or `prototype` ticket is worked with the user.
+### 1. Gather context
 
-## Experiment ticket body
+Work from whatever is already in the conversation context. If the user passes a reference (a map, a ticket id or path) as an argument, fetch it and read its full body: the map's Destination, Notes, Decisions so far and Not yet specified, and the tickets the new ones may depend on. Ticket titles should use the project's domain glossary vocabulary (`GLOSSARY.md`).
 
-```markdown
+### 2. Explore the code and results (optional)
+
+If you have not already explored the code and results the questions touch, do so, to know what is cheap to measure and what has already been measured.
+
+### 3. Draft questions
+
+Break the work into **questions**.
+
+<question-rules>
+
+- Each ticket asks one question whose answer changes what we do next
+- Make it a ticket when the question can be stated precisely now, even if it's blocked; otherwise it is fog and stays in the map's Not yet specified. Don't pre-slice the fog
+- A run, arm, smoke test, re-run or variant is an **asset** of the ticket whose question it serves, never a ticket of its own
+- Each ticket is sized to fit in a single fresh context window
+- The cheapest decisive question comes first
+
+</question-rules>
+
+Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Notes.
+
+Stop and say which applies if an idea is already answered (a line in Decisions so far) or already an open ticket; an asset of an existing ticket (add it to that ticket's Assets instead); or beyond the destination (out of scope, or the start of a different map).
+
+### 4. Quiz the user
+
+Present the proposed breakdown as a numbered list. For each ticket, show:
+
+- **Title**: the question
+- **Type**
+- **Blocked by**: which other tickets (if any) must complete first
+- **What it decides**: what we do differently depending on the answer
+
+For an `experiment`, show its pre-registration too: its criteria are fixed before anything runs, and this is the one gate it passes.
+
+Ask the user:
+
+- Does the granularity feel right? (too coarse / too fine)
+- Are the blocking edges correct: does each ticket only depend on tickets that genuinely gate it?
+- Should any tickets be merged or split further?
+- Do the success and stop criteria hold?
+
+Iterate until the user approves the breakdown. When a session drives the map (`research-drive`), it approves a ticket that fits the map's Notes itself, with a dated line; anything on the always-ask list in the style rules still goes to the user.
+
+### 5. Publish the tickets to the configured tracker
+
+Publish the approved tickets in dependency order (blockers first), as the tracker doc says, so each ticket's blocking edges can reference real identifiers. Remove each graduated patch from the map's Not yet specified.
+
+Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom. The map's driver picks tickets up (`/research-drive <map>`), or a window does (`/research-work <ticket>`); a `grilling` or `prototype` ticket is worked with the user.
+
+Do NOT resolve or modify any other ticket.
+
+<ticket-template>
+
 ## Question
 
-<one sentence: what would change what we do next>
+The question, in one sentence: what would change what we do next.
 
 ## Pre-registration
 
-Written and dated before any run; never edited afterwards (amendments are appended, dated, with the reason).
+(`experiment` only.) Written and dated before any run; never edited afterwards (amendments are appended, dated, with the reason).
+
 - Reference recipe and deviations: what this follows (from the map's Notes) and each deviation, with why
 - Arms / comparison: the reference run and every difference from it, on the map's benchmark (`rigor`); controls only if the benchmark or pipeline is new
 - Primary metric and test:
@@ -42,16 +85,11 @@ Written and dated before any run; never edited afterwards (amendments are append
 
 ## Assets
 
+(`experiment` only.) One row per run, arm, smoke test, probe or script made while answering the question.
+
 | name | what it is | where | result |
 |---|---|---|---|
 
-## Answer
+</ticket-template>
 
-<one line with numbers against the pre-registration, then the `rigor` check's PASS/FAIL lines. Every number traceable to its source file, e.g. `0.2699 (rollout TM, eval_ctrl52 N=52, single draw; gate/g7final-2000/ar.dec.score.json)`>
-
-## Log
-
-<setup, exact commands, job ids, results tables, surprises, amendments; leaving mid-ticket, a dated **Where I stopped**>
-```
-
-Other ticket types need only `## Question`, then `## Answer` and `## Log` as they resolve.
+The answer is not part of the ticket when it is published; it is recorded on resolution, under `## Answer`, with the `rigor` check's PASS/FAIL lines. Name data versions, eval sets and baselines as the map's Notes do; avoid code snippets: they go stale fast.

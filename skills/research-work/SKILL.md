@@ -1,26 +1,21 @@
 ---
 name: research-work
-description: Work one research ticket end to end - run it against its pre-registration, write the answer, get it reviewed, and record it on the map. Use when the user points at a ticket, or a driver hands one over.
+description: "Work one research ticket based on its question and pre-registration."
 argument-hint: "<ticket>"
 ---
 
-Work **one ticket**: a single question on a map, whose success and stop criteria were fixed before anything ran. A session works one ticket and resolves at most one. Who does the hands-on work and who reviews is in `docs/agents/team.md`.
+Work the ticket described by the user, or handed over by the map's driver.
 
-The issue tracker should have been provided to you. If not, tell the user to run `/research-init`. Consult the tracker doc's "Wayfinding operations" section for how to claim, resolve and record.
+If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask. If it names a map rather than a ticket, call the Skill tool with "research-drive" instead (or read [its SKILL.md](../research-drive/SKILL.md) if that skill isn't loaded). The issue tracker should have been provided to you. If not, tell the user to run `/research-init`.
 
-Given a map instead of a ticket, call the Skill tool with "research-drive" (if it isn't loaded in this session, read [its SKILL.md](../research-drive/SKILL.md) and follow it).
+Claim the ticket before any work. An `experiment` runs only once its pre-registration is approved; if it isn't, call the Skill tool with "research-ticket" to put it to the user.
 
-## Process
+Hand each bounded task to the worker in `docs/agents/team.md`, and call the Skill tool with "rigor" on what comes back.
 
-1. **Claim and gate.** Read the ticket and its map once, at low resolution. **Claim it** before anything else; a ticket claimed by another live session is read-only. An experiment's pre-registration must be approved, as a dated line, before any run: if it isn't, show it and ask (call the Skill tool with "research-ticket").
-2. **Run.** Hand each bounded task to the worker in `team.md`, and check what comes back by calling the Skill tool with "rigor". Jobs run the way the scope file says.
-   - Code never run before gets a tiny-config smoke test first: train, predict and score. Anything else launches on its real config, and its first steps are the smoke check (loss finite, step time as expected, one eval pass); stop it if they fail.
-   - A launch waits only on the inputs it reads. Other prep and evals run beside it, so granted GPUs never sit idle. Share GPUs by the scope file's rule; stop only processes you started, by PID.
-   - Record job ids in `jobs:` and set `status: running`. Every smoke test, run, arm or variant is a row in `## Assets`, never a new ticket; a long run's row gets its launch command and config at launch. A run that will affect a milestone gets a run card (call the Skill tool with "run-card").
-   - A `task` follows its checklist; its answer records the facts later tickets need (paths, row counts).
-3. **Deviations.** An execution fix before any result is yours: append it, dated, under the pre-registration. Criteria never change after results are seen; a design change goes back to the human.
-4. **Answer** against the pre-registration, with numbers, under `## Answer`; for an experiment set `verdict:` (`positive`, `negative`, `null`, `inconclusive`). Before calling a failure `negative`, classify it: execution, measurement, data, method or hypothesis. Only the last two are negative; the rest are `inconclusive`, with the fix. Then the `rigor` review: its PASS/FAIL lines go under the answer, and any FAIL keeps the ticket open.
-5. **Record.** If another session drives the map (its `claimed` names one), leave the map to it and end with one line: `done <ticket>: <answer>`. Otherwise resolve the ticket and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say, tagging the Decisions-so-far line `[tentative]` (one seed or draw) or `[established]` (replicated). A run that became a reference gets its run card completed and linked from the map's Notes.
-6. **Leaving before it closes.** Write a dated **Where I stopped** at the end of the Log (state, what is running, next action) and release the claim, or say why you hold it. With jobs still running, end with `running <ticket>: <jobs>`.
+Run jobs the way the scope file says. Smoke-test only code never run before (train, predict and score on a tiny config); anything else launches on its real config, and its first steps are the smoke check. A launch waits only on the inputs it reads, so granted GPUs never sit idle; stop only processes you started, by PID. Record each job in `jobs:`, and each run, arm or variant as a row in the ticket's Assets, with a long run's launch command and config; a run that will affect a milestone gets a run card (call the Skill tool with "run-card").
 
-Anything on the always-ask list in the style rules goes to the human first.
+An execution fix before any result is yours: append it, dated, under the pre-registration. Criteria never change after results are seen; a design change goes back to the user.
+
+Once done, write the answer against the pre-registration, with numbers. Before calling a failure negative, classify it: execution, measurement, data, method or hypothesis; only the last two are negative, the rest are inconclusive, with the fix. Then call the Skill tool with "rigor" to review the work: any FAIL keeps the ticket open.
+
+Resolve the ticket as the tracker doc says, tagging its line in Decisions so far `[tentative]` (one seed or draw) or `[established]` (replicated). If another session drives the map, leave the map to it and end with one line: `done <ticket>: <answer>`, or `running <ticket>: <jobs>` while jobs still run. Leaving before the ticket resolves, write a dated **Where I stopped** at the end of its Log.

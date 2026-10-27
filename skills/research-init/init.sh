@@ -26,7 +26,7 @@ DIR="$PROJECTS_ROOT/$NAME"
 
 [[ "$NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "name must be [A-Za-z0-9._-]"; exit 1; }
 [[ -e "$DIR" ]] && { echo "exists: $DIR (adopt it with research-init instead of init.sh)"; exit 1; }
-[[ -f "$HARNESS/templates/issue-tracker-$TRACKER.md" ]] || { echo "unknown TRACKER: $TRACKER (local, github or gitlab)"; exit 1; }
+[[ -f "$HARNESS/skills/research-init/issue-tracker-$TRACKER.md" ]] || { echo "unknown TRACKER: $TRACKER (local, github or gitlab)"; exit 1; }
 
 mkdir -p "$DIR"/{common,logs,docs/agents,resources/{papers,prior-work,other,repos}}
 [[ "$TRACKER" == local ]] && mkdir -p "$DIR/maps"
@@ -51,8 +51,9 @@ render() {  # render <template> <dest>
 }
 render AGENTS.md    "$DIR/AGENTS.md"
 render CLAUDE.md    "$DIR/CLAUDE.md"
-render team.md      "$DIR/docs/agents/team.md"
-render "issue-tracker-$TRACKER.md" "$DIR/docs/agents/issue-tracker.md"
+render ../skills/research-init/team.md "$DIR/docs/agents/team.md"
+render "../skills/research-init/issue-tracker-$TRACKER.md" "$DIR/docs/agents/issue-tracker.md"
+render ../skills/research-init/domain.md "$DIR/docs/agents/domain.md"
 render STATUS.md    "$DIR/STATUS.md"
 render decisions.md "$DIR/docs/decisions.md"
 render OVERVIEW.md  "$DIR/OVERVIEW.md"

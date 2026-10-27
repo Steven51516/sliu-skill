@@ -1,5 +1,5 @@
 interface:
-  display_name: "retro"
-  short_description: "Retrospective on research sessions, a ticket or a map: find where the human had to..."
+  display_name: "Retro"
+  short_description: "Conduct a retrospective on a research session."
 policy:
   allow_implicit_invocation: false
