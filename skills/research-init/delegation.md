@@ -27,7 +27,7 @@ A session that works one ticket end to end, and delegates inside it as it judges
 
 ## When a skill says "review"
 
-Once per ticket that `rigor`'s table says needs it: a fresh session that did not do the work, where a matching rule says, else one you choose. It calls the Skill tool with "review" on the ticket, and writes only its PASS/FAIL lines under the answer.
+Once per ticket that `rigor` says needs it, and a re-check of only what a fix changed: a fresh session that did not do the work, where a matching rule says, else one you choose. It calls the Skill tool with "review" on the ticket, and writes only its PASS/FAIL lines under the answer.
 
 ## When a skill says "ask the user" or "tell the user"
 
@@ -40,7 +40,7 @@ Codex: write the brief to `<run dir>/brief.md` (it names its report `<run dir>/r
     codex-run <run dir>              # a follow-up: write <run dir>/followup.md, then codex-run <run dir> --resume
 
 Effort: `xhigh`, the default, for reviews and complex tasks; `medium` for a simple one (a lookup, a format
-conversion, a small scripted edit): `CODEX_EFFORT=medium codex-run <run dir>`.
+conversion, a small scripted edit) and for a re-check of a fix: `CODEX_EFFORT=medium codex-run <run dir>`.
 
 `codex-run` sets the model and effort (`CODEX_MODEL`, `CODEX_EFFORT`) and the sandbox on every call, resumes included, strips tokens and keys from Codex's environment, and fails loudly if Codex's header shows anything else.
 

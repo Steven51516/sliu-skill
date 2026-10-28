@@ -21,7 +21,7 @@ Before going further, confirm the answer exists and every result file it cites r
 
 ### 2. Pick the axes
 
-Read the `rigor` skill and its table: which rules apply to this ticket type, and which axes run. An `experiment` gets all three; a `task` that builds something later tickets use gets Spec and Code; a ticket with no code behind its result skips Code. Read the map's Contract (benchmark, baselines, reference recipe).
+Read the `rigor` skill: which rules apply to this ticket type, and which axes run: Code when new code produced the answer, Spec and Fair when it makes a claim the map will rely on. Read the map's Contract (benchmark, baselines, reference recipe).
 
 ### 3. Spawn the sub-agents in parallel
 
@@ -45,7 +45,7 @@ Issue the sub-agent calls together, in the foreground, and aggregate the reports
 
 ### 4. Aggregate
 
-Write one PASS/FAIL line per axis under the ticket's Answer, each with its worst finding and a pointer. Do **not** merge or rerank findings, because the axes are deliberately separate (see _Why three axes_). Any FAIL keeps the ticket open.
+Write one PASS/FAIL line per axis under the ticket's Answer, each with its worst finding and a pointer. Do **not** merge or rerank findings, because the axes are deliberately separate (see _Why three axes_). Any FAIL keeps the ticket open. A FAIL whose fix changes only wording is fixed by the doer and noted under its line; a fix that changes code or numbers gets a re-check of only what changed.
 
 ## Why three axes
 
