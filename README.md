@@ -58,8 +58,8 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 pstack: catch up on a long chat and every call waiting on you), `handoff` (copied: compact a session), `retro` (adapted:
 retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
-**optional/**: none in Matt's repo. `team`: run a project as a desk and a driver per map. `run-card` and `diagnosis-record`:
-records for people outside the session (a reproduction record of an important run; a diagnosis record of evaluation
+**optional/**: none in Matt's repo. `team`: run a project as a desk and a driver per map. `run-card` and `diagnosis-card`:
+records for people outside the session (a reproduction record of an important run; a diagnosis card of evaluation
 results); a project opts in through its AGENTS.md.
 
 ## Differences from Matt's skills
@@ -102,7 +102,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
 - `wait-what`: also defines each project term on first use.
 
-**Run cards and diagnosis records.** A run that affects a milestone gets a one-page reproduction record (`run-card`); diagnosing evaluation results gets a structured record (`diagnosis-record`).
+**Run cards and diagnosis cards.** A run that affects a milestone gets a one-page reproduction record (`run-card`); diagnosing evaluation results gets a structured record (`diagnosis-card`).
 
 ## Layout
 

@@ -1,14 +1,14 @@
 ---
-name: diagnosis-record
-description: Diagnose a model's existing evaluation results (failed, suspicious or regressed benchmark scores) and write the diagnosis record.
+name: diagnosis-card
+description: Diagnose a model's existing evaluation results (failed, suspicious or regressed benchmark scores) and write the diagnosis card.
 disable-model-invocation: true
 argument-hint: "<task or result to diagnose> [model revision]"
 ---
 
-# Diagnosis record
+# Diagnosis card
 
 The counterpart of a run card for **results**: what a model's evaluation numbers mean, why they fail, and the smallest
-checks that would tell the explanations apart. Template: [DIAGNOSIS-RECORD.md](DIAGNOSIS-RECORD.md). Distilled from the
+checks that would tell the explanations apart. Template: [DIAGNOSIS-CARD.md](DIAGNOSIS-CARD.md). Distilled from the
 Scinetics diagnosis SOP v0.12, without its campaign-specific paths and findings.
 
 **Where the record goes:** if the project's scope defines record conventions (shared experiment folders, naming), follow

@@ -1,4 +1,4 @@
-# Diagnosis record template
+# Diagnosis card template
 
 ```markdown
 ---
