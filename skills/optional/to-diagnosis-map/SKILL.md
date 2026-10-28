@@ -18,10 +18,7 @@ does not fix; never guess it.
     of rounds; what counts as a significant regression, when a round is adopted, and when the map stops (target reached,
     budget or rounds spent, or no gain over the last rounds).
 - **Notes**: "After every evaluation, write a diagnosis card (call the Skill tool with `diagnosis-card`); the next round's
-  tickets come from its ranked hypotheses."
+  tickets come from its ranked hypotheses. Each round is an experiment ticket: it continues from the adopted weights,
+  writes to its own output folder, is scored against D0 and the previous round, and its Answer decides: adopt, roll back
+  or stop. A significant regression pauses the map until versions, coverage and scoring are verified."
 - **First ticket**: an experiment that diagnoses D0 and writes its diagnosis card.
-
-Each round is then an experiment ticket: its pre-registration is the plan; it continues from the adopted weights, writes
-to its own output folder, and is scored against D0 and the previous round; its Answer is the decision (adopt, roll back,
-or stop). A significant regression pauses the map until versions, coverage and scoring are verified. Drive the map with
-`/loop /research-drive <map>`.
