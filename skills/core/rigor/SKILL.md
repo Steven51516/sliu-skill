@@ -5,7 +5,7 @@ description: Make a research answer trustworthy while you produce it - verify th
 
 # Rigor
 
-An answer counts when it can be trusted. This skill is the reference for producing one: what makes a result trustworthy, and the rules to follow while you work, not after. At close, someone else checks the same rules (call the Skill tool with "review").
+An answer counts when it can be trusted. This skill is the reference for producing one: what makes a result trustworthy, and the rules to follow while you work, not after.
 
 ## What each ticket needs
 
@@ -14,8 +14,6 @@ An answer counts when it can be trusted. This skill is the reference for produci
 | `experiment` (compares runs, or computes numbers from our own data or results) | all of the rules below |
 | `task` that builds something later tickets use (a data version, an encoded store, a tokenizer, a launcher) | the measurement, numbers from files |
 | `research` (reading only), `grilling`, `prototype`, any other `task` (getting access, setting up an environment) | none |
-
-**Review** (call the Skill tool with "review") runs on the axes that have something new: **Code** when new code produced the answer, **Spec** and **Fair** when it makes a claim the map will rely on (a comparison, a cause, a measured answer). A rerun or rebuild on reviewed code that makes no new claim needs none: its checks suffice (rule 1). A claim that enters a map, in its Decisions so far or its outcome, has passed a review, however its ticket closed: resolved, superseded, or closed with its map. A task's review may finish beside the tickets that use the task; a FAIL reopens it and stops their runs.
 
 ## The rules
 

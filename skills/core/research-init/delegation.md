@@ -27,7 +27,7 @@ A session that works one ticket end to end, and delegates inside it as it judges
 
 ## When a skill says "review"
 
-Once per ticket that `rigor` says needs it, and a re-check of only what a fix changed: a fresh session that did not do the work, where a matching rule says, else one you choose. It calls the Skill tool with "review" on the ticket, and writes only its PASS/FAIL lines under the answer.
+Once per ticket that `review` says needs it, and a re-check of only what a fix changed: a fresh session that did not do the work, where a matching rule says, else one you choose. It calls the Skill tool with "review" on the ticket, and writes only its PASS/FAIL lines under the answer.
 
 ## When a skill says "ask the user" or "tell the user"
 

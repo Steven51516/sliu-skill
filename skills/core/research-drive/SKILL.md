@@ -26,7 +26,7 @@ Each pass:
 
 2. Check each running job the way the scope file says (alive, the progress file its Assets row names still moving, finished), and the GPUs of the nodes in use (owner, utilization, foreign processes on ours, step time against its reference). Idle granted GPUs are a finding. A finished job whose ticket nobody is working goes back to an implementer for its evaluation or close.
 
-3. Once an **implementer subagent** reports `done`, open the ticket and trust it, not the report. If its review passed (or `rigor` says it needs none, or lets it finish later), resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to an implementer; on a task already resolved, it reopens the task, and the runs that use it stop: runs your own implementer subagents launched count as yours, any other needs the user's yes.
+3. Once an **implementer subagent** reports `done`, open the ticket and trust it, not the report. If its review passed (or `review` says it needs none, or lets it finish later), resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to an implementer; on a task already resolved, it reopens the task, and the runs that use it stop: runs your own implementer subagents launched count as yours, any other needs the user's yes.
 
 4. Use **implementer subagents** to work each frontier ticket that fits the map's Contract and is not on hold. Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Contract). `grilling` and `prototype` tickets go to the user instead (ask the user). At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
 

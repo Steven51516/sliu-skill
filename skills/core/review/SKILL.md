@@ -11,6 +11,10 @@ Three-axis review of a ticket's answer:
 
 The axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings. Run this skill in a session that did not do the work: the one that did delegates it, as `docs/agents/delegation.md` says.
 
+## When to review
+
+On the axes that have something new: **Code** when new code produced the answer, **Spec** and **Fair** when it makes a claim the map will rely on (a comparison, a cause, a measured answer). A rerun or rebuild on reviewed code that makes no new claim needs none: its checks suffice (`rigor` rule 1). A claim that enters a map, in its Decisions so far or its outcome, has passed a review, however its ticket closed: resolved, superseded, or closed with its map. A task's review may finish beside the tickets that use the task; a FAIL reopens it and stops their runs.
+
 ## Process
 
 ### 1. Pin the ticket
@@ -21,7 +25,7 @@ Before going further, confirm the answer exists and every result file it cites r
 
 ### 2. Pick the axes
 
-Read the `rigor` skill: which rules apply to this ticket type, and which axes run: Code when new code produced the answer, Spec and Fair when it makes a claim the map will rely on. Read the map's Contract (benchmark, baselines, reference recipe).
+Pick the axes as "When to review" says. Read the `rigor` rules that apply to this ticket type, and the map's Contract (benchmark, baselines, reference recipe).
 
 ### 3. Spawn the sub-agents in parallel
 
