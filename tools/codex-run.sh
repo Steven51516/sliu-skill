@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # codex-run <run dir>             start Codex on <run dir>/brief.md
 # codex-run <run dir> --resume    send <run dir>/followup.md to the same Codex session
-# Run from the project folder. Model and effort: CODEX_MODEL (default gpt-6.1-sol), CODEX_EFFORT (default xhigh).
+# Run from the project folder. Model and effort: CODEX_MODEL (default gpt-6-astra), CODEX_EFFORT (default xhigh).
 # Every call, resumes included, gets the model, effort and sandbox (a bare resume drops them), and runs without the
 # tokens and keys in this environment. The header Codex printed is checked, so a wrong effort or sandbox fails loudly.
 # A new brief starts with a fixed preamble that keeps Codex to the task (prompting rules from openai/codex-plugin-cc).
 set -euo pipefail
 D="${1:?usage: codex-run <run dir> [--resume]}"; MODE="${2:-}"
-M="${CODEX_MODEL:-gpt-6.1-sol}"; E="${CODEX_EFFORT:-xhigh}"
+M="${CODEX_MODEL:-gpt-6-astra}"; E="${CODEX_EFFORT:-xhigh}"
 PREAMBLE="Do only the task below, tightly scoped; no unrelated refactors. No hashes, manifests, receipts or checks beyond
 what done lists. Read the files the brief names and what the task needs, not other agents' logs, memory or chat history.
 Never open network listeners; stop only processes you started. If a missing detail changes correctness or safety, stop and
