@@ -10,7 +10,7 @@ Delegating is optional. A session does a task itself, or delegates it when that 
 |---|---|---|
 
 <!-- No rules yet: every session decides for itself. Example of a rule:
-| biology-related coding, analysis, paper reading and review | Codex, gpt-6.1-sol, xhigh | `codex exec` (below) |
+| biology-related coding, analysis, paper reading and review | Codex, gpt-6.1-sol, xhigh (medium for simple tasks) | `codex exec` (below) |
 -->
 
 ## When a skill says "delegate" a task
@@ -38,6 +38,9 @@ Ask in this session.
 Codex: write the brief to `<run dir>/brief.md` (it names its report `<run dir>/report.md`, written in pieces of at most ~80 lines), then, from the project folder:
 
     codex-run <run dir>              # a follow-up: write <run dir>/followup.md, then codex-run <run dir> --resume
+
+Effort: `xhigh`, the default, for reviews and complex tasks; `medium` for a simple one (a lookup, a format
+conversion, a small scripted edit): `CODEX_EFFORT=medium codex-run <run dir>`.
 
 `codex-run` sets the model and effort (`CODEX_MODEL`, `CODEX_EFFORT`) and the sandbox on every call, resumes included, strips tokens and keys from Codex's environment, and fails loudly if Codex's header shows anything else.
 
