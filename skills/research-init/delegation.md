@@ -10,7 +10,7 @@ Delegating is optional. A session does a task itself, or delegates it when that 
 |---|---|---|
 
 <!-- No rules yet: every session decides for itself. Example of a rule:
-| biology-related coding, analysis, paper reading and review | Codex, gpt-6.1-sol, xhigh (medium for simple tasks) | `codex exec` (below) |
+| biology-related coding, analysis, paper reading and review | Codex, gpt-6.1-sol, xhigh (medium for simple tasks) | `codex-run` (below) |
 -->
 
 ## When a skill says "delegate" a task
