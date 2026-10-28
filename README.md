@@ -22,7 +22,7 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | You want to… | Run |
 |---|---|
 | set up a project (scope, issue tracker, delegation) | `/research-init <name>` |
-| pick a project back up ("where are we?") | `/resume` (a new session calls it on its own) |
+| pick a project back up ("where are we?") | `research-status --now` (live state), `STATUS.md` (milestones, open maps) |
 | open a new map from what you already discussed | `/to-map` |
 | open a new map from a loose idea (it interviews you) | `/wayfinder "<loose idea>"` |
 | add a ticket | `/to-tickets <map> "<question>"` |
@@ -50,7 +50,7 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `run-card`, `diagnosis-record` | none | reproduction record of an important run; diagnosis record of evaluation results |
-| `resume`, `team` | none | report where a project stands; run a project as several long-lived sessions |
+| `team` | none | run a project as several long-lived sessions |
 
 ## Differences from Matt's skills
 

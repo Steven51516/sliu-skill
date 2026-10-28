@@ -10,8 +10,6 @@ Started: {{DATE}}
 {{SCOPE_IMPORT}}
 @~/research-harness/rules/style.md
 
-- On opening a session, call the Skill tool with `resume`: it reports the state, proposes one next step, and asks. No
-  grilling unless the human asks.
 - The harness is still being refined. When a shared rule or research skill is wrong, missing, or gets in the way, add one
   line to `~/research-harness/FEEDBACK.md` (date, project, file, what happened → suggested fix) and carry on. Edit harness
   files only when the user asks.

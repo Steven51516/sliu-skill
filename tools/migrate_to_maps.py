@@ -10,7 +10,7 @@ What it does (a tar.gz backup of every file it may touch goes to docs/archive/ f
 - tickets: type lit -> research, decision -> grilling, baseline/diagnostic/analysis -> experiment; status done ->
   resolved; `driver:` dropped; `## Verdict` -> `## Answer`
 - every other .md in the project: project-relative `tracks/` -> `maps/` and `track.md` -> `map.md` (server paths such as
-  `~/code/<p>/tracks/...` are left alone), and "call the Skill tool with `research`" -> `resume`
+  `~/code/<p>/tracks/...` are left alone)
 - folds `claimed:` into the status line (`status: claimed (<who, when>)`) and drops stale claims; on a project
   already on maps/, this fold is all it does
 - writes docs/agents/issue-tracker.md, delegation.md and domain.md from the research-init seeds if missing, then
@@ -178,7 +178,6 @@ def rewrite_refs(project, base, plan, write):
             kept = [m.group(0) for m in REL_TRACKS.finditer(text) if not local_ref(base, m.group(1))]
             new = REL_TRACKS.sub(lambda m: "maps/" + m.group(1) if local_ref(base, m.group(1)) else m.group(0), text)
             new = TRACKMD_TOKEN.sub(lambda m: local_trackmd(project, base, root, m.group(0)), new)
-            new = new.replace("call the Skill tool with `research`:", "call the Skill tool with `resume`:")
             if new != text:
                 n = len(REL_TRACKS.findall(text)) - len(kept) + len(REL_TRACKMD.findall(text))
                 plan.append(f"{os.path.relpath(path, project)}: {n} path reference(s)"
