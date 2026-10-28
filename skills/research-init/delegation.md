@@ -15,7 +15,7 @@ Delegating is optional. A session does a task itself, or delegates it when that 
 
 ## When a skill says "delegate" a task
 
-A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file: the goal, input paths (not contents), outputs, stop conditions, the commands that verify it, and what good enough means for this task (the delegate judges whether a defect blocks it). Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (the `rigor` skill).
+A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file, short and outcome-first: the result wanted, input paths (not contents), outputs, what done looks like and how to check it, and only the hard constraints; no process the delegate can choose itself. One task per run; a follow-up carries only the change. Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (the `rigor` skill).
 
 ## When a skill says "spin up a subagent", "a background agent" or "parallel sub-agents"
 
@@ -44,7 +44,7 @@ conversion, a small scripted edit): `CODEX_EFFORT=medium codex-run <run dir>`.
 
 `codex-run` sets the model and effort (`CODEX_MODEL`, `CODEX_EFFORT`) and the sandbox on every call, resumes included, strips tokens and keys from Codex's environment, and fails loudly if Codex's header shows anything else.
 
-Claude Code: from a Claude session, a background subagent (the Agent tool). From another agent, headless, keeping only the
+Claude Code: from a Claude session, a background subagent (the Agent tool, with the `model` and `effort` a rule names). From another agent, headless, keeping only the
 secret Claude signs in with:
 
     env $(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | grep -vx CLAUDE_CODE_OAUTH_TOKEN | sed 's/^/-u /') \
