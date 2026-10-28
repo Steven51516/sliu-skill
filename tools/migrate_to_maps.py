@@ -74,10 +74,13 @@ def migrate_map(path, plan, write):
     keep = []
     for line in (front or "").splitlines():
         key = line.split(":", 1)[0].strip()
-        if key in ("driver", "headline", "next"):
+        if key in ("driver", "headline", "next", "mode", "autonomy"):
             plan.append(f"{path}: drop front matter `{key}`")
             continue
         keep.append(line)
+    if not any(l.split(":", 1)[0].strip() == "status" for l in keep):
+        keep.insert(next((i + 1 for i, l in enumerate(keep) if l.startswith("title:")), len(keep)), "status: open")
+        plan.append(f"{path}: add `status: open`")
     new_secs, needs = [], []
     for head, lines in sections(body):
         if head and head.lower() == "needs you":
@@ -89,12 +92,12 @@ def migrate_map(path, plan, write):
     mdir = os.path.dirname(path)
     tdir = os.path.join(mdir, "tickets")
     mid = re.search(r"^id:\s*(\S+)", front or "", re.M)
-    mid = mid.group(1) if mid else os.path.basename(mdir).split("-")[0]
+    mid = mid.group(1).strip("\"'") if mid else os.path.basename(mdir).split("-")[0]
     nums = [int(d[:2]) for d in (os.listdir(tdir) if os.path.isdir(tdir) else []) if d[:2].isdigit()]
     nxt = max(nums, default=0) + 1
     for item in needs:
         title = re.search(r"\*\*(.+?)\*\*", item)
-        title = (title.group(1) if title else item[:80]).strip()
+        title = (title.group(1) if title else re.split(r"[:.](?:\s|$)", item, maxsplit=1)[0]).strip()
         folder = os.path.join(tdir, f"{nxt:02d}-{slug(title)}")
         plan.append(f"{folder}/ticket.md: new grilling ticket `{title}`")
         if write:
