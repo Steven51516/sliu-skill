@@ -1,6 +1,6 @@
 ---
 name: run-card
-description: Write or update a run card, the one-page reproduction record of an important run (data version, code, resolved config, environment, launch command, budget, lineage, milestone results). Use when a run affects a milestone (a reference, a result a map relies on, an artifact later work builds on), or when the user says "document this run". Not for smoke tests, probes or decode variants.
+description: "Write or update the one-page reproduction record of a run that affects a milestone (a reference, a result a map relies on, an artifact later work builds on), or when the user says \"document this run\"."
 ---
 
 # Run card

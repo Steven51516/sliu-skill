@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: Diagnosis loop for hard bugs, performance regressions and results that look wrong (NaN, a metric that cannot be right, a leak) in research code and runs. Use when the user says "diagnose"/"debug this", or reports something broken/throwing/failing/slow.
+description: "Feedback loop for hard bugs, slow runs and results that look wrong (NaN, an impossible metric, a leak). Use when the user says \"diagnose\" or \"debug this\", or reports something broken or slow."
 ---
 
 # Diagnosing Bugs

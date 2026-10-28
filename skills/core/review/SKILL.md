@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Review a ticket's answer before it enters the map along three axes: Fair (does the result follow the rigor rules?), Spec (does it answer the pre-registered question, and claim no more?) and Code (does the code behind it do what the ticket says?). Runs them in parallel sub-agents and reports them side by side. Use when a ticket closes, or the user wants a result reviewed."
+description: "Review a ticket's answer before it enters the map, on three axes in parallel sub-agents: Fair (the rigor rules), Spec (the pre-registered question, no overclaim), Code (the code does what the ticket says). Use when a ticket closes or the user wants a result reviewed."
 ---
 
 Three-axis review of a ticket's answer:

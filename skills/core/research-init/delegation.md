@@ -1,59 +1,39 @@
 # Delegation
 
-Where delegated work goes in this project. Any session may delegate: the one the user talks to, an implementer working a ticket, a driver. Edit the rules freely; the skills read them every time.
-
-## Routing
-
-Delegating is optional. A session does a task itself, or delegates it when that helps (parallel work, a long task, a fresh pair of eyes), to whom it judges best. A rule below is a must: work it matches goes where the rule says.
+Where delegated work goes in this project; the skills read it every time. Delegating is optional: a session does a task
+itself, or delegates it when that helps (parallel work, a long task, a fresh pair of eyes). A rule below is a must for the
+work it matches.
 
 | work | goes to | how |
 |---|---|---|
 
-<!-- No rules yet: every session decides for itself. Example of a rule:
-| biology-related coding, analysis, paper reading and review | Codex, gpt-6-astra, xhigh (medium for simple tasks) | `codex-run` (below) |
--->
+<!-- No rules yet. Example: | biology-related coding, analysis, paper reading and review | Codex, gpt-6-astra, xhigh | `codex-run` | -->
 
-## When a skill says "delegate" a task
+## When a skill says…
+- **"delegate"**, **"spin up a subagent"**, **"a background agent"**, **"parallel sub-agents"**: a matching rule decides;
+  otherwise do it yourself or delegate as you judge.
+- **"use implementer subagents"**: a background subagent per ticket, told "Call the Skill tool with `research-work` on
+  <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`."
+- **"review"**: once per ticket that `review` says needs it, plus a re-check of only what a fix changed: a fresh session that did not do the work (a rule may name one). It
+  writes only its PASS/FAIL lines under the answer.
+- **"ask the user"**, **"tell the user"**: in this session.
 
-A bounded task: code, data, an analysis, a reading. If a rule matches it, it goes where the rule says; otherwise do it yourself or delegate it as you judge. Brief a delegate in a file, short and outcome-first: the result wanted, input paths (not contents), outputs, what done looks like and how to check it, and only the hard constraints; no process the delegate can choose itself. One task per run; a follow-up carries only the change. Run it in the background, in `scratch/agents/<date>-<slug>/`. Check what comes back before it enters a ticket (the `rigor` skill).
-
-## When a skill says "spin up a subagent", "a background agent" or "parallel sub-agents"
-
-As a delegated task: a matching rule decides; otherwise you do.
-
-## When a skill says "use implementer subagents" or "kick off more implementer subagents"
-
-A session that works one ticket end to end, and delegates inside it as it judges: a background subagent of this session's own agent, told "Call the Skill tool with `research-work` on <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`."
-
-## When a skill says "review"
-
-Once per ticket that `review` says needs it, and a re-check of only what a fix changed: a fresh session that did not do the work, where a matching rule says, else one you choose. It calls the Skill tool with "review" on the ticket, and writes only its PASS/FAIL lines under the answer.
-
-## When a skill says "ask the user" or "tell the user"
-
-Ask in this session.
-
-## Commands
-
-Codex: write the brief to `<run dir>/brief.md` (it names its report `<run dir>/report.md`, written in pieces of at most ~80 lines), then, from the project folder:
-
-    codex-run <run dir>              # a follow-up: write <run dir>/followup.md, then codex-run <run dir> --resume
-
-Effort: `xhigh`, the default, for reviews and complex tasks; `medium` for a simple one (a lookup, a format
-conversion, a small scripted edit) and for a re-check of a fix: `CODEX_EFFORT=medium codex-run <run dir>`.
-
-`codex-run` sets the model and effort (`CODEX_MODEL`, `CODEX_EFFORT`) and the sandbox on every call, resumes included, strips tokens and keys from Codex's environment, and fails loudly if Codex's header shows anything else.
-
-Claude Code: from a Claude session, a background subagent (the Agent tool, with the `model` and `effort` a rule names). From another agent, headless, keeping only the
-secret Claude signs in with:
-
-    env $(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | grep -vx CLAUDE_CODE_OAUTH_TOKEN | sed 's/^/-u /') \
-      claude -p --model <model> --effort <effort> --permission-mode auto --strict-mcp-config \
-      --output-format json "$(cat <run dir>/brief.md)" > <run dir>/result.json
+## Briefs and commands
+A brief is `scratch/agents/<date>-<slug>/brief.md`, short and outcome-first: the result wanted, input paths (not contents),
+outputs, what done looks like and how to check it, and only the hard constraints. One task per run; a follow-up carries
+only the change. A long report goes to `report.md` in pieces of at most ~80 lines. Check what comes back before it enters
+a ticket (`rigor`).
+- **Codex:** `codex-run <run dir>`; a follow-up: write `followup.md`, then `codex-run <run dir> --resume`. It fixes model,
+  effort and sandbox on every call, strips secrets, adds a scope preamble, and fails loudly on a wrong header, a non-zero
+  exit or an empty answer. Effort: `xhigh` (default) for reviews and complex tasks; `CODEX_EFFORT=medium` for a simple
+  task or a re-check.
+- **Claude:** a background subagent (the Agent tool, with the model and effort a rule names). From another agent:
+  `claude -p --model <m> --effort <e> --permission-mode auto --output-format json "$(cat brief.md)"`, with every secret
+  in the environment unset except `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ## Rules
-
-- If the delegate a rule requires fails (it can't start, can't log in, or errors out), wait and retry, or ask the user; never hand the work to someone the rule doesn't name.
-- A delegate writes only the paths its brief names, and never edits a map, `STATUS.md` or another agent's memory. Over ssh the local sandbox does not apply, so the brief and the always-ask list in `rules/style.md` are the guard.
-- No process waits on a marker file another session is supposed to write: chain dependent steps in one script.
-- Long GPU jobs are launched detached the way the scope file says; the PID and log path go into the ticket's Assets.
+- If the delegate a rule requires fails, wait and retry, or ask the user; never hand the work to someone the rule doesn't name.
+- A delegate writes only the paths its brief names and never edits a map or `STATUS.md`; over ssh, the brief and
+  `rules/style.md` are the guard.
+- Chain dependent steps in one script; nothing waits on a marker file another session writes.
+- Long GPU jobs launch detached as the scope file says; their PID and log path go in the ticket's Assets.

@@ -1,6 +1,6 @@
 ---
 name: rigor
-description: Make a research answer trustworthy while you produce it - verify the measurement, compare on the same benchmark, take numbers from files with the full denominator, rule out leakage, record every difference. Use when setting up, running or writing up a ticket's result.
+description: "Rules for a trustworthy research answer, followed while you work: verify the measurement, same benchmark, numbers from files with the full denominator, no leakage, every difference recorded. Use when setting up, running or writing up a result."
 ---
 
 # Rigor
