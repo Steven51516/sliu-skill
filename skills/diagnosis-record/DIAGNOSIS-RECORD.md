@@ -2,7 +2,7 @@
 
 ```markdown
 ---
-diagnosis: 20261026T120000Z_lsz_rna-ssp-parse      # <UTC time>_<owner>_<topic>; stable for life
+diagnosis: 20261026T120000Z_ana_parse-failures     # <UTC time>_<owner>_<topic>; stable for life
 model: <revision> (<weights path>)
 tasks: [<task ids from the benchmark manifest>]
 protocol: <evaluation protocol version, scorer version>

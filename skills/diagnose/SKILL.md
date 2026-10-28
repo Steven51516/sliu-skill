@@ -60,7 +60,7 @@ Phase 1 is done when the loop is **tight** and **red-capable**: you can name **o
 
 - [ ] **Red-capable**: it drives the actual bug code path and asserts the **user's exact symptom**, so it can go red on this bug and green once fixed. Not "runs without erroring"; it must be able to _catch this specific bug_.
 - [ ] **Deterministic**: same verdict every run (flaky bugs: a pinned, high reproduction rate, per above).
-- [ ] **Fast**: seconds to a few minutes, on one GPU or the CPU.
+- [ ] **Fast**: seconds to a few minutes, on the smallest setup that still reproduces the bug.
 - [ ] **Agent-runnable**: you can run it unattended; a human in the loop only via `scripts/hitl-loop.template.sh`.
 
 If you catch yourself reading code to build a theory before this command exists, **stop: jumping straight to a hypothesis is the exact failure this skill prevents.** No red-capable command, no Phase 2.
@@ -132,7 +132,7 @@ If a correct seam exists:
 Required before declaring done:
 
 - [ ] Original repro no longer reproduces (re-run the Phase 1 loop)
-- [ ] Regression check passes (or absence of seam is documented), and is in the project's preflight list if the bug can recur
+- [ ] Regression check passes (or absence of seam is documented), and is linked from the ticket's Assets if the bug can recur
 - [ ] All `[DEBUG-...]` instrumentation removed (`grep` the prefix)
 - [ ] Throwaway prototypes deleted (or moved to a clearly-marked debug location)
 - [ ] The hypothesis that turned out correct is stated in the ticket's Log, with the check command and its before/after output, so the next debugger learns

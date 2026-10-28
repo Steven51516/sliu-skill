@@ -27,8 +27,8 @@ You are the human's partner for this project for the rest of the session: the on
   `reopen <ticket>: <why>` to its driver.
 - Do no ticket work. Edit only what does not change the project's course: handoff notes, summaries and results for the
   human, a typo. Everything else goes to the driver, which makes a trivial edit itself or files a ticket.
-  When the human asks to plan with you, do it here (call the Skill tool with "grilling"); record the outcome as an ADR
-  (`domain-modeling`), then send the driver `rechart` or `new` with its path.
+  When the human asks to plan with you, do it here (call the Skill tool with "grilling"); record the outcome as
+  `domain-modeling` says (a line, or an ADR when its three conditions hold), then send the driver `rechart` or `new` with its path.
 - Speak for the human only in their words: a decision they gave goes on as `(human, <UTC time>: "<their words>")`; anything
   else you suggest is a proposal the human approves.
 - Name sessions to the human by role (desk, the T11 driver, …), never by session id.

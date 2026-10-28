@@ -2,13 +2,13 @@
 
 ```markdown
 ---
-run: g8-p16-corrupt                 # stable name; the run directory's name if it has one
-ticket: T7-08                       # the ticket whose question this run serves (link below)
+run: arm-b-lr3e-4                   # stable name; the run directory's name if it has one
+ticket: T3-04                       # the ticket whose question this run serves (link below)
 status: running                     # launched | running | finished | evaluated | reference | superseded | failed
 budget: 2000 steps = 6.29 B tokens  # in the project's units, with the conversion
 updated: 2026-10-26
 ---
-# g8-p16-corrupt — <one line: what this run is>
+# arm-b-lr3e-4 — <one line: what this run is>
 
 Serves: [<the ticket's question>](../ticket.md). Written at launch | after the fact (say which).
 
@@ -28,7 +28,7 @@ Launch command (verbatim):
     <command>
 
 ## Lineage
-- 2026-10-26 08:55 UTC  attempt 1 launched (pid … on node-16)
+- 2026-10-26 08:55 UTC  attempt 1 launched (pid … on <host>)
 - <date>  resumed from checkpoint-N after <cause>; comparable: yes/no, why
 
 ## Results at milestones

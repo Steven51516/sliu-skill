@@ -1,6 +1,6 @@
 #!/bin/bash
 # Keep a project's GPU jobs to at most MAXGPU running at once (e.g. to leave a GPU free for another session).
-# Slurm scopes only (see scopes/engaging.md). Jobs are matched by name prefix (PREFIX, e.g. "T3" or "N018"); submit them with `sbatch --hold` and this releases
+# Engaging (Slurm) only, see engaging.md. Jobs are matched by name prefix (PREFIX, e.g. "T3" or "N018"); submit them with `sbatch --hold` and this releases
 # them as slots free, PRIORITY_RE-matching names first, then oldest job id. Pending jobs that slip through unheld are
 # held when over budget. Login-node safe: one squeue per cycle, no compute. Stops at GATE_UNTIL (epoch s).
 # Usage: PREFIX=T3 MAXGPU=3 [PRIORITY_RE='^T3-(05|07)'] [GATE_UNTIL=...] bash gpu_gate.sh >> gate.log 2>&1

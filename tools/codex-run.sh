@@ -3,7 +3,8 @@
 # codex-run <run dir> --resume    send <run dir>/followup.md to the same Codex session
 # Run from the project folder. Model and effort: CODEX_MODEL (default gpt-6-astra), CODEX_EFFORT (default xhigh).
 # Every call, resumes included, gets the model, effort and sandbox (a bare resume drops them), and runs without the
-# tokens and keys in this environment. The header Codex printed is checked, so a wrong effort or sandbox fails loudly.
+# tokens and keys in this environment. The header Codex printed is checked, so a wrong model, effort or sandbox fails loudly,
+# and so does a run that ends without a final message or with a non-zero exit.
 # A new brief starts with a fixed preamble that keeps Codex to the task (prompting rules from openai/codex-plugin-cc).
 set -euo pipefail
 D="${1:?usage: codex-run <run dir> [--resume]}"; MODE="${2:-}"
@@ -15,18 +16,21 @@ ask; otherwise take the reasonable reading and keep going."
 STRIP=$(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | sed 's/^/-u /' || true)
 SET=(--skip-git-repo-check -m "$M" -c "model_reasoning_effort=\"$E\""
      -c 'sandbox_mode="workspace-write"' -c sandbox_workspace_write.network_access=true -o "$D/last.md")
+RC=0
 if [[ "$MODE" == --resume ]]; then
   ID=$(grep -m1 '^session id:' "$D/codex.log" | awk '{print $3}')
   [[ -n "$ID" && -f "$D/followup.md" ]] || { echo "codex-run: need a session id in $D/codex.log and $D/followup.md"; exit 1; }
   LOG="$D/codex.resume.log"
-  env $STRIP codex exec resume "$ID" "${SET[@]}" - < "$D/followup.md" > "$LOG" 2>&1 || true
+  env $STRIP codex exec resume "$ID" "${SET[@]}" - < "$D/followup.md" > "$LOG" 2>&1 || RC=$?
 else
   [[ -f "$D/brief.md" ]] || { echo "codex-run: no $D/brief.md"; exit 1; }
   LOG="$D/codex.log"
   { echo "$PREAMBLE"; echo; cat "$D/brief.md"; } |
-    env $STRIP codex exec -C "$PWD" "${SET[@]}" - > "$LOG" 2>&1 || true
+    env $STRIP codex exec -C "$PWD" "${SET[@]}" - > "$LOG" 2>&1 || RC=$?
 fi
+grep -q "^model: $M" "$LOG" || { echo "codex-run: model is not $M in $LOG"; exit 1; }
 grep -q "^reasoning effort: $E" "$LOG" || { echo "codex-run: effort is not $E in $LOG"; exit 1; }
 [[ -s "$D/last.md" ]] || { echo "codex-run: no final message (see the end of $LOG, e.g. model at capacity)"; exit 1; }
+[[ $RC == 0 ]] || { echo "codex-run: codex exited $RC (see $LOG)"; exit "$RC"; }
 grep -q "^sandbox: workspace-write" "$LOG" || { echo "codex-run: sandbox is not workspace-write in $LOG"; exit 1; }
 echo "codex-run: done ($LOG; final message in $D/last.md, report in $D/report.md if the brief asked for one)"

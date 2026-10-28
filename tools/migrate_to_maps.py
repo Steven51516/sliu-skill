@@ -29,6 +29,7 @@ TYPE_MAP = {"lit": "research", "decision": "grilling", "baseline": "experiment",
             "analysis": "experiment"}
 REL_TRACKS = re.compile(r"(?<![\w./~-])tracks/([A-Za-z0-9_./-]*)")
 REL_TRACKMD = re.compile(r"(?<![\w-])track\.md")
+TRACKMD_TOKEN = re.compile(r"[\w./~-]*(?<![\w-])track\.md")
 SKIP_DIRS = {".git", "node_modules", "__pycache__"}
 
 
@@ -113,6 +114,7 @@ def migrate_map(path, plan, write):
         with open(target, "w") as f:
             f.write(new)
         os.remove(path)
+        os.symlink("map.md", path)                   # old links to track.md keep working
 
 
 def migrate_ticket(path, plan, write):
@@ -151,6 +153,16 @@ def local_ref(base, rest):
     return rest in ("", "tickets") or any(os.path.exists(os.path.join(base, r)) for r in (rest, alt))
 
 
+def local_trackmd(project, base, here, tok):
+    """`track.md` becomes `map.md` when bare, or when its relative path is this project's; absolute paths name other trees."""
+    if tok.startswith(("/", "~")):
+        return tok
+    if "/" in tok and not any(os.path.exists(os.path.join(d, c)) for d in (here, project)
+                              for c in (tok, tok.replace("tracks/", "maps/").replace("track.md", "map.md"))):
+        return tok
+    return tok[:-len("track.md")] + "map.md"
+
+
 def rewrite_refs(project, base, plan, write):
     for root, dirs, files in os.walk(project):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not os.path.islink(os.path.join(root, d))
@@ -165,7 +177,7 @@ def rewrite_refs(project, base, plan, write):
                 continue
             kept = [m.group(0) for m in REL_TRACKS.finditer(text) if not local_ref(base, m.group(1))]
             new = REL_TRACKS.sub(lambda m: "maps/" + m.group(1) if local_ref(base, m.group(1)) else m.group(0), text)
-            new = REL_TRACKMD.sub("map.md", new)
+            new = TRACKMD_TOKEN.sub(lambda m: local_trackmd(project, base, root, m.group(0)), new)
             new = new.replace("call the Skill tool with `research`:", "call the Skill tool with `resume`:")
             if new != text:
                 n = len(REL_TRACKS.findall(text)) - len(kept) + len(REL_TRACKMD.findall(text))
@@ -213,7 +225,13 @@ def main():
     project = os.path.abspath(a.project)
     old, new = os.path.join(project, "tracks"), os.path.join(project, "maps")
     if (not os.path.isdir(old) or os.path.islink(old)) and os.path.isdir(new):
-        plan = []                                   # already on maps/: only fold the claims
+        plan = []                                   # already on maps/: only fold the claims, after a backup
+        if not a.dry_run:
+            backup = os.path.join(project, "docs", "archive", f"pre-fold-{dt.datetime.now().strftime('%Y%m%d-%H%M')}.tar.gz")
+            os.makedirs(os.path.dirname(backup), exist_ok=True)
+            with tarfile.open(backup, "w:gz") as tar:
+                tar.add(new, arcname="maps")
+            print(f"backup: {backup}")
         fold_claims(project, plan, not a.dry_run)
         print("\n".join(("would: " if a.dry_run else "") + p for p in plan) or "nothing to fold")
         if not a.dry_run:

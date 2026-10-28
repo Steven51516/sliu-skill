@@ -1,6 +1,6 @@
 # Project layout
 
-Projects live under the projects root named by the project's scope file (`~/projects/<name>/` on Engaging). Work is organised by **map** (one destination, e.g. "baselines", "transfer", "pathway priors") and **ticket** (one sharp question on that map; its runs are assets inside it, not tickets). Where maps and tickets live is the project's issue tracker (`docs/agents/issue-tracker.md`); with the local tracker it is the `maps/` folder below. Create directories when first needed.
+Projects live under the projects root named by the project's scope file. Work is organised by **map** (one destination, e.g. "baselines", "transfer", "pathway priors") and **ticket** (one sharp question on that map; its runs are assets inside it, not tickets). Where maps and tickets live is the project's issue tracker (`docs/agents/issue-tracker.md`); with the local tracker it is the `maps/` folder below. Create directories when first needed.
 
 ```
 AGENTS.md       read by every agent: read-first pointers (scope, style, delegation, issue tracker, domain docs), code location, project notes

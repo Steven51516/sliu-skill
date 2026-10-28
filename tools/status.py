@@ -75,7 +75,7 @@ def parse_front_matter(path):
         return {}, text
     meta, last = {}, None
     for line in m.group(1).splitlines():
-        if line.startswith((" ", "\t")) and line.strip().startswith("- ") and last and meta.get(last) in (None, []):
+        if line.startswith((" ", "\t")) and line.strip().startswith("- ") and last and (meta.get(last) is None or isinstance(meta.get(last), list)):
             meta[last] = (meta.get(last) or []) + [line.strip()[2:].strip().strip("'\"")]   # block-list item
             continue
         if not line.strip() or line.lstrip().startswith("#") or ":" not in line:
@@ -105,6 +105,17 @@ def section(body, title):
         if on:
             out.append(line)
     return out
+
+
+def answered(body):
+    """True when an `## Answer` (older tickets: `## Verdict`, `## Result ...`) section has content before the next heading."""
+    on = False
+    for line in body.splitlines():
+        if line.startswith("## "):
+            on = bool(re.match(r"(answer|verdict|result)\b", line[3:].strip(), re.I))
+        elif on and line.strip():
+            return True
+    return False
 
 
 def destination(body):
@@ -145,7 +156,7 @@ def claim_age_hours(claimed):
         t = dt.datetime.strptime(m.group(1) + " " + (m.group(2) or "00:00"), "%Y-%m-%d %H:%M")
     except ValueError:
         return None
-    return (dt.datetime.now() - t).total_seconds() / 3600
+    return (dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - t).total_seconds() / 3600   # claim times are UTC
 
 
 def bad_claim_date(claimed):
@@ -168,7 +179,7 @@ def load(project):
         for kpath in sorted(glob.glob(os.path.join(mdir, "tickets", "*", "ticket.md"))):
             kmeta, kbody = parse_front_matter(kpath)
             kmeta["_path"] = os.path.relpath(kpath, project)
-            kmeta["_answered"] = bool(re.search(r"^## (Answer|Verdict|Result)\b.*\n\s*\S", kbody, re.M))   # Verdict/Result: older tickets
+            kmeta["_answered"] = answered(kbody)
             tickets.append(kmeta)
         archived = []                     # consolidated tickets still resolve the blockers that name them
         for kpath in sorted(glob.glob(os.path.join(mdir, "archive", "**", "ticket.md"), recursive=True)):

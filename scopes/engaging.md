@@ -27,7 +27,7 @@ models or data, notebooks. If unsure, submit it.
 - **Smoke test first**: the same script with a tiny config: CPU jobs on `-p mit_quicktest -t 00:15:00`; GPU jobs on
   `-p mit_normal_gpu` (or `mit_preemptable`) with a short `-t` (`mit_quicktest` has no GPUs). Smoke train **and** predict **and** score.
 - **Sharing the per-user GPU cap** (other sessions, a reserved GPU): name jobs by ticket id, submit with `sbatch --hold`, and run
-  `~/research-harness/tools/gpu_gate.sh`. Stop background helpers by PID, never `pkill -f` a pattern matching your own shell.
+  `~/research-harness/scopes/engaging-gpu_gate.sh`. Stop background helpers by PID, never `pkill -f` a pattern matching your own shell.
 - **Sweeps:** one job array (`#SBATCH --array=0-N%K`, index via `$SLURM_ARRAY_TASK_ID`), never a loop of `sbatch`.
 - **Medium one-offs** (minutes, e.g. load a 1 GB h5ad and check a correlation): `srun -p mit_quicktest -c 4 --mem=16G -t 00:10:00 <cmd>`
   from the login node; it blocks, so keep it under the tool-call timeout, and inside an existing allocation it runs as a step

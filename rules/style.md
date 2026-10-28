@@ -20,7 +20,8 @@
 - A single ticket over ~5 GPU-hours, a batch over ~40 GPU-hours, or one submission or sweep over **50 GPU-hours** (edit
   these), plus any limit the project's scope file adds.
 - Changing a stop criterion after the fact, or a map's destination or Contract (benchmark, baselines, what may be done without asking) once results exist.
-- Deleting or overwriting anything outside `scratch/` (consolidating tickets is not deleting); the request names what can no
+- Deleting or overwriting data, results, checkpoints or code outside `scratch/` (rewriting a map or ticket record is routine;
+  consolidating tickets is not deleting); the request names what can no
   longer be resumed or reproduced afterwards.
 - Pushing to a remote, posting anything externally, or emailing.
 - Opening a network listener, relay or remote command channel on a shared machine.
@@ -35,7 +36,7 @@
 ## Code
 - Python. Config files plus one entrypoint per experiment. Keep command-line flags few.
 - Readable over clever. Abstract only after the third use.
-- Ticket code is throwaway: no tests, no polish. Code in `common/` that several tickets use is clean enough that a labmate could rerun it.
+- Ticket code is throwaway: no test suites, no polish, but check what a claim rests on (`rigor`). Code in `common/` that several tickets use is clean enough that a labmate could rerun it.
 
 ## Git
 - Small commits with messages that say what changed and why. Commit before launching a run that will back a result,
@@ -43,7 +44,7 @@
 - Never commit data, checkpoints, or large logs. Small result files (csv/json) that feed figures do get committed.
 
 ## Docs upkeep
-- `STATUS.md` is generated: after changing a map or ticket, run `research-status`. Never hand-edit it.
+- `STATUS.md` is generated: after opening, re-charting, pausing or closing a map, run `research-status`. Never hand-edit it.
 - Each `map.md` (≤80 lines) is **rewritten** to stay current,
   not appended to. A fact lives in one place (usually a ticket); everything above it is a one-line gist and a link.
 - When a finding changes, update its tag in the map; when a ticket's approach dies, its answer says so and its line in the

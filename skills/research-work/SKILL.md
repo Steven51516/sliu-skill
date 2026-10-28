@@ -8,7 +8,7 @@ Work the ticket described by the user.
 
 If the user passes a ticket reference, fetch it from the issue tracker and state its title before starting. If the reference is ambiguous, ask. If it names a map rather than a ticket, call the Skill tool with "research-drive" instead (or read [its SKILL.md](../research-drive/SKILL.md) if that skill isn't loaded). The issue tracker should have been provided to you. If not, tell the user to run `/research-init`.
 
-Claim the ticket before any work. An `experiment` runs only once its pre-registration is approved; if it isn't, call the Skill tool with "to-tickets" to put it to the user.
+Claim the ticket before any work. An `experiment` runs only once its pre-registration is approved; if it isn't, put its pre-registration to the user (ask the user) and wait.
 
 Do the work yourself, or delegate parts of it as you judge; work that matches a rule in `docs/agents/delegation.md` goes where the rule says. Follow the `rigor` skill while you set up, run and write up, and on what comes back from a delegate.
 

@@ -9,10 +9,10 @@ argument-hint: "<task or result to diagnose> [model revision]"
 
 The counterpart of a run card for **results**: what a model's evaluation numbers mean, why they fail, and the smallest
 checks that would tell the explanations apart. Template: [DIAGNOSIS-RECORD.md](DIAGNOSIS-RECORD.md). Distilled from the
-Scinetics diagnosis SOP v0.12 (`scinetics/sop/`), without its campaign-specific paths and findings.
+Scinetics diagnosis SOP v0.12, without its campaign-specific paths and findings.
 
-**Where the record goes:** if the project's scope defines record conventions (Scinetics: the SOP's section 6 experiment
-folders under the team's shared roots), follow them; writing to a shared team root needs the human's OK. Otherwise
+**Where the record goes:** if the project's scope defines record conventions (shared experiment folders, naming), follow
+them; writing to a shared team root needs the human's OK. Otherwise
 `<ticket folder>/diagnosis/<UTC time>_<owner>_<topic>.md`, linked from the ticket's Assets.
 
 **Default read-only.** Read data, configs, logs and existing predictions. Never overwrite references, raw results or the
@@ -69,8 +69,8 @@ rollback/stop conditions; separate output folders. Anything missing: write the p
 Each round continues from the adopted weights, is evaluated under the fixed protocol against D0 **and** the previous round,
 and keeps three records: plan (before), result (what ran and was observed), decision (verdict and next step). A significant
 regression pauses the chain: verify versions, coverage and scoring before considering a rollback. Stop at the round or
-budget limit, or on the pre-registered regression or no-gain condition. In a harness project, a round is a ticket: plan =
-pre-registration, result = Assets and Log, decision = Answer and its line on the map.
+budget limit, or on the pre-registered regression or no-gain condition. In a harness project, a round is an asset of the
+chain's ticket (plan, result and decision as dated lines in its Assets and Log); a new question gets a new ticket.
 
 ## Records
 Metrics: one JSON object per line with experiment id, model revision, task, metric, slice, split, protocol version, value,
