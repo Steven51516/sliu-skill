@@ -286,8 +286,9 @@ def analyse(maps):
                 problems.append(f"{k['_path']}: `held` must be the human's: `held (human, <date>: why)`")
             if k.get("claimed") and status_of(k) not in ACTIVE:
                 problems.append(f"{k['_path']}: {status_of(k)} but still `claimed: {k.get('claimed')}` (clear it)")
-            if status_of(k) == "superseded" and k.get("superseded_by") and k.get("superseded_by") not in by_id:
-                problems.append(f"{k['_path']}: `superseded_by: {k.get('superseded_by')}` is not a ticket id")
+            if status_of(k) == "superseded" and k.get("superseded_by") and k.get("superseded_by") not in by_id \
+                    and k.get("superseded_by") not in seen:
+                problems.append(f"{k['_path']}: `superseded_by: {k.get('superseded_by')}` is not a ticket or map id")
             unblocked = all(blocker_met(b, by_id) for b in blockers)
             if status_of(k) == "open" and not k.get("claimed") and unblocked and status_of(m) not in ("paused", "closed"):
                 fr.append(k)
