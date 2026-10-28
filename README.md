@@ -9,7 +9,7 @@ git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 ~/research-harness/install.sh
 ```
 
-`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts four commands on your PATH (`research-status`, `research-migrate`, `codex-run`, `team-up`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
+`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts five commands on your PATH (`research-status`, `research-migrate`, `codex-run`, `team-up`, `research-gui`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
 
 ## How it fits together
 
@@ -30,6 +30,7 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | work a map's frontier in parallel, or overnight | `/research-drive <map>` (`/loop` it) |
 | re-plan a map | `/wayfinder <map> --rechart` |
 | run a long-lived team (a desk and a driver per map) | `team-up <map>` in a herdr pane, or `/team <role>` |
+| see every project at once (maps as DAGs, tickets, Mac and server files, live agents) and start teams by click | `research-gui` in a herdr tab (projects in `~/.config/research-gui/projects.toml`, template `tools/gui/projects.example.toml`) |
 
 ## Skills
 
@@ -112,7 +113,7 @@ skills/      core/ (the research harness), engineering/ (code design, prototypes
 STYLE.md     your rules for every project (honesty, what always needs the human's OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh
+tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh, gui/ (research-gui)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 ```

@@ -12,6 +12,7 @@ mkdir -p "$HOME/.local/bin"; chmod +x "$HERE/tools/team-up.sh"; ln -sfn "$HERE/t
 chmod +x "$HERE/tools/status.py"; ln -sfn "$HERE/tools/status.py" "$HOME/.local/bin/research-status"
 chmod +x "$HERE/tools/migrate_to_maps.py"; ln -sfn "$HERE/tools/migrate_to_maps.py" "$HOME/.local/bin/research-migrate"
 chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.local/bin/codex-run"
+chmod +x "$HERE/tools/gui/server.py"; ln -sfn "$HERE/tools/gui/server.py" "$HOME/.local/bin/research-gui"
 # drop links left by skills that were removed or renamed here
 for d in "$DEST" "$AGENTS_DEST"; do for l in "$d"/*; do
   [[ -L "$l" && ! -e "$l" ]] || continue
