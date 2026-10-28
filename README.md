@@ -50,7 +50,6 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `research`, `grilling`, `prototype` | copied | the reading, interview and prototype tickets |
 | `diagnose` | adapted from `diagnosing-bugs` | a feedback loop before any bug or wrong-looking result is called fixed |
 | `domain-modeling` | adapted | glossary and decisions |
-| `run-card`, `diagnosis-record` | none | reproduction record of an important run; diagnosis record of evaluation results |
 
 **engineering/**: code design (Matt's): `codebase-design` (copied, deep-module vocabulary), `improve-codebase-architecture`
 (adapted, deep modules for research code).
@@ -59,7 +58,9 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 pstack: catch up on a long chat and every call waiting on you), `handoff` (copied: compact a session), `retro` (adapted:
 retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
-**optional/**: `team` (none in Matt's repo): run a project as a desk and a driver per map.
+**optional/**: none in Matt's repo. `team`: run a project as a desk and a driver per map. `run-card` and `diagnosis-record`:
+records for people outside the session (a reproduction record of an important run; a diagnosis record of evaluation
+results); a project opts in through its AGENTS.md.
 
 ## Differences from Matt's skills
 
@@ -107,7 +108,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research harness), engineering/ (code design), personal/ (everyday helpers), optional/ (team)
+skills/      core/ (the research harness), engineering/ (code design), personal/ (everyday helpers), optional/ (team, records)
 rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
 scopes/      where projects run: README.md (what a scope answers), one file per cluster
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
