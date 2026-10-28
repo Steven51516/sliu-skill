@@ -59,8 +59,9 @@ pstack: catch up on a long chat and every call waiting on you), `handoff` (copie
 retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **optional/**: none in Matt's repo. `team`: run a project as a desk and a driver per map. `run-card` and `diagnosis-card`:
-records for people outside the session (a reproduction record of an important run; a diagnosis card of evaluation
-results); a project opts in through its AGENTS.md.
+records for people outside the session (a reproduction record of an important run; a diagnosis of evaluation
+results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for improving a model in rounds,
+with a diagnosis card after every evaluation.
 
 ## Differences from Matt's skills
 

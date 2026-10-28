@@ -1,7 +1,6 @@
 ---
 name: diagnosis-card
-description: Diagnose a model's existing evaluation results (failed, suspicious or regressed benchmark scores) and write the diagnosis card.
-disable-model-invocation: true
+description: "Write a diagnosis card: what a model's evaluation results (failed, suspicious or regressed scores) mean, why they fail, and the smallest checks that would tell the explanations apart."
 argument-hint: "<task or result to diagnose> [model revision]"
 ---
 
@@ -16,8 +15,8 @@ them; writing to a shared team root needs the human's OK. Otherwise
 `<ticket folder>/diagnosis/<UTC time>_<owner>_<topic>.md`, linked from the ticket's Assets.
 
 **Default read-only.** Read data, configs, logs and existing predictions. Never overwrite references, raw results or the
-source's working folders. Diagnosis does not authorise training or new predictions; those are proposals unless the
-training loop below is enabled. Where evidence is missing, list the gap and finish the parts that can be checked.
+source's working folders. Diagnosis does not authorise training or new predictions; those are proposals (improving a
+model in rounds is a map: `to-diagnosis-map`). Where evidence is missing, list the gap and finish the parts that can be checked.
 
 ## Principles
 - **Verify the measurement first:** a score depends on input, reference, prediction and scorer; check all four before
@@ -59,18 +58,7 @@ training loop below is enabled. Where evidence is missing, list the gap and fini
    analysis). A training check is a small continuation proposal. Data changes report coverage, class ratio, token budget and
    duplicate entities, and keep the filtering gain apart from the coverage change. No operator or reliable label: report a
    capability gap instead of inventing a data mix.
-6. **Write the record** from the template; say which checks ran and which are only planned.
-
-## Training loop (only when explicitly enabled, with a fixed configuration)
-Before any training, fix: mode; target tasks and baseline; D0 weights, the currently adopted weights and the data version;
-what may and may not change; nodes, GPUs, per-round and total budget, maximum rounds; code commit, config, seed; diagnosis,
-selection and final validation sets with the scorer version; target metric, significant-regression rule, continue and
-rollback/stop conditions; separate output folders. Anything missing: write the plan and the gaps, do not train.
-Each round continues from the adopted weights, is evaluated under the fixed protocol against D0 **and** the previous round,
-and keeps three records: plan (before), result (what ran and was observed), decision (verdict and next step). A significant
-regression pauses the chain: verify versions, coverage and scoring before considering a rollback. Stop at the round or
-budget limit, or on the pre-registered regression or no-gain condition. In a harness project, a round is an asset of the
-chain's ticket (plan, result and decision as dated lines in its Assets and Log); a new question gets a new ticket.
+6. **Write the card** from the template; say which checks ran and which are only planned.
 
 ## Records
 Metrics: one JSON object per line with experiment id, model revision, task, metric, slice, split, protocol version, value,
