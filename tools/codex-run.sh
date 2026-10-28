@@ -27,5 +27,6 @@ else
     env $STRIP codex exec -C "$PWD" "${SET[@]}" - > "$LOG" 2>&1 || true
 fi
 grep -q "^reasoning effort: $E" "$LOG" || { echo "codex-run: effort is not $E in $LOG"; exit 1; }
+[[ -s "$D/last.md" ]] || { echo "codex-run: no final message (see the end of $LOG, e.g. model at capacity)"; exit 1; }
 grep -q "^sandbox: workspace-write" "$LOG" || { echo "codex-run: sandbox is not workspace-write in $LOG"; exit 1; }
 echo "codex-run: done ($LOG; final message in $D/last.md, report in $D/report.md if the brief asked for one)"
