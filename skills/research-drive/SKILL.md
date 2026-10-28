@@ -16,7 +16,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 **Implementer subagents** should be run in the background where possible for maximum concurrency, at most 6 at once; spin them up as `docs/agents/delegation.md` says.
 
-Research runs for hours, so this skill works in **passes**: one call is one pass, and `/loop /research-drive <map>` repeats it. You do no ticket work yourself, so any fresh session can take over from the tracker.
+Research runs for hours, so this skill works in **passes**: one call is one pass, and `/loop /research-drive <map>` repeats it. You do no ticket work yourself, so any fresh session can take over from the tracker. A trivial edit (wording, a typo, a link or path, a status the user dictated, a value that changes no result) needs no ticket: make it yourself and log it in one line. Anything that changes a number, a claim, the Contract, code on a result path, or starts or stops a job goes to a ticket.
 
 ## Steps
 

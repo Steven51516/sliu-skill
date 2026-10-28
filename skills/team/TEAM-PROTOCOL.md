@@ -10,8 +10,8 @@ re-charting, choosing the next questions), since the driver owns the map.
 
 | role | started with | does | writes | never |
 |---|---|---|---|---|
-| **desk** (A) | `/team desk` | the human's partner: reports state, discusses results, diagnoses and the route, turns the human's decisions into instructions for the driver, relays what the driver reports | its roster line | ticket work, maps |
-| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`, with the implementer panes as its implementer subagents; the human is reached through the desk: approves and sends tickets within the map's Contract, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
+| **desk** (A) | `/team desk` | the human's partner: reports state, discusses results, diagnoses and the route, turns the human's decisions into instructions for the driver, relays what the driver reports | its roster line; handoff notes, summaries for the human, typos | ticket work, edits that change the project's course |
+| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`, with the implementer panes as its implementer subagents; the human is reached through the desk: approves and sends tickets within the map's Contract, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, trivial edits (no ticket needed), `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
 | **implementer** (C) | `/team implementer` | `/research-work <ticket>` on each `work` message, delegating inside it as `docs/agents/delegation.md` says | its ticket folder | `map.md`, other tickets |
 
 ## The two swaps
