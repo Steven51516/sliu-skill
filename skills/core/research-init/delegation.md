@@ -34,6 +34,6 @@ a ticket (`rigor`).
 ## Rules
 - If the delegate a rule requires fails, wait and retry, or ask the user; never hand the work to someone the rule doesn't name.
 - A delegate writes only the paths its brief names and never edits a map or `STATUS.md`; over ssh, the brief and
-  `rules/style.md` are the guard.
+  `STYLE.md` are the guard.
 - Chain dependent steps in one script; nothing waits on a marker file another session writes.
 - Long GPU jobs launch detached as the scope file says; their PID and log path go in the ticket's Assets.

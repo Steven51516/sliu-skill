@@ -20,7 +20,7 @@ choosing the next questions), since the driver owns the map.
 
 ## Control
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
-  dated line), dispatches approved tickets, and records results. Anything on the always-ask list in `rules/style.md`, or
+  dated line), dispatches approved tickets, and records results. Anything on the always-ask list in `STYLE.md`, or
   outside the Contract, goes to the desk first.
 - **The human steers** by planning with the driver or the desk (wayfinder, grilling: destination, route, new questions, what
   the Contract allows) and through the desk: `hold` a ticket, `pause` or `stop` the map. Only the human's own words change a

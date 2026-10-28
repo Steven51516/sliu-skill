@@ -8,11 +8,11 @@ Harness: maps/tickets
 Started: {{DATE}}
 
 {{SCOPE_IMPORT}}
-@~/research-harness/rules/style.md
+@~/research-harness/STYLE.md
 
 - The harness is still being refined. When a shared rule or research skill is wrong, missing, or gets in the way, add one
   line to `~/research-harness/FEEDBACK.md` (date, project, file, what happened → suggested fix) and carry on. Edit harness
   files only when the user asks.
 - A mistake that recurs gets a check that fails (in a tool, a script or the project's code), not another sentence;
   instructions are for judgment calls.
-- Folder structure: `~/research-harness/rules/layout.md`.
+- Folder structure: `~/research-harness/skills/core/research-init/LAYOUT.md`.

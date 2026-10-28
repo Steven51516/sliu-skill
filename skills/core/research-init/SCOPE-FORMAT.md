@@ -15,7 +15,7 @@ A scope file answers these questions (any headings, one short file):
    (owner, utilization, foreign processes) per node. Which nodes to use **now** is one dated line the human updates each
    launch round, never a standing ban (a ban outlives its situation and blocks launches).
 5. **Network:** internet access, proxy rules, and what needs the human's OK (large downloads).
-6. **Limits that need the human's OK** beyond the always-ask list in `rules/style.md` (e.g. a partition's long runs).
+6. **Limits that need the human's OK** beyond the always-ask list in `STYLE.md` (e.g. a partition's long runs).
 7. **New project:** the environment variables for `research-init` (`PROJECTS_ROOT`, `POOL_ROOT`, `SCRATCH_ROOT`,
    `SCOPE_FILE`).
 

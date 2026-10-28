@@ -5,7 +5,7 @@
 A research project run with the research harness (`~/research-harness`). For every agent working here, Claude or Codex:
 
 - **Read first:** the scope file `{{SCOPE_PATH}}` (where things run: machines, storage, GPUs, network) and
-  `~/research-harness/rules/style.md`.
+  `~/research-harness/STYLE.md`.
 - **Delegation:** where delegated work and reviews go, and how each agent is called: `docs/agents/delegation.md`.
 - **Domain docs:** how to read `GLOSSARY.md` and the decisions: `docs/agents/domain.md`.
 - **Issue tracker:** where maps and tickets live and how to claim, block, query and resolve them: `docs/agents/issue-tracker.md`.

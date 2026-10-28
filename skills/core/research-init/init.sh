@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Scaffold a new research project. Usage: init.sh <name> ["one-line direction"]
 # Settings (env vars; research-init chooses them with the user):
-#   SCOPE_FILE       path of the scope file (scopes/README.md); imported by CLAUDE.md, named in AGENTS.md
+#   SCOPE_FILE       path of the scope file (skills/core/research-init/SCOPE-FORMAT.md); imported by CLAUDE.md, named in AGENTS.md
 #   SCOPE_INHERITED  path of a parent CLAUDE.md that already imports the scope: CLAUDE.md then does not import it again
 #   PROJECTS_ROOT    where the project folder goes (default ~/projects)
 #   POOL_ROOT, SCRATCH_ROOT  storage roots; without them artifacts/ and scratch/ are plain folders (gitignored)
@@ -37,7 +37,7 @@ link_or_dir "$POOL_ROOT" artifacts
 link_or_dir "$SCRATCH_ROOT" scratch
 
 if [[ -n "$SCOPE_INHERITED" ]]; then SCOPE_IMPORT="<!-- Scope: loaded by the parent $SCOPE_INHERITED; not imported again here. -->"
-elif [[ -n "$SCOPE_FILE" ]]; then SCOPE_IMPORT="<!-- Scope: where this project runs. See ~/research-harness/scopes/README.md. -->
+elif [[ -n "$SCOPE_FILE" ]]; then SCOPE_IMPORT="<!-- Scope: where this project runs. See ~/research-harness/skills/core/research-init/SCOPE-FORMAT.md. -->
 @$SCOPE_FILE"
 else SCOPE_IMPORT="<!-- TODO: import this project's scope file here, e.g. @~/research-harness/scopes/engaging.md -->"; fi
 SCOPE_PATH="${SCOPE_FILE:-TODO: name the scope file}"

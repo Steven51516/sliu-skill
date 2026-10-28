@@ -38,7 +38,7 @@ Lead each section with the recommended answer so the user can accept it in a wor
 
 **Section A: Name and place.** A short kebab-case name; the folder goes under the scope's projects root (or the folder the user is in, for an org folder). Optional: a one-line direction, and where the code lives (this folder, or a server path such as `<host>:~/code/<name>`).
 
-**Section B: Scope.** Recommend the scope a parent `CLAUDE.md` already loads (then it is inherited, not imported again), else the one this machine's other projects use. A place with no scope file yet: draft one from [scopes/README.md](../../../scopes/README.md) with the user, kept with the org's own folder when it names internal hosts.
+**Section B: Scope.** Recommend the scope a parent `CLAUDE.md` already loads (then it is inherited, not imported again), else the one this machine's other projects use. A place with no scope file yet: draft one from [SCOPE-FORMAT.md](SCOPE-FORMAT.md) with the user, kept with the org's own folder when it names internal hosts.
 
 **Section C: Issue tracker.**
 

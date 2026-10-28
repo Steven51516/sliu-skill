@@ -109,8 +109,8 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 ```
 skills/      core/ (the research harness), engineering/ (code design, prototypes), personal/ (everyday helpers), optional/ (team, records)
-rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
-scopes/      where projects run: README.md (what a scope answers), one file per cluster
+STYLE.md     your rules for every project (honesty, what always needs the human's OK, code, docs)
+scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
 tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh
 licenses/    licences of copied and adapted third-party skills
@@ -125,7 +125,7 @@ the project's code) before another sentence: pstack's *Encode Lessons in Structu
 | I want to… | Edit |
 |---|---|
 | change a machine's rules (scheduler, storage, GPU sharing, network) | that scope file, e.g. `scopes/engaging.md` |
-| change how the agent writes code, commits, reports, or what always needs my OK | `rules/style.md` |
+| change how the agent writes code, commits, reports, or what always needs my OK | `STYLE.md` |
 | change where one project's maps live | that project's `docs/agents/issue-tracker.md` |
 | change where delegated work and reviews go in one project | that project's `docs/agents/delegation.md` |
 | add a rule for one project only | that project's `AGENTS.md`, under "Project notes" |

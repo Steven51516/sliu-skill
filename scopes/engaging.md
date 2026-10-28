@@ -1,7 +1,7 @@
 # Scope: MIT ORCD Engaging (Slurm)
 
 Source: https://orcd-docs.mit.edu (checked 2026-09-17). The org policy in /etc/claude-code/CLAUDE.md covers filesystem-scan and etiquette rules.
-Scope interface: `~/research-harness/scopes/README.md`.
+Scope interface: `~/research-harness/skills/core/research-init/SCOPE-FORMAT.md`.
 
 ## Login node: edit and submit, never compute
 Claude runs on a **login node** (`login*`). Allowed there: editing files, git, installing packages, small downloads, submitting and
