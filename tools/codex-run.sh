@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# codex-run <run dir>             start Codex on <run dir>/brief.md
+# codex-run <run dir> --resume    send <run dir>/followup.md to the same Codex session
+# Run from the project folder. Model and effort: CODEX_MODEL (default gpt-6.1-sol), CODEX_EFFORT (default xhigh).
+# Every call, resumes included, gets the model, effort and sandbox (a bare resume drops them), and runs without the
+# tokens and keys in this environment. The header Codex printed is checked, so a wrong effort or sandbox fails loudly.
+set -euo pipefail
+D="${1:?usage: codex-run <run dir> [--resume]}"; MODE="${2:-}"
+M="${CODEX_MODEL:-gpt-6.1-sol}"; E="${CODEX_EFFORT:-xhigh}"
+STRIP=$(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | sed 's/^/-u /' || true)
+SET=(--skip-git-repo-check -m "$M" -c "model_reasoning_effort=\"$E\""
+     -c 'sandbox_mode="workspace-write"' -c sandbox_workspace_write.network_access=true -o "$D/last.md")
+if [[ "$MODE" == --resume ]]; then
+  ID=$(grep -m1 '^session id:' "$D/codex.log" | awk '{print $3}')
+  [[ -n "$ID" && -f "$D/followup.md" ]] || { echo "codex-run: need a session id in $D/codex.log and $D/followup.md"; exit 1; }
+  LOG="$D/codex.resume.log"
+  env $STRIP codex exec resume "$ID" "${SET[@]}" - < "$D/followup.md" > "$LOG" 2>&1 || true
+else
+  [[ -f "$D/brief.md" ]] || { echo "codex-run: no $D/brief.md"; exit 1; }
+  LOG="$D/codex.log"
+  env $STRIP codex exec -C "$PWD" "${SET[@]}" - < "$D/brief.md" > "$LOG" 2>&1 || true
+fi
+grep -q "^reasoning effort: $E" "$LOG" || { echo "codex-run: effort is not $E in $LOG"; exit 1; }
+grep -q "^sandbox: workspace-write" "$LOG" || { echo "codex-run: sandbox is not workspace-write in $LOG"; exit 1; }
+echo "codex-run: done ($LOG; final message in $D/last.md, report in $D/report.md if the brief asked for one)"

@@ -5,7 +5,7 @@ How the research skills should consume this project's domain documentation when 
 ## Before exploring, read these
 
 - **`GLOSSARY.md`** at the project root
-- **`docs/decisions.md`**: read the cross-map decisions that touch the area you're about to work in (one line each, newest first). A map's own decisions are its Decisions so far.
+- **`docs/decisions.md`**: read the cross-map decisions that touch the area you're about to work in (one line each, newest first), and the ADRs in `docs/adr/` they link. A map's own decisions are its Decisions so far.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `domain-modeling` skill (reached via `/improve-codebase-architecture` and `grilling`) creates them lazily when terms or decisions actually get resolved.
 
@@ -15,6 +15,7 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 /
 ├── GLOSSARY.md
 ├── docs/decisions.md
+├── docs/adr/
 └── maps/
 ```
 

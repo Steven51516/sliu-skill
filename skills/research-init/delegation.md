@@ -35,17 +35,11 @@ Ask in this session.
 
 ## Commands
 
-Codex:
+Codex: write the brief to `<run dir>/brief.md` (it names its report `<run dir>/report.md`, written in pieces of at most ~80 lines), then, from the project folder:
 
-    env $(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | sed 's/^/-u /') \
-      codex exec --skip-git-repo-check -C <project dir> -s workspace-write \
-      -c sandbox_workspace_write.network_access=true -m <model> -c 'model_reasoning_effort="<effort>"' \
-      -o <run dir>/last.md - < <run dir>/brief.md > <run dir>/codex.log 2>&1
+    codex-run <run dir>              # a follow-up: write <run dir>/followup.md, then codex-run <run dir> --resume
 
-The brief names its report `<run dir>/report.md`, written in pieces of at most ~80 lines (long single writes have been lost to the network); `-o` only keeps Codex's final message in `last.md` and would overwrite a report written there. A follow-up resumes by the session id in `codex.log`'s header, from the project folder; `resume` has no `-s` or `-C` and does not keep the sandbox, so pass it as config:
-
-    codex exec resume <id> --skip-git-repo-check -c sandbox_mode='"workspace-write"' \
-      -c sandbox_workspace_write.network_access=true -o <run dir>/last.md - < <run dir>/followup.md
+`codex-run` sets the model and effort (`CODEX_MODEL`, `CODEX_EFFORT`) and the sandbox on every call, resumes included, strips tokens and keys from Codex's environment, and fails loudly if Codex's header shows anything else.
 
 Claude Code, headless:
 
@@ -55,7 +49,7 @@ Claude Code, headless:
 
 ## Rules
 
-- The `env -u` prefix keeps tokens and keys out of a delegate's environment.
+- If the delegate a rule requires fails (it can't start, can't log in, or errors out), wait and retry, or ask the user; never hand the work to someone the rule doesn't name.
 - A delegate writes only the paths its brief names, stops only processes it started (by PID), and never edits a map, `STATUS.md` or another agent's memory. Over ssh the local sandbox does not apply, so these rules are the guard.
 - No process waits on a marker file another session is supposed to write: chain dependent steps in one script.
 - Long GPU jobs are launched detached the way the scope file says; the PID and log path go into the ticket's Assets.

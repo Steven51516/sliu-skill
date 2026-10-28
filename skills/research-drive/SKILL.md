@@ -24,7 +24,7 @@ Each pass:
 
 1. Read the map and its tickets to understand the task graph. On the first pass, claim the map; if another live session holds it, stop and say so.
 
-2. Check each running job the way the scope file says (alive, step moving, finished), and the GPUs of the nodes in use (owner, utilization, foreign processes on ours, step time against its reference). Idle granted GPUs are a finding. A finished job whose ticket nobody is working goes back to an implementer for its evaluation or close.
+2. Check each running job the way the scope file says (alive, the progress file its Assets row names still moving, finished), and the GPUs of the nodes in use (owner, utilization, foreign processes on ours, step time against its reference). Idle granted GPUs are a finding. A finished job whose ticket nobody is working goes back to an implementer for its evaluation or close.
 
 3. Once an **implementer subagent** reports `done`, open the ticket and trust it, not the report. If its review passed (or `rigor`'s table says it needs none), resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to an implementer.
 

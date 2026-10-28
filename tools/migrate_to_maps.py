@@ -11,6 +11,8 @@ What it does (a tar.gz backup of every file it may touch goes to docs/archive/ f
   resolved; `driver:` dropped; `## Verdict` -> `## Answer`
 - every other .md in the project: project-relative `tracks/` -> `maps/` and `track.md` -> `map.md` (server paths such as
   `~/code/<p>/tracks/...` are left alone), and "call the Skill tool with `research`" -> `resume`
+- folds `claimed:` into the status line (`status: claimed (<who, when>)`) and drops stale claims; on a project
+  already on maps/, this fold is all it does
 - writes docs/agents/issue-tracker.md, delegation.md and domain.md from the research-init seeds if missing, then
   regenerates STATUS.md
 """
@@ -171,6 +173,35 @@ def rewrite_refs(project, base, plan, write):
                         f.write(new)
 
 
+def fold_claims(project, plan, write):
+    """One status line per ticket and map: `claimed:` folds into `status: claimed (<who, when>)`, or goes if stale."""
+    for root, _, files in os.walk(os.path.join(project, "maps")):
+        for name in ("map.md", "ticket.md"):
+            if name not in files:
+                continue
+            path = os.path.join(root, name)
+            text = open(path).read()
+            front, body = split_front(text)
+            if front is None or not re.search(r"^claimed:", front, re.M):
+                continue
+            claimed = re.search(r"^claimed:\s*(.*)$", front, re.M).group(1).strip().strip("'\"")
+            claimed = None if claimed in ("", "null", "None", "~") else claimed
+            st = re.search(r"^status:\s*(\S+)", front, re.M)
+            st = st.group(1) if st else None
+            lines = [l for l in front.splitlines() if not l.startswith("claimed:")]
+            note = "drop `claimed:`"
+            if claimed and (st in (None, "claimed", "open") and name == "map.md" or st == "claimed"):
+                lines = [l for l in lines if not l.startswith("status:")]
+                lines.insert(2 if len(lines) > 2 else len(lines), f"status: claimed ({claimed})")
+                note = f"status: claimed ({claimed})"
+            elif claimed:
+                note = f"drop stale `claimed: {claimed}` ({st})"
+            plan.append(f"{os.path.relpath(path, project)}: {note}")
+            if write:
+                with open(path, "w") as f:
+                    f.write("---\n" + "\n".join(lines) + "\n---\n" + body)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("project", nargs="?", default=".")
@@ -178,6 +209,13 @@ def main():
     a = ap.parse_args()
     project = os.path.abspath(a.project)
     old, new = os.path.join(project, "tracks"), os.path.join(project, "maps")
+    if (not os.path.isdir(old) or os.path.islink(old)) and os.path.isdir(new):
+        plan = []                                   # already on maps/: only fold the claims
+        fold_claims(project, plan, not a.dry_run)
+        print("\n".join(("would: " if a.dry_run else "") + p for p in plan) or "nothing to fold")
+        if not a.dry_run:
+            subprocess.run([sys.executable, os.path.join(HERE, "status.py"), project, "--check"])
+        return
     if not os.path.isdir(old) or os.path.islink(old):
         sys.exit(f"no tracks/ folder to migrate in {project}")
     if os.path.exists(new):
@@ -207,6 +245,8 @@ def main():
         if "ticket.md" in files:
             migrate_ticket(os.path.join(root, "ticket.md"), plan, write)
     rewrite_refs(project, base, plan, write)
+    if write:
+        fold_claims(project, plan, write)
     tracker = os.path.join(project, "docs", "agents", "issue-tracker.md")
     if not os.path.exists(tracker):
         plan.append("docs/agents/issue-tracker.md from the local template")

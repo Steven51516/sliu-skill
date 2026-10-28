@@ -34,7 +34,7 @@ Break the work into **questions**.
 
 </question-rules>
 
-Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Contract; a `task` that builds something later tickets use gets its **acceptance**: what done means, and the commands that verify it.
+Give each ticket its **blocking edges**: the other tickets whose result or code it needs. A ticket with no blockers can start immediately. Give it a type (`experiment`, `research`, `prototype`, `grilling`, `task`; analysing our own results is an `experiment`, `research` is reading only); an `experiment` also gets a cost cap and a **pre-registration** proposed from the map's Contract; a `task` that builds something later tickets use gets its **acceptance**: what done means, and the commands that verify it.
 
 Stop and say which applies if an idea is already answered (a line in Decisions so far) or already an open ticket; an asset of an existing ticket (add it to that ticket's Assets instead); or beyond the destination (out of scope, or the start of a different map).
 
@@ -74,7 +74,7 @@ The question, in one sentence: what would change what we do next.
 
 ## Pre-registration
 
-(`experiment` only.) Written and dated before any run; never edited afterwards (amendments are appended, dated, with the reason).
+(`experiment` only.) Written and dated (UTC) before any run; never edited afterwards (amendments are appended, dated, with the reason).
 
 - Reference recipe and deviations: what this follows (from the map's Contract) and each deviation, with why
 - Arms / comparison: the reference run and every difference from it, on the map's benchmark (`rigor`); controls only if the benchmark or pipeline is new

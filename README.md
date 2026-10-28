@@ -9,7 +9,7 @@ git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 ~/research-harness/install.sh
 ```
 
-`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts three commands on your PATH (`research-status`, `research-migrate`, `team-up`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
+`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts four commands on your PATH (`research-status`, `research-migrate`, `codex-run`, `team-up`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
 
 ## How it fits together
 
@@ -72,13 +72,13 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **`research-drive` grows the graph.** Matt's `implement-spec` works a fixed set of tickets to completion and merges branches. Here one call is one pass (repeat with `/loop`): merge finished tickets after their review, dispatch the frontier, and when it runs dry, file the next tickets from the fog inside the map's Contract. What needs the human becomes a `grilling` ticket.
 
-**Milestones and closing maps.** A map closes when its destination is reached or a measured answer says it can't be, as Matt's map issue closes, with a one-line `outcome`. Closed maps' outcomes are the project's milestones: the local tracker's generated `STATUS.md` is a project page of milestones and open maps, regenerated only when a map opens, is re-charted or closes; what is live (waiting on the user, running, the frontier) is printed by `research-status --now`, never stored. `research-status --check` also catches dependency cycles, unknown statuses, prerequisites that are parked or superseded by an unfinished replacement, and resolved tickets without an answer.
+**Milestones and closing maps.** A map closes when its destination is reached or a measured answer says it can't be, as Matt's map issue closes, with a one-line `outcome`. Closed maps' outcomes are the project's milestones: the local tracker's generated `STATUS.md` is a project page of milestones and open maps, regenerated only when a map opens, is re-charted or closes; what is live (waiting on the user, running, the frontier) is printed by `research-status --now`, never stored. Each ticket's and map's `status:` line also says who holds it (`claimed (<session>, <time>)`), as Matt's local `Status:` line does, so a finished ticket can't still look taken; a ticket can be `held` and a map `paused`, both only by the human and both off the frontier. `research-status --check` also catches more than one claim per session, dependency cycles, unknown statuses, prerequisites that are parked or superseded by an unfinished replacement, and resolved tickets without an answer.
 
 **Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (`scopes/`), so the skills never name a machine.
 
-**Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer.
+**Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the delegate a rule names fails, the session waits or asks; it never hands the work to someone else. `codex-run` makes every Codex call, resumes included, carry the same model, effort and sandbox.
 
-**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, a driver running `research-drive` under `/loop`, and implementers running `research-work`, with a roster and short messages (`skills/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team inside team sessions: an implementer subagent becomes an implementer pane, and asking the user goes through the desk. The core skills never mention the team, and the team layer only depends on them.
+**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, a driver running `research-drive` under `/loop`, and implementers running `research-work`, with a roster and short messages (`skills/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team inside team sessions: an implementer subagent becomes an implementer pane, and asking the user goes through the desk, which relays the human's words and never decides for them (Matt's HITL rule). Implementers live long but hold one claim at a time. The core skills never mention the team, and the team layer only depends on them.
 
 **Per-skill differences**, beyond the vocabulary above:
 
@@ -88,7 +88,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `to-tickets`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
 - `research-init` (vs `setup-matt-pocock-skills`): adds the scope and delegation sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
 - `diagnose` (vs `diagnosing-bugs`): also covers results that look wrong; a tiny-config run and an invariant probe replace the HTTP and browser loops; the regression check is a check script, re-run on the production path (real launcher, data and GPU count); a bug that invalidated results is a failure class, not a negative answer.
-- `domain-modeling`: every cross-map decision is one line in `docs/decisions.md`, with a longer note only when Matt's three ADR conditions hold; terms are defined on first use.
+- `domain-modeling`: every cross-map decision is one line in `docs/decisions.md`; one that meets Matt's three conditions also gets an ADR in his format (`docs/adr/`); terms are defined on first use.
 - `improve-codebase-architecture`: checks are the test surface, the scope is the shared research code (ticket code is throwaway), code may live on a remote server, and a refactor waits for live runs that import the code.
 - `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
 - `wait-what`: also defines each project term on first use.
@@ -102,7 +102,7 @@ skills/      one folder per skill
 rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
 scopes/      where projects run: README.md (what a scope answers), one file per cluster
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/research-init/)
-tools/       status.py (research-status), migrate_to_maps.py (research-migrate), team-up.sh
+tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 ```

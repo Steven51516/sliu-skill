@@ -13,7 +13,8 @@ Actively build and sharpen the project's domain model as you design. This is the
 /
 ├── GLOSSARY.md
 ├── docs/
-│   └── decisions.md
+│   ├── decisions.md
+│   └── adr/
 └── maps/
 ```
 
@@ -49,10 +50,10 @@ When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up:
 
 ### Record decisions sparingly
 
-Every cross-map decision gets one line in `docs/decisions.md` (date, decision, why; newest first); a map's own decisions are dated lines in its Decisions so far. Only offer a longer rationale note, linked from that line, when all three are true:
+Every cross-map decision gets one line in `docs/decisions.md` (date, decision, why; newest first); a map's own decisions are dated lines in its Decisions so far. Only offer an ADR, linked from that line, when all three are true:
 
 1. **Hard to reverse**: the cost of changing your mind later is meaningful
 2. **Surprising without context**: a future reader will wonder "why did they do it this way?"
 3. **The result of a real trade-off**: there were genuine alternatives and you picked one for specific reasons
 
-If any of the three is missing, the line is enough.
+If any of the three is missing, the line is enough. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md). A planning session's decisions go in one ADR, not in copies of its transcript.

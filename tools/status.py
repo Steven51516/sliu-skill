@@ -16,6 +16,7 @@ Usage (from the project root, or pass it):
 Pure standard library.
 """
 import argparse
+import csv
 import datetime as dt
 import glob
 import os
@@ -23,8 +24,9 @@ import re
 import sys
 
 CLOSED = {"resolved", "parked", "superseded"}     # off the frontier
-STATUSES = {"open", "claimed", "running", "resolved", "parked", "superseded"}
-MAP_STATUSES = {"open", "closed"}
+STATUSES = {"open", "claimed", "running", "held", "resolved", "parked", "superseded"}
+MAP_STATUSES = {"open", "claimed", "paused", "closed"}
+HUMAN_ONLY = {"held", "paused"}
 ACTIVE = {"claimed", "running"}
 HITL = {"grilling", "prototype"}
 TYPES = {"experiment", "research", "prototype", "grilling", "task"}
@@ -38,9 +40,25 @@ TYPE_ALIASES = {"lit": "research", "decision": "grilling", "baseline": "experime
 CHECKBOX = re.compile(r"^- \[[ xX]\] ")
 
 
+def base(status):
+    """`claimed (sess, 2026-10-28 03:21 UTC)` -> `claimed`."""
+    word = re.split(r"[\s(]", (status or "").strip(), maxsplit=1)[0]
+    return STATUS_ALIASES.get(word, word)
+
+
 def status_of(k):
-    s = k.get("status")
-    return STATUS_ALIASES.get(s, s)
+    return base(k.get("status"))
+
+
+def holder(k):
+    """Who holds a ticket or map: the first item inside `claimed (...)`, else the older `claimed:` field."""
+    m = re.match(r"\s*claimed\s*\(([^,)]*)", k.get("status") or "")
+    return (m.group(1).strip() if m else None) or k.get("claimed")
+
+
+def claim_text(k):
+    m = re.match(r"\s*claimed\s*\((.*)\)", k.get("status") or "")
+    return m.group(1) if m else k.get("claimed")
 
 
 def type_of(k):
@@ -69,7 +87,7 @@ def parse_front_matter(path):
         if val in ("", "null", "None", "~"):
             val = None
         elif val.startswith("[") and val.endswith("]"):
-            val = [v.strip().strip("'\"") for v in val[1:-1].split(",") if v.strip()]
+            val = [v.strip().strip("'\"") for v in next(csv.reader([val[1:-1]], skipinitialspace=True)) if v.strip()]
         elif len(val) >= 2 and val[0] == val[-1] and val[0] in "'\"":
             val = val[1:-1]
         last = key.strip()
@@ -221,15 +239,17 @@ def analyse(maps):
         for f in ("id", "title"):
             if not m.get(f):
                 problems.append(f"{m['_path']}: missing `{f}`")
-        if m.get("status") and m.get("status") not in MAP_STATUSES:
-            problems.append(f"{m['_path']}: unknown map status `{m.get('status')}` (open or closed)")
-        if m.get("status") == "closed" and not m.get("outcome"):
+        if m.get("status") and status_of(m) not in MAP_STATUSES:
+            problems.append(f"{m['_path']}: unknown map status `{m.get('status')}` ({', '.join(sorted(MAP_STATUSES))})")
+        if status_of(m) in HUMAN_ONLY and "(human" not in (m.get("status") or ""):
+            problems.append(f"{m['_path']}: `{status_of(m)}` must be the human's: `{status_of(m)} (human, <date>: why)`")
+        if status_of(m) == "closed" and not m.get("outcome"):
             problems.append(f"{m['_path']}: closed without an `outcome:` line")
-        age = claim_age_hours(m.get("claimed"))
+        age = claim_age_hours(claim_text(m))
         if age is not None and age > STALE_HOURS:
             problems.append(f"{m['_path']}: claim is {age:.0f} h old (stale?)")
-        if bad_claim_date(m.get("claimed")):
-            problems.append(f"{m['_path']}: `claimed` has an invalid date: {m.get('claimed')}")
+        if bad_claim_date(claim_text(m)):
+            problems.append(f"{m['_path']}: claim has an invalid date: {claim_text(m)}")
         fr = []
         for k in m["_tickets"]:
             for f in ("id", "title", "type", "status"):
@@ -257,15 +277,29 @@ def analyse(maps):
                 where = ("Decisions so far" if status_of(k) == "resolved" else
                          "Out of scope if ruled out of scope, else Decisions so far with why it is paused")
                 problems.append(f"{k['_path']}: {k.get('status')} but not linked from {m['_path']} (add its line to {where})")
-            age = claim_age_hours(k.get("claimed"))
-            if k.get("status") in ACTIVE and age is not None and age > STALE_HOURS and not k.get("jobs"):
+            age = claim_age_hours(claim_text(k))
+            if status_of(k) in ACTIVE and age is not None and age > STALE_HOURS and not k.get("jobs"):
                 problems.append(f"{k['_path']}: claimed {age:.0f} h ago with no jobs (stale?)")
-            if bad_claim_date(k.get("claimed")):
-                problems.append(f"{k['_path']}: `claimed` has an invalid date: {k.get('claimed')}")
+            if bad_claim_date(claim_text(k)):
+                problems.append(f"{k['_path']}: claim has an invalid date: {claim_text(k)}")
+            if status_of(k) in HUMAN_ONLY and "(human" not in (k.get("status") or ""):
+                problems.append(f"{k['_path']}: `held` must be the human's: `held (human, <date>: why)`")
+            if k.get("claimed") and status_of(k) not in ACTIVE:
+                problems.append(f"{k['_path']}: {status_of(k)} but still `claimed: {k.get('claimed')}` (clear it)")
+            if status_of(k) == "superseded" and k.get("superseded_by") and k.get("superseded_by") not in by_id:
+                problems.append(f"{k['_path']}: `superseded_by: {k.get('superseded_by')}` is not a ticket id")
             unblocked = all(blocker_met(b, by_id) for b in blockers)
-            if status_of(k) == "open" and not k.get("claimed") and unblocked and m.get("status") != "closed":
+            if status_of(k) == "open" and not k.get("claimed") and unblocked and status_of(m) not in ("paused", "closed"):
                 fr.append(k)
         frontier[m.get("id")] = fr
+    held_by = {}
+    for m in maps:
+        for k in m["_tickets"]:
+            if status_of(k) == "claimed" and holder(k):
+                held_by.setdefault(holder(k), []).append(k.get("id"))
+    for who, ids in held_by.items():
+        if len(ids) > 1:
+            problems.append(f"{who} holds {len(ids)} claims ({', '.join(ids)}); one at a time")
     return problems, frontier
 
 
@@ -275,15 +309,16 @@ def render_page(project, maps):
     out = [f"# Status: {os.path.basename(os.path.abspath(project))}",
            f"_Generated {today} by `research-status` — do not edit. What is live now (waiting on you, running, "
            f"the frontier): `research-status --now`._", ""]
-    closed = [m for m in maps if m.get("status") == "closed"]
+    closed = [m for m in maps if status_of(m) == "closed"]
     out.append("## Milestones (closed maps and their outcomes)")
     if not closed:
         out.append("- none yet")
     for m in closed:
         out.append(f"- [{m.get('id')} {m.get('title')}]({m['_path']}): {m.get('outcome') or '(no outcome recorded)'}")
     out += ["", "## Open maps", "| map | destination | driven by |", "|---|---|---|"]
-    for m in [m for m in maps if m.get("status") != "closed"]:
-        out.append(f"| [{m.get('id')} {m.get('title')}]({m['_path']}) | {m['_destination']} | {m.get('claimed') or ''} |")
+    for m in [m for m in maps if status_of(m) != "closed"]:
+        state = holder(m) or ("paused" if status_of(m) == "paused" else "")
+        out.append(f"| [{m.get('id')} {m.get('title')}]({m['_path']}) | {m['_destination']} | {state} |")
     return "\n".join(out) + "\n"
 
 
@@ -297,13 +332,13 @@ def render_now(maps, frontier, problems):
     out += [f"  {mid}  {w}" for mid, w in waiting[:MAX_WAITING]] or ["  nothing open"]
     if len(waiting) > MAX_WAITING:
         out.append(f"  … {len(waiting) - MAX_WAITING} more")
-    running = [k for m in maps for k in m["_tickets"] if k.get("status") in ACTIVE]
+    running = [k for m in maps for k in m["_tickets"] if status_of(k) in ACTIVE]
     out.append("Running / claimed:")
     for k in running:
         jobs = k.get("jobs") or []
         jobs = jobs if isinstance(jobs, list) else [jobs]
-        out.append(f"  {k.get('id')}  {k.get('title')} · {k.get('status')}"
-                   + (f" · jobs {', '.join(jobs[-3:])}" if jobs else "") + (f" · {k.get('claimed')}" if k.get("claimed") else ""))
+        out.append(f"  {k.get('id')}  {k.get('title')} · {status_of(k)}"
+                   + (f" · jobs {', '.join(jobs[-3:])}" if jobs else "") + (f" · {holder(k)}" if holder(k) else ""))
     if not running:
         out.append("  none")
     out.append("Frontier (open, unblocked, unclaimed):")

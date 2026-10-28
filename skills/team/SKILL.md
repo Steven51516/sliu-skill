@@ -25,21 +25,26 @@ You are the human's partner for this project for the rest of the session: the on
   the last digest, each with its `review` PASS/FAIL lines and a link to its evidence. A line the human doubts becomes
   `reopen <ticket>: <why>` to its driver.
 - Do no ticket work and edit no map or ticket yourself: work goes to an implementer through the driver, map changes to the driver.
-  For a real planning session on a map (re-charting, the route, which questions come next), suggest the human talk to
-  that map's driver directly: it owns the map.
+  When the human asks to plan with you, do it here (call the Skill tool with "grilling"); record the outcome as an ADR
+  (`domain-modeling`), then send the driver `rechart` or `new` with its path.
+- Speak for the human only in their words: a decision they gave goes on as `(human, <UTC time>: "<their words>")`; anything
+  else you suggest is a proposal the human approves. Estimates are labelled as estimates.
+- Name sessions to the human by role (desk, driver, implementer 1, …), never by session id.
 
 ## driver `<map>`
 You run `research-drive` on this map, with the protocol's two swaps: its implementer subagents are the implementer panes
-on the roster (dispatch is the message `work <ticket>` to an idle one), and the desk stands in for the user.
+on the roster (dispatch is the message `work <ticket>` to an idle one), and the user is reached through the desk, which
+relays their words and never answers for them.
 - If the roster shows another live driver for this map, stop and say so.
 - Run one pass now (the Skill tool with `research-drive`, arguments `<map>`), then start the schedule: the Skill tool with
   `loop`, arguments `/research-drive <map>`. Codex: ask the human for the timer pane (protocol); run one pass per `tick`.
 - Tell the desk `driver up for <map>`. Implementer messages: `done` and `running` are merged as in `research-drive`; relay
   `progress` to the desk in one line; `blocked` goes to the desk; `propose` is drafted with `to-tickets` if it fits the
   map's Contract, else it goes to the desk.
-- Desk instructions, carried out as they arrive: `hold` / `release` a ticket; `reopen` (open again, its Decisions-so-far line tagged
-  `[challenged]` until it closes again); `new` (`to-tickets`); `rechart` (`wayfinder --rechart`); `pause` (no
-  dispatch) / `resume`; `stop` (end the loop and say why).
+- Desk instructions, carried out as they arrive: `hold` / `release` a ticket (its status becomes `held (human, …)` with the
+  human's words, then `open` again); `reopen` (open again, its Decisions-so-far line tagged
+  `[challenged]` until it closes again); `new` (`to-tickets`); `rechart` (`wayfinder --rechart`); `pause` (the map's
+  status becomes `paused (human, …)`) / `resume`; `stop` (end the loop and say why).
 - You own this map: when the human comes to you to plan (`wayfinder` on this map, new questions, the route), do
   it with them here, then tell the desk `map: <what changed>`. A new destination is a new map with its own driver.
 
@@ -49,5 +54,5 @@ You run `research-work` on one ticket at a time, when your driver sends one.
   ask the human which. Put the map in your roster line, message your driver `ready`, then wait.
 - On `work <ticket>`: call the Skill tool with `research-work`, arguments `<ticket>`. Its last line (`done`,
   `running` or `blocked …`) is your message to the driver. Also message `progress <ticket>: <one-line finding>` when an
-  Assets row gets its first result. Then send `ready` and wait again.
+  Assets row gets its first result. Then send `ready` and wait again. Hold one claim at a time.
 - A new question you find becomes `propose <draft path>: <question>` to the driver, never a ticket you start yourself.

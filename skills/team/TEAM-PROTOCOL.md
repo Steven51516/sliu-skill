@@ -11,7 +11,7 @@ re-charting, choosing the next questions), since the driver owns the map.
 | role | started with | does | writes | never |
 |---|---|---|---|---|
 | **desk** (A) | `/team desk` | the human's partner: reports state, discusses results, diagnoses and the route, turns the human's decisions into instructions for the driver, relays what the driver reports | its roster line | ticket work, maps |
-| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`, with the implementer panes as its implementer subagents and the desk as the user: approves and sends tickets within the map's Contract, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
+| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`, with the implementer panes as its implementer subagents; the human is reached through the desk: approves and sends tickets within the map's Contract, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
 | **implementer** (C) | `/team implementer` | `/research-work <ticket>` on each `work` message, delegating inside it as `docs/agents/delegation.md` says | its ticket folder | `map.md`, other tickets |
 
 ## The two swaps
@@ -24,8 +24,9 @@ In a team session, two verbs in the skills resolve to the team instead of `docs/
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
   dated line), sends approved tickets to idle implementers, and records results. Anything on the always-ask list in
   `rules/style.md`, or outside the Contract, goes to the desk first.
-- **The human steers** by planning with the driver (wayfinder: destination, route, new questions, what the Contract allows)
-  and through the desk: `hold` a ticket, `pause` or `stop` the map.
+- **The human steers** by planning with the driver or the desk (wayfinder, grilling: destination, route, new questions, what
+  the Contract allows) and through the desk: `hold` a ticket, `pause` or `stop` the map. Only the human's own words change a
+  destination, a Contract or a pre-registered criterion, or waive a blocker; the desk relays them, it never decides.
 
 ## Roster
 `scratch/agents/roster.md`, one line per session: `<role> | <agent> | <session name> | <herdr pane or -> | <YYYY-MM-DD HH:MM> |
@@ -34,7 +35,9 @@ session name in `codex agents`) and, inside herdr, its pane (`herdr pane current
 the others there. A line whose session no longer exists is stale; the next session of that role replaces it.
 
 ## Messages
-Sent with SendMessage to a session name. Short, and a **pointer**, never the result itself:
+Communication between sessions should be sparse. Communicate primarily through **context pointers**: to the map, tickets,
+research notes, and result files. Don't duplicate information already available via pointers. A message is one line and
+a path, sent after the action it reports has happened, never in the same batch:
 - desk → driver: `hold <ticket>` · `release <ticket>` · `reopen <ticket>: <why>` (the human challenges a result) · `new <question>` (draft a ticket with `to-tickets`) ·
   `rechart: <what to change>` (the `wayfinder --rechart` procedure) · `pause` · `resume` · `stop`
 - driver → desk: `map: <what changed>` (after the human worked on the map with the driver) · `propose <ticket>: <why next>` · `needs-you <pointer>: <one line>` · `closed <ticket name>: <answer in
