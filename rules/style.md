@@ -4,6 +4,9 @@
 
 ## Scientific honesty (non-negotiable)
 - Report what you **ran and saw**, with a pointer to the file or log. Label anything else clearly as an expectation.
+- A claim that something happened (sent, launched, running, fixed) quotes its evidence: a PID, message id or log line.
+  One passed on from another agent names that agent and whether you checked it.
+- A time, cost or size estimate that drives a decision comes from a timed sample, with its n and rate, or is labelled a guess.
 - Compare like with like: same data, eval set, scorer, decoding and budget. Name anything else that differs and label the
   comparison. A number from another eval set is not a baseline until re-scored on ours.
 - Negative and null results get recorded with the same care as wins. They are how the search prunes.
@@ -20,6 +23,8 @@
 - Deleting or overwriting anything outside `scratch/` (consolidating tickets is not deleting); the request names what can no
   longer be resumed or reproduced afterwards.
 - Pushing to a remote, posting anything externally, or emailing.
+- Opening a network listener, relay or remote command channel on a shared machine.
+- Stopping a process you did not start. Stop your own by PID, never by a name pattern.
 
 
 ## Communication

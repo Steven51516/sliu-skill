@@ -5,7 +5,7 @@ Scope interface: `~/research-harness/scopes/README.md`.
 
 ## Login node: edit and submit, never compute
 Claude runs on a **login node** (`login*`). Allowed there: editing files, git, installing packages, small downloads, submitting and
-checking jobs, and checks that take seconds. **Everything else goes through Slurm**: training, evals, preprocessing, tests that load
+checking jobs, and checks that take seconds and under ~1 GB. **Everything else goes through Slurm** (`srun` for minutes, `sbatch` for the rest): training, evals, preprocessing, tests that load
 models or data, notebooks. If unsure, submit it.
 
 ## Running jobs
@@ -29,7 +29,9 @@ models or data, notebooks. If unsure, submit it.
 - **Sharing the per-user GPU cap** (other sessions, a reserved GPU): name jobs by ticket id, submit with `sbatch --hold`, and run
   `~/research-harness/tools/gpu_gate.sh`. Stop background helpers by PID, never `pkill -f` a pattern matching your own shell.
 - **Sweeps:** one job array (`#SBATCH --array=0-N%K`, index via `$SLURM_ARRAY_TASK_ID`), never a loop of `sbatch`.
-- **Interactive** (only for debugging, when the human asks): `salloc -p mit_quicktest -c 4 --mem=16G -t 00:15:00`. Release it right after.
+- **Medium one-offs** (minutes, e.g. load a 1 GB h5ad and check a correlation): `srun -p mit_quicktest -c 4 --mem=16G -t 00:10:00 <cmd>`
+  from the login node; it blocks, so keep it under the tool-call timeout, and inside an existing allocation it runs as a step
+  of that job. For a burst of them, one `salloc -p mit_quicktest -c 4 --mem=16G -t 00:15:00`, released right after.
 - **Monitor:** `squeue --me` (the REASON column explains pending jobs), `sacct -j <id> -o JobID,State,Elapsed,MaxRSS`, `jobstats <id>` after
   it ends (right-size the next request). Cancel: `scancel <id>`. Poll no more often than every ~10 min.
 - **Record** the Slurm job id in the ticket's `jobs:` when you submit. A run is finished only when its state is `COMPLETED`

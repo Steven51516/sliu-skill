@@ -41,15 +41,16 @@ Codex: write the brief to `<run dir>/brief.md` (it names its report `<run dir>/r
 
 `codex-run` sets the model and effort (`CODEX_MODEL`, `CODEX_EFFORT`) and the sandbox on every call, resumes included, strips tokens and keys from Codex's environment, and fails loudly if Codex's header shows anything else.
 
-Claude Code, headless:
+Claude Code: from a Claude session, a background subagent (the Agent tool). From another agent, headless, keeping only the
+secret Claude signs in with:
 
-    env $(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | sed 's/^/-u /') \
+    env $(env | cut -d= -f1 | grep -E 'TOKEN|KEY|SECRET|PASSWORD|AUTH' | grep -vx CLAUDE_CODE_OAUTH_TOKEN | sed 's/^/-u /') \
       claude -p --model <model> --effort <effort> --permission-mode auto --strict-mcp-config \
       --output-format json "$(cat <run dir>/brief.md)" > <run dir>/result.json
 
 ## Rules
 
 - If the delegate a rule requires fails (it can't start, can't log in, or errors out), wait and retry, or ask the user; never hand the work to someone the rule doesn't name.
-- A delegate writes only the paths its brief names, stops only processes it started (by PID), and never edits a map, `STATUS.md` or another agent's memory. Over ssh the local sandbox does not apply, so these rules are the guard.
+- A delegate writes only the paths its brief names, and never edits a map, `STATUS.md` or another agent's memory. Over ssh the local sandbox does not apply, so the brief and the always-ask list in `rules/style.md` are the guard.
 - No process waits on a marker file another session is supposed to write: chain dependent steps in one script.
 - Long GPU jobs are launched detached the way the scope file says; the PID and log path go into the ticket's Assets.

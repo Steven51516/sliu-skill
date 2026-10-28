@@ -27,10 +27,15 @@ In a team session, two verbs in the skills resolve to the team instead of `docs/
 - **The human steers** by planning with the driver or the desk (wayfinder, grilling: destination, route, new questions, what
   the Contract allows) and through the desk: `hold` a ticket, `pause` or `stop` the map. Only the human's own words change a
   destination, a Contract or a pre-registered criterion, or waive a blocker; the desk relays them, it never decides.
+- **Launches and kills** are done by the ticket's implementer, on a go recorded in a file (the Contract, an approved
+  pre-registration, the human's dated line); no message carries one. If a permission check refuses it, the implementer
+  sends `blocked` and the human approves in its pane.
 
 ## Roster
-`scratch/agents/roster.md`, one line per session: `<role> | <agent> | <session name> | <herdr pane or -> | <YYYY-MM-DD HH:MM> |
-<map or ->`. `<agent>` is `claude` or `codex`. A session learns its own name (Claude Code: the ListAgents tool; Codex: its
+`scratch/agents/roster.md`, one line per pane: `<role> | <agent> | <herdr pane or -> | <session name> | <YYYY-MM-DD HH:MM> |
+<map or ->`. The pane is the address: a session's name changes when it resumes, so a session that starts or resumes
+rewrites its line and sends `ready` (an implementer to its driver, a driver `driver up` to the desk), and a send that fails
+re-reads the roster. `<agent>` is `claude` or `codex`. A session learns its own name (Claude Code: the ListAgents tool; Codex: its
 session name in `codex agents`) and, inside herdr, its pane (`herdr pane current`); it appends its line on start and finds
 the others there. A line whose session no longer exists is stale; the next session of that role replaces it.
 

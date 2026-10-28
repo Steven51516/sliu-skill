@@ -39,7 +39,7 @@ The whole map at low resolution, loaded once per session. Open tickets are **not
 
 ## Contract
 
-<research addition: what every ticket on this map is held to. **Benchmark**: eval set and N, metric, scorer, decoding, and the baselines on it; or `none`, with why (the map measures nothing, or what to measure is still open). **Reference recipe**: what tickets follow unless one records a deviation. **Without asking**: the methods and compute cap the agent may use on its own. Only the user changes this section; it carries execution into the map>
+<research addition: what every ticket on this map is held to. **Benchmark**: eval set and N, metric, scorer, decoding, and the baselines on it; or `none`, with why (the map measures nothing, or what to measure is still open). **Reference recipe**: what tickets follow unless one records a deviation; an adopted pipeline, step by step against ours. **Without asking**: the methods and compute cap the agent may use on its own. Only the user changes this section; it carries execution into the map>
 
 ## Decisions so far
 

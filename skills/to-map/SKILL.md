@@ -33,7 +33,7 @@ Domain; skills every session should consult; standing preferences for this effor
 ## Contract
 
 - **Benchmark**: the one from step 2 (eval set and N, metric, scorer, decoding), and the baselines to beat with their numbers on it; or `none`, with why. Name data versions and eval sets exactly: every comparison on this map depends on them.
-- **Reference recipe**: the paper, repo or run the tickets follow unless a ticket records a deviation.
+- **Reference recipe**: the paper, repo or run the tickets follow unless a ticket records a deviation. A map that adopts someone's pipeline lists it here step by step against ours (theirs / ours / same or differs / why), before any work starts.
 - **Without asking**: the methods and compute cap the agent may use on its own, and what to ask first.
 
 Only the user changes this section.

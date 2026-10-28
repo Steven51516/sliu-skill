@@ -4,6 +4,7 @@
 # Run from the project folder. Model and effort: CODEX_MODEL (default gpt-6.1-sol), CODEX_EFFORT (default xhigh).
 # Every call, resumes included, gets the model, effort and sandbox (a bare resume drops them), and runs without the
 # tokens and keys in this environment. The header Codex printed is checked, so a wrong effort or sandbox fails loudly.
+# A new brief starts with one line pointing Codex at AGENTS.md's read-first files, where the rules for every agent live.
 set -euo pipefail
 D="${1:?usage: codex-run <run dir> [--resume]}"; MODE="${2:-}"
 M="${CODEX_MODEL:-gpt-6.1-sol}"; E="${CODEX_EFFORT:-xhigh}"
@@ -18,7 +19,8 @@ if [[ "$MODE" == --resume ]]; then
 else
   [[ -f "$D/brief.md" ]] || { echo "codex-run: no $D/brief.md"; exit 1; }
   LOG="$D/codex.log"
-  env $STRIP codex exec -C "$PWD" "${SET[@]}" - < "$D/brief.md" > "$LOG" 2>&1 || true
+  { echo "Follow AGENTS.md and the files it says to read first."; echo; cat "$D/brief.md"; } |
+    env $STRIP codex exec -C "$PWD" "${SET[@]}" - > "$LOG" 2>&1 || true
 fi
 grep -q "^reasoning effort: $E" "$LOG" || { echo "codex-run: effort is not $E in $LOG"; exit 1; }
 grep -q "^sandbox: workspace-write" "$LOG" || { echo "codex-run: sandbox is not workspace-write in $LOG"; exit 1; }

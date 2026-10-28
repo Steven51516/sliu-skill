@@ -25,7 +25,7 @@ Read the `rigor` skill and its table: which rules apply to this ticket type, and
 
 ### 3. Spawn the sub-agents in parallel
 
-Issue the sub-agent calls together, in the foreground, and aggregate the reports they return.
+Issue the sub-agent calls together, in the foreground, and aggregate the reports they return. Each brief asks for every finding the sub-agent can see in one pass, one line each, worst first: a review that stops at the first FAIL costs a round per bug.
 
 **Fair sub-agent prompt** should include:
 
