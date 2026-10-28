@@ -33,24 +33,33 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 
 ## Skills
 
+Grouped by folder. **core** is the harness: a project needs these. The rest are optional.
+
+**core/**: the research loop
+
 | Skill | Relation to Matt's repo | What it does |
 |---|---|---|
-| `wayfinder` | adapted from `wayfinder` | chart a map, work through it, re-chart it |
-| `research` | copied from `research` | read primary sources in the background, write cited notes |
-| `grilling` | copied from `grilling` | interview the user in rounds until shared understanding |
-| `prototype` | copied from `prototype` | a throwaway prototype that answers a design question (a `prototype` ticket) |
-| `codebase-design`, `handoff`, `writing-for-agents` | copied | deep-module vocabulary; compact a session; writing for agents |
-| `diagnose` | adapted from `diagnosing-bugs` | a feedback loop before any bug or wrong-looking result is called fixed |
-| `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture` | adapted | glossary and decisions; retrospectives; re-pitch; deep modules for research code |
 | `research-init` | counterpart of `setup-matt-pocock-skills` | set up a project: scope, issue tracker, delegation |
+| `wayfinder` | adapted from `wayfinder` | chart a map, work through it, re-chart it |
 | `to-map` | adapted from `to-spec` | turn the conversation into a map, without an interview |
 | `to-tickets` | adapted from `to-tickets` | question tickets with blocking edges and pre-registrations |
 | `research-work` | counterpart of `implement` | work one ticket end to end |
 | `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel implementer subagents |
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
+| `research`, `grilling`, `prototype` | copied | the reading, interview and prototype tickets |
+| `diagnose` | adapted from `diagnosing-bugs` | a feedback loop before any bug or wrong-looking result is called fixed |
+| `domain-modeling` | adapted | glossary and decisions |
 | `run-card`, `diagnosis-record` | none | reproduction record of an important run; diagnosis record of evaluation results |
-| `team` | none | run a project as several long-lived sessions |
+
+**engineering/**: code design (Matt's): `codebase-design` (copied, deep-module vocabulary), `improve-codebase-architecture`
+(adapted, deep modules for research code).
+
+**personal/**: everyday helpers, all user-invoked: `wait-what` (adapted: re-pitch the last message), `ketchup` (from
+pstack: catch up on a long chat and every call waiting on you), `handoff` (copied: compact a session), `retro` (adapted:
+retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
+
+**optional/**: `team` (none in Matt's repo): run a project as a desk and a driver per map.
 
 ## Differences from Matt's skills
 
@@ -78,7 +87,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the delegate a rule names fails, the session waits or asks; it never hands the work to someone else. `codex-run` makes every Codex call, resumes included, carry the same model, effort and sandbox.
 
-**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, and a driver per active map running `research-drive` under `/loop`, with a roster and short messages (`skills/team/TEAM-PROTOCOL.md`). Implementers stay the driver's own subagents, a fresh one per ticket, as in Matt's skills. One verb resolves to the team: asking the user goes through the desk, which relays the human's words and never decides for them (Matt's HITL rule). A ticket the human wants to watch runs in a tab of its own. The core skills never mention the team, and the team layer only depends on them.
+**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, and a driver per active map running `research-drive` under `/loop`, with a roster and short messages (`skills/optional/team/TEAM-PROTOCOL.md`). Implementers stay the driver's own subagents, a fresh one per ticket, as in Matt's skills. One verb resolves to the team: asking the user goes through the desk, which relays the human's words and never decides for them (Matt's HITL rule). A ticket the human wants to watch runs in a tab of its own. The core skills never mention the team, and the team layer only depends on them.
 
 **Per-skill differences**, beyond the vocabulary above:
 
@@ -98,10 +107,10 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      one folder per skill
+skills/      core/ (the research harness), engineering/ (code design), personal/ (everyday helpers), optional/ (team)
 rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
 scopes/      where projects run: README.md (what a scope answers), one file per cluster
-templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/research-init/)
+templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
 tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
@@ -119,7 +128,7 @@ the project's code) before another sentence: pstack's *Encode Lessons in Structu
 | change where one project's maps live | that project's `docs/agents/issue-tracker.md` |
 | change where delegated work and reviews go in one project | that project's `docs/agents/delegation.md` |
 | add a rule for one project only | that project's `AGENTS.md`, under "Project notes" |
-| add a skill | `skills/<name>/SKILL.md`, then `./install.sh` |
+| add a skill | `skills/<group>/<name>/SKILL.md`, then `./install.sh` |
 
 Skill descriptions load when a session starts, so a new skill or a changed `description:` needs a new session; a changed body applies the next time it is read.
 

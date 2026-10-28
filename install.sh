@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Symlink every skill in ./skills into ~/.claude/skills (and ~/research-harness to this folder if missing). Safe to rerun; never overwrites a real directory.
+# Symlink every skill in ./skills/<group>/ into ~/.claude/skills (and ~/research-harness to this folder if missing). Safe to rerun; never overwrites a real directory.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DEST="$HOME/.claude/skills"
@@ -17,8 +17,8 @@ for d in "$DEST" "$AGENTS_DEST"; do for l in "$d"/*; do
   [[ -L "$l" && ! -e "$l" ]] || continue
   case "$(readlink "$l")" in "$HERE"/*|"$HOME/research-harness"/*) rm "$l"; echo "removed stale $(basename "$l")";; esac
 done; done
-chmod +x "$HERE"/skills/*/*.sh 2>/dev/null || true
-for s in "$HERE"/skills/*/; do
+chmod +x "$HERE"/skills/*/*/*.sh 2>/dev/null || true
+for s in "$HERE"/skills/*/*/; do
   name="$(basename "$s")"
   target="$DEST/$name"
   if [[ -L "$target" ]]; then ln -sfn "${s%/}" "$target"; echo "updated $name"
@@ -26,7 +26,7 @@ for s in "$HERE"/skills/*/; do
   else ln -s "${s%/}" "$target"; echo "linked  $name"
   fi
 done
-for s in "$HERE"/skills/*/; do
+for s in "$HERE"/skills/*/*/; do
   name="$(basename "$s")"
   target="$AGENTS_DEST/$name"
   if [[ -L "$target" ]]; then ln -sfn "${s%/}" "$target"; echo "updated $name (codex)"
