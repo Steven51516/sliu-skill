@@ -47,12 +47,13 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel implementer subagents |
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
-| `research`, `grilling`, `prototype` | copied | the reading, interview and prototype tickets |
+| `research`, `grilling` | copied | the reading and interview tickets |
 | `diagnose` | adapted from `diagnosing-bugs` | a feedback loop before any bug or wrong-looking result is called fixed |
 | `domain-modeling` | adapted | glossary and decisions |
 
-**engineering/**: code design (Matt's): `codebase-design` (copied, deep-module vocabulary), `improve-codebase-architecture`
-(adapted, deep modules for research code).
+**engineering/**: Matt's engineering skills: `codebase-design` (copied, deep-module vocabulary), `improve-codebase-architecture`
+(adapted, deep modules for research code), `prototype` (copied, a throwaway prototype for a design question; also the
+`prototype` ticket type).
 
 **personal/**: everyday helpers, all user-invoked: `wait-what` (adapted: re-pitch the last message), `ketchup` (from
 pstack: catch up on a long chat and every call waiting on you), `handoff` (copied: compact a session), `retro` (adapted:
@@ -108,7 +109,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research harness), engineering/ (code design), personal/ (everyday helpers), optional/ (team, records)
+skills/      core/ (the research harness), engineering/ (code design, prototypes), personal/ (everyday helpers), optional/ (team, records)
 rules/       style.md (honesty, what always needs the human's OK, code, docs), layout.md (project folders)
 scopes/      where projects run: README.md (what a scope answers), one file per cluster
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
