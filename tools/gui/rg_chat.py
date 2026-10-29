@@ -221,14 +221,16 @@ _guards = {}
 
 
 def last_safeguard(path):
-    """The latest safeguard event in a transcript, reading only what was appended since the last call."""
+    """The latest safeguard event in a transcript while it still matters: once the agent finishes a reply normally
+    after it (the retry went through, or the human switched model), it is history and this returns None. Reads only
+    what was appended since the last call."""
     try:
         size = os.path.getsize(path)
     except OSError:
         return None
     st = _guards.get(path)
     if not st or size < st["size"]:
-        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None}
+        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False}
     if size > st["size"]:
         with open(path, "rb") as f:
             f.seek(st["size"])
@@ -236,13 +238,19 @@ def last_safeguard(path):
         end = data.rfind(b"\n")
         if end >= 0:
             for line in data[:end].split(b"\n"):
-                if b"safeguards" not in line:
-                    continue
-                try:
-                    ev = safeguard_event(json.loads(line))
-                except ValueError:
-                    continue
-                if ev:
-                    st["last"] = ev
+                if b"safeguards" in line:
+                    try:
+                        ev = safeguard_event(json.loads(line))
+                    except ValueError:
+                        continue
+                    if ev:
+                        st["last"], st["resolved"] = ev, False
+                elif st["last"] and not st["resolved"] and b"end_turn" in line:
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    if d.get("type") == "assistant" and (d.get("message") or {}).get("stop_reason") == "end_turn":
+                        st["resolved"] = True       # a normal reply after the flag: it no longer holds the agent up
             st["size"] += end + 1
-    return st["last"]
+    return None if st["resolved"] else st["last"]
