@@ -32,9 +32,9 @@ the map.
   session: a session's cleanup can stop jobs it launched.
 - **On `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
-  ("safeguards stopped the response", often a false positive on biology wording), resume its own session on Sonnet 5.5,
-  keeping its chat: `herdr agent prompt <ticket id> "/exit"`, then `herdr agent start <ticket id>-s --kind claude --pane
-  <pane> -- --resume <session id> --model sonnet` (the session id is on its line in `herdr agent list`), then prompt it
+  ("safeguards stopped the response", often a false positive on biology wording), resume its own session on Sonnet 5.5
+  at xhigh effort, keeping its chat: `herdr agent prompt <ticket id> "/exit"`, then `herdr agent start <ticket id>-s --kind claude --pane
+  <pane> -- --resume <session id> --model sonnet --effort xhigh` (the session id is on its line in `herdr agent list`), then prompt it
   to continue with no summary and biology steps handed off by pointer. New workers still start on the default model.
 
 ## Control
