@@ -53,6 +53,52 @@ function herdrJSON(env, args) {
   return JSON.parse(execFileSync("herdr", args, { env, timeout: 10000, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })).result;
 }
 
+function herdrUp(env) { try { herdrJSON(env, ["api", "snapshot"]); return true; } catch (_) { return false; } }
+
+function terminalApp() {
+  // the terminal named in projects.toml (terminal_app), else Terminal
+  try {
+    const m = fs.readFileSync(path.join(os.homedir(), ".config", "research-gui", "projects.toml"), "utf8").match(/^\s*terminal_app\s*=\s*"([^"]+)"/m);
+    if (m) return m[1];
+  } catch (_) { /* default */ }
+  return "Terminal";
+}
+
+function openHerdrWindow(env) {
+  // herdr in a terminal window: visible to the human, and everything it starts inherits the terminal's file access
+  // (a server started by this app itself would need the app's own Documents permission)
+  let bin = "herdr";
+  try { bin = execFileSync("/bin/zsh", ["-c", "command -v herdr"], { env, encoding: "utf8", timeout: 5000 }).trim() || bin; } catch (_) { /* PATH */ }
+  const dir = path.join(app.getPath("userData"));
+  fs.mkdirSync(dir, { recursive: true });
+  const cmd = path.join(dir, "herdr.command");
+  fs.writeFileSync(cmd, `#!/bin/zsh -l\ncd ~\nexec ${JSON.stringify(bin)}\n`, { mode: 0o755 });
+  execFileSync("open", ["-a", terminalApp(), cmd], { timeout: 10000 });
+}
+
+function herdrClientOpen() {
+  // a herdr TUI attached somewhere (not the headless server)
+  try {
+    return execFileSync("ps", ["-axo", "args="], { encoding: "utf8" }).split("\n").some((a) => /(^|\/)herdr(\s+--session\s+\S+)?\s*$/.test(a.trim()));
+  } catch (_) { return false; }
+}
+
+function showHerdr() {
+  const env = { ...process.env, PATH: loginPath() };
+  if (herdrClientOpen()) execFileSync("open", ["-a", terminalApp()], { timeout: 10000 });
+  else openHerdrWindow(env);
+}
+
+async function ensureHerdr(env) {
+  if (herdrUp(env)) return true;
+  try { openHerdrWindow(env); } catch (_) { return false; }
+  for (let i = 0; i < 80; i++) {                         // herdr restores its tabs and resumes agents as it starts
+    await new Promise((r) => setTimeout(r, 250));
+    if (herdrUp(env)) return true;
+  }
+  return false;
+}
+
 function startInHerdr(env, server) {
   // The backend reads project folders under ~/Documents. Started from this app, macOS would ask for Documents access
   // (again after every rebuild of an ad hoc signed app). Started in a herdr pane it inherits the terminal's access,
@@ -85,7 +131,7 @@ async function ensureBackend() {
   const server = serverPath();
   if (!server) throw new Error("Can't find research-harness/tools/gui/server.py (expected under ~/research-harness).");
   const env = { ...process.env, PATH: loginPath() };
-  if (startInHerdr(env, server) && await waitPing(80)) return true;
+  if (await ensureHerdr(env) && startInHerdr(env, server) && await waitPing(80)) return true;
   const py = python(env);
   if (!py) throw new Error("No python3 with tomllib (Python 3.11+) found. Install one with Homebrew: brew install python");
   fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -143,7 +189,8 @@ function menu() {
     { label: "File", submenu: [item("New Session…", "Cmd+N", "newSession"), { type: "separator" }, { role: "close" }] },
     { role: "editMenu" },
     { label: "View", submenu: [item("Command Palette…", "Cmd+K", "palette"), item("Toggle Chat", "Cmd+J", "chat"), item("Toggle Terminals", "Ctrl+`", "dock"),
-      { type: "separator" }, item("Inbox", "Cmd+I", "inbox"), item("GPUs", "Cmd+G", "gpus"), item("Keyboard Shortcuts", "Cmd+/", "shortcuts"),
+      { type: "separator" }, { label: "Show herdr", accelerator: "Cmd+Shift+H", click: () => { try { showHerdr(); } catch (_) { /* no terminal */ } } },
+      item("Inbox", "Cmd+I", "inbox"), item("GPUs", "Cmd+G", "gpus"), item("Keyboard Shortcuts", "Cmd+/", "shortcuts"),
       { type: "separator" }, item("Refresh Data", "Cmd+Shift+R", "refresh"), { role: "reload" }, { role: "toggleDevTools" },
       { type: "separator" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { type: "separator" }, { role: "togglefullscreen" }] },
     { label: "Go", submenu: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => item(`Project ${i}`, `Cmd+${i}`, "project", i - 1)) },
@@ -171,9 +218,11 @@ function updateTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     ...(attention.length ? attention.map((a) => ({ label: a.label.slice(0, 70), click: () => { show(); send(a.cmd, a.arg); } })) : [{ label: "Nothing waits on you", enabled: false }]),
     { type: "separator" }, { label: "Open Research Desk", click: show }, { label: "Inbox", click: () => { show(); send("inbox"); } },
+    { label: "Show herdr", click: () => { try { showHerdr(); } catch (_) { /* no terminal */ } } },
     { type: "separator" }, { label: "Quit", click: () => app.quit() },
   ]));
 }
+ipcMain.on("show-herdr", () => { try { showHerdr(); } catch (_) { /* no terminal */ } });
 ipcMain.on("focus", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
 
 if (!app.requestSingleInstanceLock()) app.quit();

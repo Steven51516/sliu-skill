@@ -67,7 +67,8 @@ export function renderSidebar() {
   html += `</div><div class="side-foot">
     <a class="btn ghost sm icon" href="#/settings" title="Settings (⌘,)">${icon("gear")}</a>
     <span class="dot ${sum && !sum.herdr_error ? "idle" : "blocked"}" title="${esc(sum?.herdr_error || "herdr connected")}"></span>
-    <span>${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</span><span class="grow"></span>
+    ${window.desk?.showHerdr ? `<a id="sb-herdr" title="Show herdr (⇧⌘H)" style="color:inherit">${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</a>`
+      : `<span>${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</span>`}<span class="grow"></span>
     ${sum && sum.dry_run ? `<span class="tag warn" title="Start buttons send nothing">dry run</span>` : ""}</div>`;
   const el = $("#sidebar"), scroll = el.querySelector(".side-scroll")?.scrollTop || 0;
   el.innerHTML = html;
@@ -75,6 +76,7 @@ export function renderSidebar() {
   $("#sb-search").onclick = () => hooks.palette();
   $("#sb-new").onclick = $("#sb-new2").onclick = () => hooks.newSession(cur);
   $("#sb-add").onclick = () => hooks.addProject();
+  if ($("#sb-herdr")) $("#sb-herdr").onclick = () => window.desk.showHerdr();
   el.querySelectorAll("[data-add]").forEach((a) => a.onclick = () => hooks.addProject({ name: a.dataset.add, path: a.dataset.path }));
   el.querySelectorAll(".agent-row").forEach((row) => row.onclick = () => hooks.openChat(row.dataset.pane));
 }
