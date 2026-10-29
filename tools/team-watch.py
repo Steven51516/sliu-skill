@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""team-watch: the watch tab's supervisor. Prints the driver's log as it grows, and replaces a stuck driver with a fresh
-one on Sonnet 5.5, so a map keeps moving while nobody is watching.
+"""team-watch: the watch tab's supervisor. Prints the driver's log as it grows, and resumes a stuck driver's own session
+on Sonnet 5.5, so a map keeps moving while nobody is watching.
 
 Usage (from the project folder, inside herdr):  team-watch                 every driver on scratch/agents/roster.md
                                                 team-watch <map> <driver pane> [agent name]   one driver
@@ -9,9 +9,10 @@ team-up starts it; after starting a team any other way, run it once in a spare t
 Every 5 minutes it looks at the driver's pane. The driver is stuck when it is idle and either its session ended on a
 safeguard stop (Claude Code then waits for a human to retry or switch model), or no pass has been logged in
 scratch/agents/driver.log for 90 minutes (longer than the driver's longest sleep, an hour). A driver waiting on a
-permission prompt (`blocked`) needs the human and is left alone. A stuck driver is closed and a fresh one started on
-Sonnet 5.5 in the same pane with `/team driver <map>`; the map and its tickets hold its state, so it picks up from
-there. At most 3 restarts per run; every action is logged to driver.log.
+permission prompt (`blocked`) needs the human and is left alone. A stuck driver is exited and its own session resumed
+in the same pane on Sonnet 5.5 (`claude --resume <session> --model sonnet`), keeping its whole chat, then told to
+continue. It stays on Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run; every action is
+logged to driver.log.
 """
 import datetime as dt
 import glob
@@ -101,16 +102,18 @@ def stuck_reason(agent):
     return None
 
 
-def restart(pane, name, map_ref, reason, old_sid, n):
-    note(f"driver in {pane} is stuck ({reason}); closing it and starting a fresh driver on Sonnet 5.5 (restart {n})")
+def restart(pane, name, map_ref, reason, session, n):
+    note(f"driver in {pane} is stuck ({reason}); resuming its session {session[:8]} on Sonnet 5.5 (resume {n})")
     herdr("agent", "prompt", pane, "/exit")
     time.sleep(8)
-    start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000", "--", "--model", MODEL)
+    start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
+                  "--", "--resume", session, "--model", MODEL)
     if start.returncode != 0:
-        note(f"could not start the new driver: {start.stderr.strip()[:200]}; leaving it for the human")
+        note(f"could not resume the driver: {start.stderr.strip()[:200]}; leaving it for the human")
         return False
-    herdr("agent", "prompt", name, f"/team driver {map_ref} (the watchdog closed the previous driver, session "
-                                   f"{old_sid}, because it was stuck: {reason}; take over its claim on the map)")
+    herdr("agent", "prompt", name, f"continue: the watchdog resumed this session on Sonnet 5.5 ({reason}). Pick up the "
+                                   f"pass for {map_ref} where you stopped; no summary, end with one line naming the file; "
+                                   f"hand biology steps to their delegate by pointer.")
     return True
 
 
@@ -134,13 +137,17 @@ def main():
             if not reason or restarts.get(pane, 0) > MAX_RESTARTS:
                 continue
             if restarts.get(pane, 0) == MAX_RESTARTS:
-                note(f"driver in {pane} is stuck ({reason}) and {MAX_RESTARTS} restarts are used up; leaving it for the human")
+                note(f"driver in {pane} is stuck ({reason}) and {MAX_RESTARTS} resumes are used up; leaving it for the human")
                 restarts[pane] += 1
                 continue
             restarts[pane] = restarts.get(pane, 0) + 1
-            old = ((agent.get("agent_session") or {}).get("value") or "?")[:8]
+            session = (agent.get("agent_session") or {}).get("value")
+            if not session:
+                note(f"driver in {pane} is stuck ({reason}) but its session id is unknown; leaving it for the human")
+                restarts[pane] = MAX_RESTARTS + 1
+                continue
             name = f"{base}-{pane.replace(':', '')}-r{restarts[pane]}"
-            restart(pane, name, map_ref, reason, old, restarts[pane])
+            restart(pane, name, map_ref, reason, session, restarts[pane])
             seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
         time.sleep(EVERY)
 

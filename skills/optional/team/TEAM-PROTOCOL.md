@@ -32,10 +32,10 @@ the map.
   session: a session's cleanup can stop jobs it launched.
 - **On `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
-  ("safeguards stopped the response", often a false positive), tell it to continue and hand the flagged part to the
-  delegate a rule names, or rephrase it. If it stops again, replace it: close it and open a fresh worker on the same
-  ticket started on Sonnet 5.5 (`herdr agent start <ticket id> --kind claude --pane <pane> -- --model sonnet`), which
-  picks up from the ticket's Log; tell the desk.
+  ("safeguards stopped the response", often a false positive on biology wording), resume its own session on Sonnet 5.5,
+  keeping its chat: `herdr agent prompt <ticket id> "/exit"`, then `herdr agent start <ticket id>-s --kind claude --pane
+  <pane> -- --resume <session id> --model sonnet` (the session id is on its line in `herdr agent list`), then prompt it
+  to continue with no summary and biology steps handed off by pointer. New workers still start on the default model.
 
 ## Control
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
@@ -83,7 +83,7 @@ sessions of a team run on the same machine.
   another pane that wakes the driver, e.g. `while sleep 1500; do herdr agent prompt <driver pane> "tick"; done`.
 - The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS).
 - Nobody watching (a night): `team-watch` runs in a tab of its own (`team-up` starts it; otherwise run
-  `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster, shows the driver's log and replaces a stuck driver (idle, and stopped by Claude's safeguards or silent for 90 minutes) with a
-  fresh driver on Sonnet 5.5 in the same pane, at most 3 times; a driver waiting on a permission prompt is left for
+  `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster, shows the driver's log and resumes a stuck driver (idle, and stopped by Claude's safeguards or silent for 90 minutes) in its own
+  session on Sonnet 5.5, keeping its chat, at most 3 times; a driver waiting on a permission prompt is left for
   the human.
 - Long GPU jobs run detached on the server per the scope file, never inside any of these sessions.

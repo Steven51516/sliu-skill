@@ -114,7 +114,7 @@ STYLE.md     your rules for every project (honesty, what always needs the human'
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
 tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh,
-             team-watch.py (team-watch: the watch tab's supervisor; restarts a stuck driver on Sonnet 5.5), gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
+             team-watch.py (team-watch: the watch tab's supervisor; resumes a stuck driver's own session on Sonnet 5.5), gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 ```
