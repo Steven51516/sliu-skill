@@ -33,7 +33,9 @@ the map.
 - **On `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
   ("safeguards stopped the response", often a false positive), tell it to continue and hand the flagged part to the
-  delegate a rule names, or rephrase it; if it stops again, tell the desk which tab.
+  delegate a rule names, or rephrase it. If it stops again, replace it: close it and open a fresh worker on the same
+  ticket started on Sonnet 5.5 (`herdr agent start <ticket id> --kind claude --pane <pane> -- --model sonnet`), which
+  picks up from the ticket's Log; tell the desk.
 
 ## Control
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
