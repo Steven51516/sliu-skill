@@ -60,7 +60,7 @@ export function renderOverview() {
     </div><div>
       <div class="sec"><h2>Team</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
       <div class="card rows">${d.agents.map(agentRow).join("") || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
-      ${d.server ? `<div class="sec"><h2>GPUs · ${esc(d.server)}</h2><span class="grow"></span><a href="#/gpus" class="meta">all hosts</a></div><div class="card pad" id="ov-gpus"><div class="spin"></div></div>` : ""}
+      ${d.server ? `<div class="sec"><h2>GPUs · ${esc(d.server)}</h2><span class="grow"></span><a href="#/gpus" class="meta">all hosts</a></div><div class="card pad" id="ov-gpus">${gpuCache[d.server] || `<div class="spin"></div>`}</div>` : ""}
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
       <div class="card pad"><div class="timeline">${closed.map((m) => `<div class="tl" data-map="${esc(m.folder)}"><div class="h"><span class="mid">${esc(m.id)}</span>${esc(m.title)}</div>
         <div class="d">${esc(m.updated || "")}</div><div class="o">${esc(m.outcome || "(no outcome recorded)")}</div></div>`).join("") || `<div class="muted">None yet.</div>`}</div></div>
@@ -76,6 +76,7 @@ export function renderOverview() {
   $("#ov-idea").onclick = () => hooks.newSession(d.name, "wayfinder");
   if ($("#ov-seen")) $("#ov-seen").onclick = () => post("/api/seen", { project: d.name }).then(() => hooks.refresh());
   $("#ov-more").onclick = (e) => popMenu(e.currentTarget, [
+    ...(desk ? [{ label: "Ask the desk for a digest", icon: "doc", run: () => hooks.openChat(desk.pane, { text: "digest" }) }, "-"] : []),
     { label: "Shell in this project", icon: "term", run: () => hooks.openTerminal({ kind: "shell", project: d.name }) },
     ...(d.server ? [{ label: `SSH to ${d.server}`, icon: "server", run: () => hooks.openTerminal({ kind: "ssh", project: d.name, server: d.server, label: `ssh ${d.server}` }) }] : []),
     "-",
@@ -131,17 +132,18 @@ function wire(root) {
   root.querySelectorAll("[data-driver]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); hooks.startTeam(S.route.project, el.dataset.driver); });
 }
 
+const gpuCache = {};
 async function loadMiniGpus(host) {
-  const el = $("#ov-gpus");
   try {
     const g = await get("/api/gpus", { host });
-    if (!$("#ov-gpus")) return;
+    const el = $("#ov-gpus");
+    if (!el) return;
     const mine = g.gpus.filter((x) => x.mine).length;
-    el.innerHTML = `<div style="display:flex;gap:4px;align-items:flex-end;height:46px">${g.gpus.map((x) => `<div title="GPU ${x.index}: ${x.util}% util, ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB${x.procs.length ? " · " + x.procs.map((p) => p.user).join(", ") : ""}"
+    el.innerHTML = gpuCache[host] = `<div style="display:flex;gap:4px;align-items:flex-end;height:46px">${g.gpus.map((x) => `<div title="GPU ${x.index}: ${x.util}% util, ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB${x.procs.length ? " · " + x.procs.map((p) => p.user).join(", ") : ""}"
         style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;background:var(--active);border-radius:4px;overflow:hidden;${x.mine ? "outline:2px solid var(--accent)" : ""}">
         <div style="height:${Math.max(3, x.util)}%;background:var(--c-work)"></div></div>`).join("")}</div>
       <div class="muted" style="font-size:11.5px;margin-top:6px">${g.gpus.filter((x) => x.util < 5 && !x.procs.length).length} free of ${g.gpus.length}${mine ? ` · ${mine} running yours` : ""} · ${esc(g.gpus[0]?.name || "")}</div>`;
-  } catch (e) { if ($("#ov-gpus")) el.innerHTML = `<div class="err" style="font-size:12px">${esc(e.message)}</div>`; }
+  } catch (e) { if ($("#ov-gpus")) $("#ov-gpus").innerHTML = `<div class="err" style="font-size:12px">${esc(e.message)}</div>`; }
 }
 
 // ---------- inbox ----------
@@ -213,6 +215,7 @@ export async function renderSettings() {
     <div class="sec"><h2>Notifications</h2></div><div class="card pad" style="display:flex;flex-direction:column;gap:8px">
       <label><input type="checkbox" id="pf-prompt" ${pr.notifyPrompt ? "checked" : ""}> When an agent stops at a prompt and needs your answer</label>
       <label><input type="checkbox" id="pf-done" ${pr.notifyDone ? "checked" : ""}> When an agent finishes a turn you started from here (only if you aren't looking at it)</label>
+      <label><input type="checkbox" id="pf-progress" ${pr.notifyProgress ? "checked" : ""}> When a ticket resolves, starts running, is held or parked, or a map closes (in projects you aren't looking at)</label>
       <label><input type="checkbox" id="pf-verbose" ${pr.verbose ? "checked" : ""}> Show every tool call in the chat (otherwise long runs fold)</label></div>
     <div class="sec"><h2>Status</h2></div><div class="card pad kv">
       <span class="k">herdr</span><span>${sum.herdr_error ? `<span class="err">${esc(sum.herdr_error)}</span>` : "connected"}</span>
@@ -224,7 +227,7 @@ export async function renderSettings() {
       <textarea class="code" id="st-cfg" spellcheck="false">${esc(cfg.text)}</textarea>
       <div class="actions" style="margin-top:8px"><button class="btn primary" id="st-save">Save</button><span class="muted" id="st-msg"></span></div></div></div>`;
   const pref = (id, k) => { $(id).onchange = (e) => { S.prefs[k] = e.target.checked; savePrefs(); }; };
-  pref("#pf-prompt", "notifyPrompt"); pref("#pf-done", "notifyDone"); pref("#pf-verbose", "verbose");
+  pref("#pf-prompt", "notifyPrompt"); pref("#pf-done", "notifyDone"); pref("#pf-progress", "notifyProgress"); pref("#pf-verbose", "verbose");
   $("#st-add").onclick = () => hooks.addProject();
   $("#st-save").onclick = async () => {
     try { await post("/api/config", { text: $("#st-cfg").value }); $("#st-msg").textContent = "Saved."; hooks.refresh(); }

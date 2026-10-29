@@ -3,7 +3,8 @@ import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks } fr
 
 const F = { trees: {}, viewer: null, scope: "map", focus: null };
 export const filesState = F;
-export function resetFiles() { F.trees = {}; F.viewer = null; }
+export function resetFiles() { F.trees = {}; F.viewer = F.pending || null; F.pending = null; }
+export function openPathLater(side, path) { F.pending = { side, path }; F.viewer = { side, path }; }
 
 const serverMapDir = (m) => `${S.data.server_maps}/${m.folder}`;
 export const localMapDir = (m) => m.path.replace(/\/(map|track)\.md$/, "");
@@ -109,6 +110,7 @@ function drawTree(tr) {
 }
 
 export function openFile(side, path) {
+  clearInterval(F.follow);
   F.viewer = { side, path };
   Object.values(F.trees).forEach(drawTree);
   renderViewer();
@@ -135,7 +137,7 @@ export async function showDoc(el, side, path, opt = {}) {
   const head = opt.bare ? "" : `<div class="vhead">${icon(side === "local" ? "file" : "server")}<span class="path mono" title="${esc(path)}">${esc(side === "local" ? "" : S.data.server + ":")}${esc(path)}</span>
     <span class="muted" id="vsize"></span><button class="btn ghost sm icon" id="vref" title="Reload">${icon("refresh")}</button>
     <button class="btn sm" id="vvs">${icon("ext")} VS Code</button></div>`;
-  el.innerHTML = head + `<div class="vbody"><div class="spin"></div></div>`;
+  if (!opt.quiet || !el.querySelector(".vbody")) el.innerHTML = head + `<div class="vbody"><div class="spin"></div></div>`;
   const wire = () => {
     if (opt.bare) return;
     $("#vref", el).onclick = () => showDoc(el, side, path, { ...opt, fresh: true });
@@ -144,7 +146,7 @@ export async function showDoc(el, side, path, opt = {}) {
   wire();
   let f;
   try { f = await get("/api/file", { project: S.route.project, side, path, ...(opt.fresh ? { fresh: 1 } : {}), ...(opt.mode ? { mode: opt.mode } : {}) }); }
-  catch (e) { el.querySelector(".vbody").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  catch (e) { if (!opt.quiet) el.querySelector(".vbody").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
   const body = document.createElement("div");
   body.className = opt.bare ? "" : "vbody";
   if (f.kind === "image") body.innerHTML = `<img src="data:${esc(f.mime)};base64,${f.data}" alt="${esc(name)}">`;
@@ -175,6 +177,20 @@ export async function showDoc(el, side, path, opt = {}) {
   el.innerHTML = head;
   wire();
   if (!opt.bare) $("#vsize", el).textContent = fmtSize(f.size);
+  if (!opt.bare && f.kind === "log") {                 // follow: refetch every 5 s while this file stays open
+    const b = document.createElement("button");
+    b.className = "btn sm" + (opt.follow ? " primary" : "");
+    b.innerHTML = `${icon("play")} Follow`;
+    b.title = "Reload every 5 seconds";
+    b.onclick = () => {
+      clearInterval(F.follow);
+      if (opt.follow) return showDoc(el, side, path, { ...opt, follow: false });
+      showDoc(el, side, path, { ...opt, follow: true, fresh: true });
+    };
+    $(".vhead", el).insertBefore(b, $("#vref", el));
+    clearInterval(F.follow);
+    if (opt.follow) F.follow = setInterval(() => { if (!el.isConnected) return clearInterval(F.follow); showDoc(el, side, path, { ...opt, fresh: true, quiet: true }); }, 5000);
+  }
   el.appendChild(body);
   if (f.tail && !opt.bare) el.scrollTop = el.scrollHeight;
 }

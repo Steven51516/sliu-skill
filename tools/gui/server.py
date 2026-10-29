@@ -286,7 +286,9 @@ def projects_summary():
     for name, p in cfg["projects"].items():
         try:
             s = project_state(p)
-            out.append({"name": name, "ok": True, "waiting": s["waiting"], "agents": s["agents"],
+            states = {f"map:{m['id']}": [m["status"], m["title"], m["folder"], None] for m in s["maps"]}
+            states.update({t["id"]: [t["status"], t["title"], m["folder"], t["folder"]] for m in s["maps"] for t in m["tickets"]})
+            out.append({"name": name, "ok": True, "waiting": s["waiting"], "agents": s["agents"], "states": states,
                         "open_maps": sum(m["status"] != "closed" for m in s["maps"]),
                         "running": sum(t["status"] in ("running", "claimed") for m in s["maps"] for t in m["tickets"]),
                         "changes": len(s["changes"]["items"]), "server": p.get("server")})
@@ -633,6 +635,37 @@ def gpus(host, fresh):
     return cached(("gpus", host), fresh, fetch, ttl=20)
 
 
+# ---------- jobs: tmux sessions on the servers ----------
+
+def ssh_hosts():
+    """Host aliases from ~/.ssh/config (no wildcards): the only hosts a job may name."""
+    hosts = set()
+    try:
+        for line in open(os.path.expanduser("~/.ssh/config")):
+            parts = line.split()
+            if len(parts) >= 2 and parts[0].lower() == "host":
+                hosts.update(h for h in parts[1:] if not any(c in h for c in "*?!"))
+    except OSError:
+        pass
+    return hosts | set(gpu_hosts())
+
+
+def check_job(host, session):
+    if host not in ssh_hosts():
+        raise ApiError(400, f"{host} is not a host in ~/.ssh/config")
+    if not re.fullmatch(r"[\w.:-]{1,64}", session or ""):
+        raise ApiError(400, "bad tmux session name")
+
+
+def tmux_peek(host, session, lines=200):
+    check_job(host, session)
+    out = ssh(host, f"tmux capture-pane -p -J -t {shlex.quote(session)} -S -{int(lines)} 2>&1 || echo RG-NO-SESSION; "
+                    f"tmux list-sessions -F '#{{session_name}}' 2>/dev/null | head -50", timeout=30).decode(errors="replace")
+    gone = "RG-NO-SESSION" in out or "can't find" in out
+    text = out.split("RG-NO-SESSION")[0] if gone else out
+    return {"host": host, "session": session, "alive": not gone, "text": text.rstrip()[-60000:]}
+
+
 # ---------- skills (for the composer's / menu) ----------
 
 BUILTIN = [("clear", "Start a fresh conversation"), ("compact", "Summarize the conversation to free context"),
@@ -661,7 +694,7 @@ def chat(pane, after, session):
     sess = (a.get("agent_session") or {}).get("value")
     out = {"pane": pane, "agent": a.get("agent"), "status": a.get("agent_status"),
            "title": a.get("terminal_title_stripped"), "session": sess, "cwd": a.get("cwd")}
-    path = rg_chat.transcript_path(sess) if a.get("agent") == "claude" else None
+    path = rg_chat.transcript_path(sess, a.get("agent")) if a.get("agent") in ("claude", "codex") else None
     if path:
         if session != sess:
             after = None
@@ -977,11 +1010,15 @@ def term_argv(q):
     p = project(q.get("project"))
     if kind == "shell":
         return [os.environ.get("SHELL", "/bin/zsh"), "-l"], p["path"], b""
+    if kind == "tmux":
+        check_job(q.get("host"), q.get("session"))
+        return (["ssh", "-t", "-o", "ClearAllForwardings=yes", q["host"], f"tmux attach -t {shlex.quote(q['session'])}"],
+                os.path.expanduser("~"), b"")
     if kind == "ssh":
         target = remote_path(p, clean_rel(q.get("path")))
         return (["ssh", "-t", "-o", "ClearAllForwardings=yes", p["server"],
                  f"cd {target} 2>/dev/null || cd {remote_path(p, '')}; exec $SHELL -l"], p["path"], b"")
-    raise ApiError(400, "kind is attach, shell or ssh")
+    raise ApiError(400, "kind is attach, shell, ssh or tmux")
 
 
 def term_env():
@@ -1109,6 +1146,8 @@ class Handler(BaseHTTPRequestHandler):
             return skills()
         if path == "/api/gpus":
             return gpus(q.get("host"), fresh)
+        if path == "/api/tmux":
+            return tmux_peek(q.get("host"), q.get("session"))
         if path == "/api/gpu-hosts":
             return {"hosts": gpu_hosts()}
         if path == "/api/config":

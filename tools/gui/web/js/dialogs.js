@@ -83,8 +83,8 @@ export async function newSession(project, preset = null, fill = {}) {
         <div class="opt on" data-k="claude"><b>Claude Code</b><span>with your skills</span></div>
         <div class="opt" data-k="codex"><b>Codex</b><span>codex CLI</span></div>
         <div class="opt" data-k="shell"><b>Shell</b><span>a herdr shell tab</span></div></div>
-      <div id="ns-claude"><label class="f">Start with</label><select id="ns-preset">${PRESETS.map((p) => `<option value="${p.id}" ${p === pre ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select>
-        <div class="muted" id="ns-hint" style="font-size:12px;margin-top:4px"></div>
+      <div id="ns-claude"><div id="ns-preset-f"><label class="f">Start with</label><select id="ns-preset">${PRESETS.map((p) => `<option value="${p.id}" ${p === pre ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select>
+        <div class="muted" id="ns-hint" style="font-size:12px;margin-top:4px"></div></div>
         <div id="ns-map-f"><label class="f">Map</label><select id="ns-map">${maps.map((m) => `<option value="${esc(m.path.replace(/\/(map|track)\.md$/, ""))}">${esc(m.id)} · ${esc(m.title)}</option>`).join("")}</select></div>
         <div id="ns-ticket-f"><label class="f">Ticket</label><select id="ns-ticket">${tickets.map((t) => `<option value="${esc(t.path.replace(/\/ticket\.md$/, ""))}">${esc(t.id)} · ${esc(t.title)}</option>`).join("")}</select></div>
         <div id="ns-text-f"><label class="f" id="ns-text-l">Text</label><textarea id="ns-text" rows="3"></textarea></div></div>
@@ -101,8 +101,8 @@ export async function newSession(project, preset = null, fill = {}) {
     $("#ns-ticket-f", d).hidden = !needs.includes("ticket");
     $("#ns-text-f", d).hidden = !needs.includes("text");
     $("#ns-text-l", d).textContent = kind === "codex" ? "First message (optional)" : pre.ask || "Text";
-    $("#ns-preset", d).parentElement.querySelector("#ns-preset").hidden = kind === "codex";
-    $("#ns-hint", d).textContent = kind === "codex" ? "" : pre.hint;
+    $("#ns-preset-f", d).hidden = kind === "codex";
+    $("#ns-hint", d).textContent = pre.hint;
   };
   $$("#ns-kind .opt", d).forEach((o) => o.onclick = () => { kind = o.dataset.k; $$("#ns-kind .opt", d).forEach((x) => x.classList.toggle("on", x === o)); sync(); });
   $("#ns-preset", d).onchange = sync;
@@ -177,3 +177,22 @@ export function shortcuts() {
 }
 
 export function rememberPreset(id) { store("preset", id); }
+
+export async function peekJob(host, session) {
+  const d = dialog(`<div class="dh">tmux ${esc(session)} <span class="muted" style="font-weight:400">on ${esc(host)}</span></div>
+    <div class="db"><pre id="pk" style="max-height:52vh;overflow:auto;white-space:pre"><span class="spin"></span></pre></div>
+    <div class="df"><span class="grow muted" id="pk-st" style="font-size:12px"></span><button class="btn" id="pk-ref">${icon("refresh")} Refresh</button>
+      <button class="btn" id="pk-att">${icon("term")} Attach</button><button class="btn primary" id="dlg-cancel">Close</button></div>`, { width: 900 });
+  const load = async () => {
+    try {
+      const r = await get("/api/tmux", { host, session });
+      $("#pk", d).textContent = r.text || "(empty)";
+      $("#pk-st", d).textContent = r.alive ? "Read-only snapshot of the last 200 lines" : "No such tmux session now (finished?). Showing what the server said.";
+      $("#pk", d).scrollTop = $("#pk", d).scrollHeight;
+    } catch (e) { $("#pk", d).textContent = e.message; }
+  };
+  $("#pk-ref", d).onclick = load;
+  $("#pk-att", d).onclick = () => { closeDialog(); hooks.openTerminal({ kind: "tmux", host, session, label: `tmux ${session} @ ${host}` }); };
+  $("#dlg-cancel", d).onclick = closeDialog;
+  load();
+}

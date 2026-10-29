@@ -12,7 +12,7 @@ function theme() {
 }
 
 export function openTerminal(spec) {
-  const key = JSON.stringify([spec.kind, spec.pane, spec.project, spec.path]);
+  const key = JSON.stringify([spec.kind, spec.pane, spec.project, spec.path, spec.host, spec.session]);
   let t = T.tabs.find((x) => x.key === key && x.alive);
   if (!t) t = create(spec, key);
   show(true);
@@ -42,7 +42,8 @@ function create(spec, key) {
 }
 
 function connect(t) {
-  const q = new URLSearchParams({ kind: t.spec.kind, ...(t.spec.pane ? { pane: t.spec.pane } : {}), ...(t.spec.project ? { project: t.spec.project } : {}), ...(t.spec.path ? { path: t.spec.path } : {}) });
+  const q = new URLSearchParams(Object.fromEntries(Object.entries({ kind: t.spec.kind, pane: t.spec.pane, project: t.spec.project, path: t.spec.path,
+    host: t.spec.host, session: t.spec.session }).filter(([, v]) => v)));
   const ws = new WebSocket(`ws://${location.host}/ws/term?${q}`);
   ws.binaryType = "arraybuffer";
   t.ws = ws; t.alive = true;

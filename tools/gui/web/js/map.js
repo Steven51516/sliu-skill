@@ -187,6 +187,23 @@ function drawDag(m, keepView) {
   });
 }
 
+// ---------- jobs (free text in a ticket's jobs field, e.g. "tmux:T1-01 on pro5000-4, log logs/run.log") ----------
+
+export function parseJob(text) {
+  const session = (text.match(/tmux:([\w.:-]+)/) || [])[1];
+  const host = (text.match(/\bon ([A-Za-z][\w.-]*)/) || [])[1];
+  const logs = [...text.matchAll(/(?:^|[\s,(])((?:[\w.-]+\/)*[\w.-]+\.(?:log|out|err|txt))\b/g)].map((m) => m[1]).filter((p) => !p.includes("{"));
+  return { session, host, logs, done: /^\s*(done|finished|killed|stopped)\b/i.test(text) };
+}
+
+function jobRow(text, i) {
+  const j = parseJob(text);
+  return `<div class="row" style="align-items:flex-start;flex-wrap:wrap"><div class="grow" style="min-width:220px"><div class="t2 mono" style="white-space:normal;color:var(--ink-2)">${esc(text)}</div></div>
+    <div class="actions">${j.session && j.host ? `<button class="btn sm" data-peek="${i}" title="Read-only snapshot of the tmux pane">${icon("eye")} Peek</button>
+      <button class="btn sm" data-attach="${i}" title="Attach to the tmux session in a terminal">${icon("term")} Attach</button>` : ""}
+    ${j.logs.slice(0, 3).map((l) => `<button class="btn sm" data-log="${esc(l)}" title="Open on ${esc(S.data.server || "the server")}">${icon("file")} ${esc(l.split("/").pop())}</button>`).join("")}</div></div>`;
+}
+
 // ---------- ticket panel ----------
 
 function renderTicket(m) {
@@ -210,8 +227,14 @@ function renderTicket(m) {
       <button class="btn sm" id="tp-ask">${icon("chat")} Ask the desk</button>
       <button class="btn sm" id="tp-files">${icon("folder")} Files</button>
       <button class="btn sm icon" id="tp-more" title="More">${icon("more")}</button></div></div>
+    ${t.jobs.length ? `<div class="panel-body" style="padding-bottom:0"><div class="sec" style="margin:0 0 6px"><h2>Jobs</h2><span class="meta">from the ticket's jobs field</span></div>
+      <div class="card rows">${t.jobs.map((j, i) => jobRow(j, i)).join("")}</div></div>` : ""}
     <div class="panel-body" id="tdoc"><div class="spin"></div></div>`;
   $("#tp-close").onclick = () => goMap(S.route.project, m.folder, null);
+  panel.querySelectorAll("[data-peek]").forEach((b) => b.onclick = () => { const j = parseJob(t.jobs[+b.dataset.peek]); hooks.peekJob(j.host, j.session); });
+  panel.querySelectorAll("[data-attach]").forEach((b) => b.onclick = () => { const j = parseJob(t.jobs[+b.dataset.attach]);
+    hooks.openTerminal({ kind: "tmux", host: j.host, session: j.session, label: `tmux ${j.session} @ ${j.host}` }); });
+  panel.querySelectorAll("[data-log]").forEach((b) => b.onclick = () => hooks.openPath(S.route.project, b.dataset.log, "server"));
   if ($("#tp-work")) $("#tp-work").onclick = () => hooks.newSession(S.route.project, "work", { ticket: dir });
   if ($("#tp-answer")) $("#tp-answer").onclick = () => askDesk(`${t.id} (${t.path}): `);
   if ($("#tp-review")) $("#tp-review").onclick = () => hooks.newSession(S.route.project, "review", { ticket: dir });

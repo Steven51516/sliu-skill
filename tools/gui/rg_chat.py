@@ -1,4 +1,5 @@
-"""Chat items from a Claude Code session transcript (~/.claude/projects/<folder>/<session id>.jsonl).
+"""Chat items from an agent's session transcript: Claude Code (~/.claude/projects/<folder>/<session id>.jsonl) or Codex
+(~/.codex/sessions/YYYY/MM/DD/rollout-<time>-<session id>.jsonl).
 
 The transcript is append-only JSONL; readers keep a byte offset and ask for what came after it. Only the main thread is
 shown (sidechain = subagents), as items: user, cmd, from (another session's message), assistant, tool, result, note.
@@ -15,14 +16,16 @@ INPUT_CHARS = 3000
 _paths = {}
 
 
-def transcript_path(session_id):
+def transcript_path(session_id, agent="claude"):
     """The JSONL file for a session id (cached once found)."""
     if not session_id or not re.fullmatch(r"[0-9a-fA-F-]{8,64}", session_id):
         return None
     p = _paths.get(session_id)
     if p and os.path.exists(p):
         return p
-    hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{session_id}.jsonl"))
+    pattern = (f"~/.codex/sessions/*/*/*/rollout-*-{session_id}.jsonl" if agent == "codex"
+               else f"~/.claude/projects/*/{session_id}.jsonl")
+    hits = glob.glob(os.path.expanduser(pattern))
     if hits:
         _paths[session_id] = max(hits, key=os.path.getmtime)
         return _paths[session_id]
@@ -45,10 +48,10 @@ def read(path, after=None):
     end = data.rfind(b"\n")
     if end < 0:
         return [], start, cut
-    items = []
+    items, parse = [], codex_items if "/.codex/" in path else entry_items
     for line in data[:end].split(b"\n"):
         try:
-            items += entry_items(json.loads(line))
+            items += parse(json.loads(line))
         except (ValueError, KeyError, TypeError, AttributeError):
             continue
     if after is None and len(items) > MAX_ITEMS:
@@ -101,7 +104,7 @@ def result_text(content):
     out = []
     for c in content or []:
         if isinstance(c, dict):
-            if c.get("type") == "text":
+            if c.get("type") in ("text", "input_text", "output_text"):
                 out.append(c.get("text", ""))
             elif c.get("type") == "image":
                 out.append("[image]")
@@ -148,3 +151,38 @@ def entry_items(d):
             items.append({"k": "tool", "id": c.get("id"), "ts": ts, "name": c.get("name"),
                           "summary": tool_summary(c.get("name"), inp), "input": raw[:INPUT_CHARS]})
     return items
+
+
+def codex_items(d):
+    """Codex rollout lines: user and assistant messages, tool calls and their outputs (reasoning and setup skipped)."""
+    if d.get("type") != "response_item":
+        return []
+    p, ts = d.get("payload") or {}, d.get("timestamp")
+    t, uid = p.get("type"), p.get("id") or f"{ts}:{d.get('ordinal')}"
+    if t == "message":
+        text = "\n".join(c.get("text", "") for c in p.get("content") or [] if c.get("type") in ("input_text", "output_text"))
+        if p.get("role") == "assistant" and text.strip():
+            return [{"k": "assistant", "id": uid, "ts": ts, "text": text}]
+        if p.get("role") == "user" and text.strip() and not text.lstrip().startswith(("<environment_context>", "<user_instructions>", "# AGENTS.md")):
+            return [{"k": "user", "id": uid, "ts": ts, "text": strip_tags(text)}]
+        return []
+    if t in ("function_call", "custom_tool_call", "local_shell_call"):
+        raw = p.get("arguments") if t == "function_call" else p.get("input") or p.get("action")
+        try:
+            inp = json.loads(raw) if isinstance(raw, str) and t == "function_call" else raw
+        except ValueError:
+            inp = raw
+        summary = tool_summary(p.get("name"), inp) if isinstance(inp, dict) else str(inp or "").strip().splitlines()[0][:200] if inp else ""
+        if isinstance(inp, dict) and isinstance(inp.get("cmd") or inp.get("command"), list):
+            summary = " ".join(inp.get("cmd") or inp.get("command"))[:200]
+        body = json.dumps(inp, indent=1, ensure_ascii=False) if isinstance(inp, (dict, list)) else str(inp or "")
+        return [{"k": "tool", "id": p.get("call_id") or uid, "ts": ts, "name": p.get("name") or t, "summary": summary,
+                 "input": body[:INPUT_CHARS]}]
+    if t in ("function_call_output", "custom_tool_call_output", "local_shell_call_output"):
+        out = p.get("output")
+        if isinstance(out, dict):
+            out = out.get("content") or out.get("output") or json.dumps(out)
+        text = result_text(out) if not isinstance(out, str) else out
+        return [{"k": "result", "id": p.get("call_id"), "ts": ts, "error": False, "text": text[:RESULT_CHARS],
+                 "more": max(0, len(text) - RESULT_CHARS)}]
+    return []

@@ -20,8 +20,9 @@ export const isApp = !!window.desk;
 if (isApp) document.documentElement.classList.add("app");
 
 function loadPrefs() {
-  try { return { verbose: false, notifyDone: true, notifyPrompt: true, ...JSON.parse(localStorage.getItem("rd.prefs") || "{}") }; }
-  catch (_) { return { verbose: false, notifyDone: true, notifyPrompt: true }; }
+  const d = { verbose: false, notifyDone: true, notifyPrompt: true, notifyProgress: true };
+  try { return { ...d, ...JSON.parse(localStorage.getItem("rd.prefs") || "{}") }; }
+  catch (_) { return d; }
 }
 export function savePrefs() { try { localStorage.setItem("rd.prefs", JSON.stringify(S.prefs)); } catch (_) { /* private mode */ } }
 export function store(key, val) { try { if (val === undefined) return JSON.parse(localStorage.getItem("rd." + key)); localStorage.setItem("rd." + key, JSON.stringify(val)); } catch (_) { return null; } }
@@ -124,6 +125,17 @@ export function md(el, text, opt = {}) {
   el.classList.add("md");
   el.innerHTML = fm + DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: !!opt.breaks }));
   el.querySelectorAll("pre code").forEach((c) => { if (c.textContent.length < 150000) hljs.highlightElement(c); });
+  if (opt.paths && S.data) {                    // project paths in `code` open in the file viewer
+    const root = S.data.path + "/";
+    el.querySelectorAll(":not(pre) > code").forEach((c) => {
+      const t = c.textContent.trim();
+      const rel = t.startsWith(root) ? t.slice(root.length) : /^(maps|tracks|docs|resources|scratch|common|lit)\//.test(t) ? t : null;
+      if (!rel || /\s/.test(rel)) return;
+      c.classList.add("pathlink");
+      c.title = "Open in the file viewer";
+      c.onclick = () => hooks.openPath(S.data.name, rel.replace(/\/$/, ""));
+    });
+  }
   el.querySelectorAll("a[href]").forEach((a) => {
     const h = a.getAttribute("href");
     if (/^https?:/i.test(h)) { a.target = "_blank"; a.rel = "noreferrer"; }

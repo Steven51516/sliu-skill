@@ -4,17 +4,18 @@ import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
 import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane } from "./chat.js";
 import { initDock, toggleDock } from "./term.js";
-import { startTeam, newSession, addProject, shortcuts, closeDialog } from "./dialogs.js";
+import { startTeam, newSession, addProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
-import { resetFiles } from "./files.js";
+import { resetFiles, openPathLater } from "./files.js";
 import { resetMap } from "./map.js";
 
 const POLL_MS = 4000;
-let lastSig = "", prevStatus = new Map(), polling = false;
+let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false;
 
 Object.assign(hooks, {
-  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane,
+  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
+  openPath: (project, rel, side = "local") => { openPathLater(side, rel); go({ project, view: "files" }); },
 });
 
 async function route() {
@@ -94,17 +95,43 @@ function attention(sum) {
   });
   for (const pane of [...S.unread.keys()]) if (!now.has(pane)) S.unread.delete(pane);
   prevStatus = now;
+  progress(sum);
   badge();
+}
+
+const NEWS = { resolved: "resolved", parked: "parked", held: "held", closed: "closed", running: "started running", paused: "paused" };
+function progress(sum) {
+  // ticket and map changes in any project while the app is open (what changed while away is on each overview)
+  const now = {};
+  sum.projects.forEach((p) => { now[p.name] = p.states || {}; });
+  if (prevStates) for (const [proj, states] of Object.entries(now)) {
+    const before = prevStates[proj];
+    if (!before) continue;
+    for (const [id, [st, title]] of Object.entries(states)) {
+      const old = before[id]?.[0];
+      if (old === st) continue;
+      const what = id.startsWith("map:") ? `Map ${id.slice(4)}` : id;
+      const verb = old === undefined ? "was added" : NEWS[st] || `is now ${st}`;
+      note(st === "resolved" || st === "closed" ? "idle" : "working", `${proj} · ${what} ${verb}: ${title}`);
+      if (S.prefs.notifyProgress && (NEWS[st] || old === undefined) && !(document.hasFocus() && S.route.project === proj))
+        notify(`${what} ${verb}`, `${proj} · ${title}`, null, { project: proj, map: states[id][2], ticket: states[id][3] });
+    }
+  }
+  prevStates = now;
 }
 
 function note(kind, text) { S.notes.unshift({ kind, text, at: Date.now() }); S.notes.length = Math.min(S.notes.length, 50); }
 
-function notify(title, body, pane) {
+function notify(title, body, pane, where = null) {
   try {
     if (!("Notification" in window) || Notification.permission === "denied") return;
     if (Notification.permission === "default") { Notification.requestPermission(); return; }
     const n = new Notification(title, { body, silent: false });
-    n.onclick = () => { window.focus(); if (isApp) window.desk.focus(); openChat(pane); };
+    n.onclick = () => {
+      window.focus(); if (isApp) window.desk.focus();
+      if (pane) openChat(pane);
+      else if (where) go({ project: where.project, view: "map", map: where.map, tab: "dag", ticket: where.ticket });
+    };
   } catch (_) { /* notifications unavailable */ }
 }
 

@@ -166,8 +166,8 @@ function appendItems(items, initial = false) {
     if (it.k === "user") d.innerHTML = `<div class="bubble">${esc(it.text)}</div>`;
     else if (it.k === "cmd") d.innerHTML = `<code>${esc(it.text)}</code>`;
     else if (it.k === "note") d.textContent = it.text;
-    else if (it.k === "from") { d.innerHTML = `<div class="who">↘ from ${esc(it.who)}</div><div></div>`; md(d.lastChild, it.text); }
-    else if (it.k === "assistant") md(d, it.text);
+    else if (it.k === "from") { d.innerHTML = `<div class="who">↘ from ${esc(it.who)}</div><div></div>`; md(d.lastChild, it.text, { paths: true }); }
+    else if (it.k === "assistant") md(d, it.text, { paths: true });
     body.appendChild(d);
   }
   if (stick) body.scrollTop = body.scrollHeight;
@@ -316,7 +316,9 @@ function wireComposer() {
     t.setSelectionRange(before.length, before.length);
     closeMenu(); autosize(t); renderLive();
   };
-  t.oninput = () => { autosize(t); sel = 0; showMenu(); renderLive(); };
+  const draftKey = "draft." + C.pane;
+  if (!t.value && store(draftKey)) { t.value = store(draftKey); autosize(t); }
+  t.oninput = () => { autosize(t); sel = 0; showMenu(); renderLive(); store(draftKey, t.value); };
   t.onblur = () => setTimeout(closeMenu, 150);
   t.onkeydown = (e) => {
     if (menu) {
@@ -334,7 +336,7 @@ function wireComposer() {
     const text = t.value.trim();
     if (!text || !C.pane) return;
     if (C.status === "blocked") return toast("It's waiting at a prompt: answer that first", "err");
-    t.value = ""; autosize(t);
+    t.value = ""; autosize(t); store("draft." + C.pane, "");
     if (C.status === "working") { C.queued.push(text); renderLive(); }
     try {
       await post("/api/chat/send", { pane: C.pane, text });

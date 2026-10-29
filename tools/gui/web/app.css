@@ -240,6 +240,8 @@ html.app .side-top .brand { display: none; }
 .md pre { background: var(--code-bg); padding: 10px 12px; border-radius: 8px; overflow: auto; border: 1px solid var(--line); }
 .md code { background: var(--code-bg); padding: 1px 5px; border-radius: 5px; font-size: 12px; border: 1px solid var(--line); }
 .md pre code { background: none; padding: 0; border: 0; }
+.md code.pathlink { cursor: pointer; color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.md code.pathlink:hover { text-decoration: underline; }
 .md table { font-size: 12.5px; border-collapse: collapse; display: block; overflow-x: auto; margin: 8px 0; }
 .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .md th { background: var(--sunken); font-weight: 600; }
