@@ -24,5 +24,5 @@ go "$P-driver" "$B" "/team driver $T"
 sleep 20   # the driver joins the roster first, so the desk finds it
 go "$P-desk" "$A" "/team desk"
 KEEP=$(command -v caffeinate >/dev/null && echo "caffeinate -dimsu ")   # macOS: keep the machine awake while the driver runs
-herdr pane run "$W" "${KEEP}tail -n 40 -F scratch/agents/driver.log" >/dev/null
+herdr pane run "$W" "${KEEP}team-watch $T $B $P-driver" >/dev/null   # driver log + restarts a stuck driver on Sonnet
 echo "team up for $T: talk to tab 'A desk'"

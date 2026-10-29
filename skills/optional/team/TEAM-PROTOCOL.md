@@ -82,4 +82,8 @@ sessions of a team run on the same machine.
 - The driver's schedule: in Claude Code, `/loop` (the `team` skill starts it). Codex has no loop command: put a timer in
   another pane that wakes the driver, e.g. `while sleep 1500; do herdr agent prompt <driver pane> "tick"; done`.
 - The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS).
+- Nobody watching (a night): the watch tab runs `team-watch <map> <driver pane>`, which `team-up` starts. It shows the
+  driver's log and replaces a stuck driver (idle, and stopped by Claude's safeguards or silent for 90 minutes) with a
+  fresh driver on Sonnet 5.5 in the same pane, at most 3 times; a driver waiting on a permission prompt is left for
+  the human.
 - Long GPU jobs run detached on the server per the scope file, never inside any of these sessions.
