@@ -2,7 +2,9 @@
 """team-watch: the watch tab's supervisor. Prints the driver's log as it grows, and replaces a stuck driver with a fresh
 one on Sonnet 5.5, so a map keeps moving while nobody is watching.
 
-Usage (from the project folder, inside herdr; team-up starts it):  team-watch <map> <driver pane> [agent name]
+Usage (from the project folder, inside herdr):  team-watch                 every driver on scratch/agents/roster.md
+                                                team-watch <map> <driver pane> [agent name]   one driver
+team-up starts it; after starting a team any other way, run it once in a spare tab: `caffeinate -dimsu team-watch`.
 
 Every 5 minutes it looks at the driver's pane. The driver is stuck when it is idle and either the safeguard-stop hook
 logged that it let this session stop (Claude's safeguards stopped its replies twice), or no pass has been logged in
@@ -21,6 +23,18 @@ import time
 EVERY, STALE_MIN, MAX_RESTARTS, MODEL = 300, 90, 3, "sonnet"
 LOG = os.path.join("scratch", "agents", "driver.log")
 SAFEGUARD_LOG = os.path.join("scratch", "agents", "safeguard-stop.log")
+ROSTER = os.path.join("scratch", "agents", "roster.md")
+
+
+def roster_drivers():
+    """{pane: map} for the driver lines on the roster (the latest line per pane wins)."""
+    out = {}
+    if os.path.exists(ROSTER):
+        for line in open(ROSTER):
+            cells = [c.strip() for c in line.split("|")]
+            if len(cells) >= 6 and cells[0] == "driver" and cells[2] not in ("", "-") and cells[5] not in ("", "-"):
+                out[cells[2]] = cells[5].split()[0]
+    return out
 
 
 def now():
@@ -75,12 +89,12 @@ def restart(pane, name, map_ref, reason, old_sid, n):
 
 
 def main():
-    if len(sys.argv) < 3:
+    if len(sys.argv) == 2 or sys.argv[1:2] in (["-h"], ["--help"]):
         sys.exit(__doc__)
-    map_ref, pane = sys.argv[1], sys.argv[2]
-    name = sys.argv[3] if len(sys.argv) > 3 else "driver"
-    restarts, seen = 0, os.path.getsize(LOG) if os.path.exists(LOG) else 0
-    print(f"{now()}  watching the driver in {pane} for {map_ref}", flush=True)
+    fixed = {sys.argv[2]: sys.argv[1]} if len(sys.argv) >= 3 else None
+    base = sys.argv[3] if len(sys.argv) > 3 else "driver"
+    restarts, seen = {}, os.path.getsize(LOG) if os.path.exists(LOG) else 0
+    print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
     while True:
         if os.path.exists(LOG) and os.path.getsize(LOG) > seen:     # show the driver's log as it grows
             with open(LOG) as f:
@@ -88,16 +102,19 @@ def main():
                 sys.stdout.write(f.read())
                 sys.stdout.flush()
             seen = os.path.getsize(LOG)
-        agent = agent_at(pane)
-        reason = stuck_reason(agent)
-        if reason:
-            if restarts >= MAX_RESTARTS:
+        for pane, map_ref in (fixed or roster_drivers()).items():
+            agent = agent_at(pane)
+            reason = stuck_reason(agent)
+            if not reason or restarts.get(pane, 0) > MAX_RESTARTS:
+                continue
+            if restarts.get(pane, 0) == MAX_RESTARTS:
                 note(f"driver in {pane} is stuck ({reason}) and {MAX_RESTARTS} restarts are used up; leaving it for the human")
-                return
-            restarts += 1
+                restarts[pane] += 1
+                continue
+            restarts[pane] = restarts.get(pane, 0) + 1
             old = ((agent.get("agent_session") or {}).get("value") or "?")[:8]
-            if not restart(pane, f"{name}-r{restarts}", map_ref, reason, old, restarts):
-                return
+            name = f"{base}-{pane.replace(':', '')}-r{restarts[pane]}"
+            restart(pane, name, map_ref, reason, old, restarts[pane])
             seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
         time.sleep(EVERY)
 
