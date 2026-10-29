@@ -168,7 +168,12 @@ function appendItems(items, initial = false) {
     if (it.k === "user") d.innerHTML = `<div class="bubble">${esc(it.text)}</div>`;
     else if (it.k === "cmd") d.innerHTML = `<code>${esc(it.text)}</code>`;
     else if (it.k === "note") d.textContent = it.text;
-    else if (it.k === "from") { d.innerHTML = `<div class="who">↘ from ${esc(it.who)}</div><div></div>`; md(d.lastChild, it.text, { paths: true }); }
+    else if (it.k === "turn") {
+      if (!body.lastElementChild || body.lastElementChild.classList.contains("turn")) continue;   // no empty turns
+      const t = it.ts ? new Date(it.ts) : null, s = Math.round((it.ms || 0) / 1000);
+      d.innerHTML = `<span>${t ? t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}${s ? ` · ${s < 60 ? s + " s" : Math.floor(s / 60) + " min " + (s % 60) + " s"}` : ""}</span>`;
+    }
+    else if (it.k === "from") { d.innerHTML = `<div class="who">↘ from ${esc(it.role ? `${it.role} (${it.who})` : it.who)}</div><div></div>`; md(d.lastChild, it.text, { paths: true }); }
     else if (it.k === "assistant") md(d, it.text, { paths: true });
     body.appendChild(d);
   }

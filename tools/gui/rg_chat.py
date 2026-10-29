@@ -120,6 +120,18 @@ def entry_items(d):
     if t == "system":
         if d.get("subtype") == "compact_boundary":
             return [{"k": "note", "id": uid, "ts": ts, "text": "context compacted"}]
+        if d.get("subtype") == "turn_duration":            # the end of a turn: drawn as a divider
+            return [{"k": "turn", "id": uid, "ts": ts, "ms": d.get("durationMs")}]
+        return []
+    if t == "attachment":
+        # messages that arrive while the agent is busy (yours, another session's, a background task's) are queued
+        # and delivered as attachments, not as user lines
+        att = d.get("attachment") or {}
+        if att.get("type") == "queued_command":
+            p = att.get("prompt")
+            text = p if isinstance(p, str) else result_text(p)
+            it = user_text_item(uid, ts, text or "")
+            return [it] if it else []
         return []
     if t not in ("user", "assistant"):
         return []

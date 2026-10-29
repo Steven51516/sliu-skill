@@ -755,6 +755,7 @@ def chat(pane, after, session):
         if session != sess:
             after = None
         items, offset, cut = rg_chat.read(path, after)
+        name_role(items, a.get("cwd"))
         out.update({"items": items, "offset": offset, "cut": cut, "transcript": path})
     else:
         out["items"], out["offset"] = [], 0
@@ -762,6 +763,22 @@ def chat(pane, after, session):
     if a.get("agent_status") == "blocked":
         out["screen"] = screen(pane, "visible")
     return out
+
+
+def name_role(items, cwd):
+    """Messages from another session carry its session name; say which role that is (from the project's roster)."""
+    froms = [it for it in items if it["k"] == "from"]
+    if not froms:
+        return
+    p = next((p for p in load_config()["projects"].values() if in_folder(cwd, p["path"])), None)
+    if not p:
+        return
+    by_session = {r["session"]: r for r in roster(p).values()}
+    for it in froms:
+        r = by_session.get(it["who"])
+        if r:
+            m = re.search(r"\b(T\d+)\b", r["map"] or "")
+            it["role"] = r["role"] + (f" · {m.group(1)}" if m else "")
 
 
 def screen(pane, source, lines=None):
