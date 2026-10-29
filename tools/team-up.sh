@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # team-up <map, e.g. T8>
 # Run inside herdr from the project folder. Adds tabs A desk, B driver and watch to the current workspace; each agent tab
-# is a Claude Code session started with its /team command (TEAM-PROTOCOL.md). The driver's implementers are its own
-# subagents, so they get no tabs. Extra claude flags: CLAUDE_ARGS.
+# is a Claude Code session started with its /team command (TEAM-PROTOCOL.md). Worker tabs open and close as the driver
+# starts and finishes tickets. Extra claude flags: CLAUDE_ARGS.
 set -euo pipefail
 [[ "${HERDR_ENV:-}" == 1 ]] || { echo "run team-up inside herdr"; exit 1; }
 T="${1:?usage: team-up <map, e.g. T8>}"
