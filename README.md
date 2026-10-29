@@ -30,7 +30,7 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | work a map's frontier in parallel, or overnight | `/research-drive <map>` (`/loop` it) |
 | re-plan a map | `/wayfinder <map> --rechart` |
 | run a long-lived team (a desk and a driver per map) | `team-up <map>` in a herdr pane, or `/team <role>` |
-| see every project at once (maps as DAGs, tickets, Mac and server files, live agents) and start teams by click | `research-gui` in a herdr tab (projects in `~/.config/research-gui/projects.toml`, template `tools/gui/projects.example.toml`) |
+| work from one desktop app: every project, maps as DAGs, tickets, Mac and server files, chat with any agent, terminals, GPUs, teams by click | the **Research Desk** app (`research-gui` opens it; build once with `cd tools/gui/app && npm install && npm run pack`; projects in `~/.config/research-gui/projects.toml`) |
 
 ## Skills
 
@@ -113,7 +113,7 @@ skills/      core/ (the research harness), engineering/ (code design, prototypes
 STYLE.md     your rules for every project (honesty, what always needs the human's OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh, gui/ (research-gui)
+tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh, gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 ```

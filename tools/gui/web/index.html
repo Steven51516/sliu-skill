@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Research Desk</title>
+<link rel="stylesheet" href="/vendor/hl-light.css" media="(prefers-color-scheme: light)">
+<link rel="stylesheet" href="/vendor/hl-dark.css" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="/vendor/xterm.css">
+<link rel="stylesheet" href="/app.css">
+<script src="/vendor/dagre.min.js"></script>
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/purify.min.js"></script>
+<script src="/vendor/highlight.min.js"></script>
+<script src="/vendor/xterm.js"></script>
+<script src="/vendor/addon-fit.js"></script>
+<script src="/vendor/addon-web-links.js"></script>
+</head>
+<body>
+<div id="shell">
+  <aside id="sidebar"></aside>
+  <div id="sidebar-resize" class="vresize" title="Drag to resize"></div>
+  <section id="center">
+    <header id="titlebar"></header>
+    <main id="view"></main>
+    <div id="dock-resize" class="hresize" hidden></div>
+    <section id="dock" hidden></section>
+  </section>
+  <div id="chat-resize" class="vresize" hidden></div>
+  <aside id="chat" hidden></aside>
+</div>
+<div id="overlay" hidden></div>
+<div id="toasts"></div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

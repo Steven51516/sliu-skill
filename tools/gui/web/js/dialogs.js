@@ -1,0 +1,179 @@
+// Modal dialogs: start a team or driver, start a session (with skill presets), ask for a line of text, add a project,
+// the keyboard sheet. One dialog at a time, in #overlay.
+import { S, $, esc, get, post, toast, icon, hooks, store } from "./core.js";
+
+export function closeDialog() { const o = $("#overlay"); o.hidden = true; o.innerHTML = ""; o.onclick = null; }
+function dialog(html, opt = {}) {
+  const o = $("#overlay");
+  o.hidden = false;
+  o.innerHTML = `<div class="dialog" style="${opt.width ? `width:min(${opt.width}px,92vw)` : ""}">${html}</div>`;
+  o.onclick = (e) => { if (e.target === o) closeDialog(); };
+  return o.firstChild;
+}
+
+async function runJob(d, start, onDone) {
+  const log = $("#dlg-log", d);
+  log.hidden = false;
+  log.textContent = "starting…";
+  try {
+    const { job } = await start();
+    for (;;) {
+      const j = await get("/api/job", { id: job });
+      log.textContent = j.log.join("\n") || "…";
+      log.scrollTop = log.scrollHeight;
+      if (j.done) { log.textContent += j.ok ? "\n\ndone" : "\n\nstopped (see above)"; if (j.ok && onDone) onDone(j); break; }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  } catch (e) { log.textContent = e.message; }
+  hooks.refresh && hooks.refresh();
+}
+
+function planHtml(plan) {
+  const ws = plan.workspace.id ? `in herdr workspace <b>${esc(plan.workspace.label)}</b>` : `in a new herdr workspace <b>${esc(plan.workspace.label)}</b>`;
+  return `${plan.dry_run ? `<div class="callout" style="margin-bottom:10px">Dry run: nothing will be sent to herdr.</div>` : ""}
+    ${plan.steps.length ? `<div>${plan.steps.length === 1 ? "One tab" : "One tab each"} ${ws}:</div>
+    <div class="card" style="margin:8px 0;box-shadow:none"><div class="rows">${plan.steps.map((s) => `<div class="row"><b>${esc(s.label)}</b>
+      <span class="grow t2">${esc(s.kind)}${s.prompt ? ` · then <code>${esc(s.prompt)}</code>` : ""}${Object.keys(s.env || {}).length ? ` · ${esc(Object.entries(s.env).map(([k, v]) => `${k}=${v}`).join(" "))}` : ""}</span></div>`).join("")}</div></div>` : `<div class="muted">Nothing to start.</div>`}
+    ${plan.notes.length ? `<ul class="muted" style="margin:6px 0;padding-left:18px">${plan.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
+    <details><summary class="muted" style="cursor:pointer">herdr commands</summary><pre>${esc(plan.commands.join("\n"))}</pre></details>
+    <pre id="dlg-log" hidden style="max-height:200px;overflow:auto"></pre>`;
+}
+
+export async function startTeam(project, map = null) {
+  const d = dialog(`<div class="dh">${map ? "Start a driver" : "Start the team"} · ${esc(project)}</div><div class="db"><div class="spin"></div></div>`);
+  let plan;
+  try { plan = await get("/api/plan", { project, ...(map ? { map } : {}) }); }
+  catch (e) { $(".db", d).innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  $(".db", d).innerHTML = planHtml(plan);
+  d.insertAdjacentHTML("beforeend", `<div class="df"><span class="grow muted" style="font-size:12px">Sessions run in herdr; closing the app leaves them running.</span>
+    <button class="btn" id="dlg-cancel">Close</button>${plan.steps.length ? `<button class="btn primary" id="dlg-go">${icon("play")} ${plan.dry_run ? "Dry run" : "Start"}</button>` : ""}</div>`);
+  $("#dlg-cancel", d).onclick = closeDialog;
+  if ($("#dlg-go", d)) $("#dlg-go", d).onclick = (e) => {
+    e.currentTarget.disabled = true;
+    runJob(d, () => post("/api/start", { project, map }), (j) => {
+      const desk = plan.steps.findIndex((s) => s.role === "desk");
+      if (!plan.dry_run && j.panes.length) setTimeout(() => { hooks.refresh(); hooks.openChat(j.panes[desk >= 0 ? desk : 0]); }, 1500);
+    });
+  };
+}
+
+export const PRESETS = [
+  { id: "plain", label: "Plain session", prompt: "", hint: "An empty Claude Code session in the project" },
+  { id: "work", label: "Work a ticket", prompt: "/research-work {ticket}", needs: "ticket", hint: "research-work: one ticket end to end" },
+  { id: "review", label: "Review a ticket", prompt: "/review {ticket}", needs: "ticket", hint: "review: Fair, Spec and Code axes" },
+  { id: "drive", label: "Drive a map once", prompt: "/research-drive {map}", needs: "map", hint: "research-drive: one pass over the frontier" },
+  { id: "wayfinder", label: "Chart a new map", prompt: '/wayfinder "{text}"', needs: "text", ask: "The loose idea", hint: "wayfinder interviews you, then charts a map" },
+  { id: "rechart", label: "Re-chart a map", prompt: "/wayfinder {map} --rechart", needs: "map", hint: "change destination or Contract on evidence" },
+  { id: "tickets", label: "Add a ticket", prompt: '/to-tickets {map} "{text}"', needs: "map+text", ask: "The question", hint: "to-tickets: a question with blocking edges" },
+  { id: "grill", label: "Grill a plan", prompt: "/grilling {text}", needs: "text", ask: "What to stress-test", hint: "grilling: a relentless interview" },
+  { id: "research", label: "Research a question", prompt: "/research {text}", needs: "text", ask: "The question", hint: "research: primary sources into a markdown file" },
+  { id: "diagnose", label: "Diagnosis card", prompt: "/diagnosis-card {text}", needs: "text", ask: "Which results", hint: "what failing or regressed scores mean" },
+  { id: "custom", label: "Custom first message", prompt: "{text}", needs: "text", ask: "First message (a /skill or plain words)", hint: "" },
+];
+
+export async function newSession(project, preset = null, fill = {}) {
+  project = project || S.route.project;
+  if (!project) return toast("Open a project first");
+  const data = S.data && S.data.name === project ? S.data : await get("/api/project", { name: project }).catch(() => null);
+  const maps = data ? data.maps.filter((m) => m.status !== "closed") : [];
+  const tickets = data ? data.maps.flatMap((m) => m.tickets.filter((t) => !["resolved", "parked", "superseded"].includes(t.status)).map((t) => ({ ...t, map: m }))) : [];
+  let kind = "claude", pre = PRESETS.find((p) => p.id === (preset || "plain"));
+  const d = dialog(`<div class="dh">New session · ${esc(project)}</div><div class="db">
+      <div class="choice" id="ns-kind">
+        <div class="opt on" data-k="claude"><b>Claude Code</b><span>with your skills</span></div>
+        <div class="opt" data-k="codex"><b>Codex</b><span>codex CLI</span></div>
+        <div class="opt" data-k="shell"><b>Shell</b><span>a herdr shell tab</span></div></div>
+      <div id="ns-claude"><label class="f">Start with</label><select id="ns-preset">${PRESETS.map((p) => `<option value="${p.id}" ${p === pre ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select>
+        <div class="muted" id="ns-hint" style="font-size:12px;margin-top:4px"></div>
+        <div id="ns-map-f"><label class="f">Map</label><select id="ns-map">${maps.map((m) => `<option value="${esc(m.path.replace(/\/(map|track)\.md$/, ""))}">${esc(m.id)} · ${esc(m.title)}</option>`).join("")}</select></div>
+        <div id="ns-ticket-f"><label class="f">Ticket</label><select id="ns-ticket">${tickets.map((t) => `<option value="${esc(t.path.replace(/\/ticket\.md$/, ""))}">${esc(t.id)} · ${esc(t.title)}</option>`).join("")}</select></div>
+        <div id="ns-text-f"><label class="f" id="ns-text-l">Text</label><textarea id="ns-text" rows="3"></textarea></div></div>
+      <div id="ns-shell" hidden><label class="f">Command (optional)</label><input id="ns-cmd" placeholder="e.g. ssh -t ${esc(data?.server || "node-16")}"></div>
+      <label class="f">Tab label (optional)</label><input id="ns-label" placeholder="shown in herdr and in the sidebar">
+      <div id="ns-plan" style="margin-top:12px"></div></div>
+    <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${icon("play")} Start</button></div>`, { width: 600 });
+  const sync = () => {
+    $("#ns-claude", d).hidden = kind === "shell";
+    $("#ns-shell", d).hidden = kind !== "shell";
+    pre = PRESETS.find((p) => p.id === $("#ns-preset", d).value);
+    const needs = kind === "claude" ? pre.needs || "" : kind === "codex" ? "text" : "";
+    $("#ns-map-f", d).hidden = !needs.includes("map");
+    $("#ns-ticket-f", d).hidden = !needs.includes("ticket");
+    $("#ns-text-f", d).hidden = !needs.includes("text");
+    $("#ns-text-l", d).textContent = kind === "codex" ? "First message (optional)" : pre.ask || "Text";
+    $("#ns-preset", d).parentElement.querySelector("#ns-preset").hidden = kind === "codex";
+    $("#ns-hint", d).textContent = kind === "codex" ? "" : pre.hint;
+  };
+  $$("#ns-kind .opt", d).forEach((o) => o.onclick = () => { kind = o.dataset.k; $$("#ns-kind .opt", d).forEach((x) => x.classList.toggle("on", x === o)); sync(); });
+  $("#ns-preset", d).onchange = sync;
+  if (fill.map) $("#ns-map", d).value = fill.map;
+  if (fill.ticket) $("#ns-ticket", d).value = fill.ticket;
+  if (fill.text) $("#ns-text", d).value = fill.text;
+  sync();
+  $("#dlg-cancel", d).onclick = closeDialog;
+  $("#dlg-go", d).onclick = async (e) => {
+    const text = $("#ns-text", d).value.trim();
+    let prompt = "";
+    if (kind === "claude") {
+      if ((pre.needs || "").includes("text") && !text) return toast(`${pre.ask || "Text"} is empty`, "err");
+      prompt = pre.prompt.replace("{ticket}", $("#ns-ticket", d).value).replace("{map}", $("#ns-map", d).value).replace("{text}", text.replace(/"/g, '\\"'));
+      if (pre.id === "custom") prompt = text;
+    } else if (kind === "codex") prompt = text;
+    const body = { project, kind, prompt, label: $("#ns-label", d).value.trim(), command: $("#ns-cmd", d).value.trim() };
+    e.currentTarget.disabled = true;
+    try {
+      const plan = await post("/api/session-plan", body);
+      $("#ns-plan", d).innerHTML = planHtml(plan);
+      runJob(d, () => post("/api/session", body), (j) => {
+        if (!plan.dry_run && j.panes.length && kind !== "shell") setTimeout(() => { hooks.refresh(); hooks.openChat(j.panes[0]); closeDialog(); }, 1500);
+      });
+    } catch (err) { toast(err.message, "err"); e.currentTarget.disabled = false; }
+  };
+}
+const $$ = (sel, el) => [...el.querySelectorAll(sel)];
+
+export function ask({ title, label = "", placeholder = "", value = "", multiline = true, ok = "OK", hint = "" }) {
+  return new Promise((resolve) => {
+    const d = dialog(`<div class="dh">${esc(title)}</div><div class="db">${label ? `<label class="f">${esc(label)}</label>` : ""}
+      ${multiline ? `<textarea id="ask-in" rows="4" placeholder="${esc(placeholder)}">${esc(value)}</textarea>` : `<input id="ask-in" placeholder="${esc(placeholder)}" value="${esc(value)}">`}
+      ${hint ? `<div class="muted" style="font-size:12px;margin-top:6px">${esc(hint)}</div>` : ""}</div>
+      <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${esc(ok)}</button></div>`, { width: 520 });
+    const inp = $("#ask-in", d);
+    const done = (v) => { closeDialog(); resolve(v); };
+    $("#dlg-cancel", d).onclick = () => done(null);
+    $("#dlg-go", d).onclick = () => done(inp.value.trim() || null);
+    inp.onkeydown = (e) => { if (e.key === "Enter" && (!multiline || e.metaKey)) { e.preventDefault(); done(inp.value.trim() || null); } };
+    setTimeout(() => inp.focus(), 20);
+  });
+}
+
+export function addProject(pre = {}) {
+  const d = dialog(`<div class="dh">Add a project</div><div class="db">
+      <label class="f">Name</label><input id="ap-name" value="${esc(pre.name || "")}" placeholder="protbench">
+      <label class="f">Folder on this Mac</label><input id="ap-path" value="${esc(pre.path || "")}" placeholder="~/Documents/GitHub/scinetics/…">
+      <label class="f">Server (ssh alias, optional)</label><input id="ap-server" placeholder="node-16">
+      <label class="f">Code folder on the server</label><input id="ap-root" placeholder="~/code/${esc(pre.name || "project")}">
+      <label class="f">Map folders on the server live under</label><input id="ap-maps" value="tracks">
+      <label class="f">Shared server folders pinned beside each map (comma-separated)</label><input id="ap-shared" value="common"></div>
+    <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">Add</button></div>`, { width: 520 });
+  $("#dlg-cancel", d).onclick = closeDialog;
+  $("#dlg-go", d).onclick = async () => {
+    const v = (id) => $(id, d).value.trim();
+    try {
+      await post("/api/add-project", { name: v("#ap-name"), path: v("#ap-path"), server: v("#ap-server"), server_root: v("#ap-root"),
+        server_maps: v("#ap-maps"), shared: v("#ap-shared").split(",").map((s) => s.trim()) });
+      closeDialog(); toast(`Added ${v("#ap-name")}`); hooks.refresh(); location.hash = `#/p/${encodeURIComponent(v("#ap-name"))}`;
+    } catch (e) { toast(e.message, "err"); }
+  };
+}
+
+export function shortcuts() {
+  const k = [["⌘K", "Search, jump, run an action"], ["⌘J", "Show or hide the chat"], ["⌃`", "Show or hide terminals"], ["⌘N", "New session"],
+    ["⌘1 … ⌘9", "Switch project"], ["⌃Tab", "Next session in the chat"], ["⌘I", "Inbox"], ["⌘,", "Settings"], ["⌘/", "This sheet"],
+    ["Esc", "Close a dialog · interrupt the agent (empty composer)"], ["↑ (empty composer)", "Edit the last queued message"]];
+  const d = dialog(`<div class="dh">Keyboard</div><div class="db"><div class="shortcuts">${k.map(([a, b]) => `<kbd>${esc(a)}</kbd><span>${esc(b)}</span>`).join("")}</div></div>
+    <div class="df"><button class="btn" id="dlg-cancel">Close</button></div>`, { width: 460 });
+  $("#dlg-cancel", d).onclick = closeDialog;
+}
+
+export function rememberPreset(id) { store("preset", id); }
