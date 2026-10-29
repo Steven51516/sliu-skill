@@ -77,12 +77,17 @@ def serve(handler, argv, cwd, env, on_close_bytes=b""):
     """Run argv in a pty and bridge it to the WebSocket on handler's connection until either side ends."""
     sock, rfile = handler.connection, handler.rfile
     pid, fd = pty.fork()
-    if pid == 0:                                # child
+    if pid == 0:                                # child: exec, or leave without touching the server's state
         try:
-            os.chdir(cwd)
-        except OSError:
-            pass
-        os.execvpe(argv[0], argv, env)
+            try:
+                os.chdir(cwd)
+            except OSError:
+                pass
+            os.execvpe(argv[0], argv, env)
+        except BaseException as e:
+            os.write(1, f"cannot start {argv[0]}: {e}\r\n".encode())
+        finally:
+            os._exit(127)
     set_size(fd, 100, 30)
     lock, alive = threading.Lock(), [True]
 
@@ -110,7 +115,8 @@ def serve(handler, argv, cwd, env, on_close_bytes=b""):
             except OSError:
                 pass
 
-    threading.Thread(target=pump, daemon=True).start()
+    pumper = threading.Thread(target=pump, daemon=True)
+    pumper.start()
     try:
         while alive[0]:
             op, data = recv_frame(rfile)
@@ -150,4 +156,5 @@ def serve(handler, argv, cwd, env, on_close_bytes=b""):
             os.waitpid(pid, os.WNOHANG)
         except ChildProcessError:
             pass
+        pumper.join(timeout=2)                  # it may still be reading this fd number
         os.close(fd)

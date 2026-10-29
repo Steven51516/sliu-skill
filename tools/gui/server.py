@@ -50,6 +50,8 @@ CAP = 2 << 20                 # files larger than this show their first and last
 HEAD_TAIL = 200 << 10
 IMAGE_CAP = 8 << 20
 LOG_LINES = 600
+TAIL_BYTES = 1 << 20          # a log tail never reads more than this (progress bars write few newlines)
+CACHE_MAX = 200
 HIDE_DIRS = {".git", "__pycache__", ".venv", "venv", "node_modules", ".ipynb_checkpoints", ".mypy_cache", ".pytest_cache"}
 HIDE_EXT = (".pt", ".pth", ".ckpt", ".safetensors", ".bin", ".pyc")
 HIDE_FILES = {".DS_Store"}
@@ -60,6 +62,7 @@ LIVE_MAP = {"open", "claimed"}          # maps that get a driver on Start team
 KEYS = {str(i) for i in range(1, 10)} | {"up", "down", "left", "right", "enter", "esc", "tab", "shift+tab", "space",
                                          "backspace", "y", "n"}
 ARGS = None
+TOKEN = uuid.uuid4().hex     # per launch; the page reads it from /api/token (other origins can't read responses)
 
 
 # ---------- config ----------
@@ -211,7 +214,7 @@ def live_driver_maps(agents, maps):
         for m in maps:
             folder = os.path.basename(os.path.dirname(m["_path"]))
             mid = (m.get("id") or "").lower()
-            if folder in a["map"] or re.search(rf"\b{re.escape(mid)}\b", a["tab_label"].lower()):
+            if re.search(rf"(^|/){re.escape(folder)}(/|$|\s)", a["map"]) or re.search(rf"\b{re.escape(mid)}\b", a["tab_label"].lower()):
                 found.add(folder)
     return found
 
@@ -320,15 +323,19 @@ def add_project(b):
         raise ApiError(400, f"`{name}` is already registered")
     if not os.path.isdir(os.path.expanduser(path or "")):
         raise ApiError(400, f"no folder {path}")
-    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
-    lines = [f"\n[projects.{name}]", f"path = {json.dumps(path)}"]
+    q = lambda v: json.dumps(str(v), ensure_ascii=False)
+    lines = [f"\n[projects.{name}]", f"path = {q(path)}"]
     for key in ("server", "server_root", "server_maps"):
-        if b.get(key):
-            lines.append(f"{key} = {json.dumps(b[key])}")
-    lines.append(f"shared = {json.dumps([s for s in (b.get('shared') or []) if s])}")
-    with open(CONFIG, "a") as f:
-        f.write("\n".join(lines) + "\n")
-    return {"ok": True}
+        if isinstance(b.get(key), str) and b[key].strip():
+            lines.append(f"{key} = {q(b[key].strip())}")
+    shared = [str(s) for s in (b.get("shared") or []) if isinstance(s, str) and s.strip()]
+    lines.append(f"shared = [{', '.join(q(s) for s in shared)}]")
+    text = (open(CONFIG).read() if os.path.exists(CONFIG) else "") + "\n".join(lines) + "\n"
+    try:
+        tomllib.loads(text)
+    except tomllib.TOMLDecodeError as e:
+        raise ApiError(400, f"that would not be valid TOML: {e}")
+    return save_config(text)
 
 
 # ---------- what changed since the human last looked ----------
@@ -414,8 +421,17 @@ def classify(name):
     return "text"
 
 
+def inside(p, rel):
+    """The real path of rel under the project, refusing symlinks that lead out of it."""
+    root = os.path.realpath(p["path"])
+    full = os.path.realpath(os.path.join(root, rel))
+    if os.path.commonpath([root, full]) != root:
+        raise ApiError(403, f"{rel} leads outside the project")
+    return full
+
+
 def local_tree(p, rel):
-    base = os.path.join(p["path"], rel)
+    base = inside(p, rel)
     if not os.path.isdir(base):
         raise ApiError(404, f"no folder {rel or '.'} on the Mac")
     entries = []
@@ -432,7 +448,7 @@ def local_tree(p, rel):
 
 
 def local_read(p, rel, mode):
-    path = os.path.join(p["path"], rel)
+    path = inside(p, rel)
     if not os.path.isfile(path):
         raise ApiError(404, f"no file {rel} on the Mac")
     size = os.path.getsize(path)
@@ -457,7 +473,7 @@ def tail_lines(f, n):
     f.seek(0, os.SEEK_END)
     end = f.tell()
     pos, chunk, data = end, 64 << 10, b""
-    while pos > 0 and data.count(b"\n") <= n:
+    while pos > 0 and data.count(b"\n") <= n and len(data) < TAIL_BYTES:
         step = min(chunk, pos)
         pos -= step
         f.seek(pos)
@@ -505,6 +521,9 @@ def cached(key, fresh, fn, ttl=None):
     val = fn()
     with _cache_lock:
         _cache[key] = (time.time(), val)
+        if len(_cache) > CACHE_MAX:              # drop the oldest third
+            for k, _ in sorted(_cache.items(), key=lambda kv: kv[1][0])[:CACHE_MAX // 3]:
+                _cache.pop(k, None)
     return val
 
 
@@ -547,7 +566,7 @@ def server_read(p, rel, mode, fresh):
             return {"kind": "image", "size": size, "mime": IMAGE_EXT[os.path.splitext(rel)[1].lower()],
                     "data": base64.b64encode(data).decode()}
         if kind == "log" and mode != "full":
-            data = ssh(p["server"], f"tail -n {LOG_LINES} -- {f}")
+            data = ssh(p["server"], f"tail -c {TAIL_BYTES} -- {f} | tail -n {LOG_LINES}")
             return text_result(kind, size, data, truncated=size > len(data), tail=True)
         if size <= CAP:
             return text_result(kind, size, ssh(p["server"], f"cat -- {f}", timeout=90))
@@ -579,8 +598,7 @@ def open_vscode(p, side, rel, is_dir):
 
 
 def reveal(p, rel):
-    path = os.path.join(p["path"], rel)
-    run(["open", "-R", path] if os.path.isfile(path) else ["open", path], timeout=10)
+    run(["open", "-R", inside(p, rel)], timeout=10)
     return {"ok": True}
 
 
@@ -701,7 +719,7 @@ def chat(pane, after, session):
         items, offset, cut = rg_chat.read(path, after)
         out.update({"items": items, "offset": offset, "cut": cut, "transcript": path})
     else:
-        out["items"], out["offset"] = [], None
+        out["items"], out["offset"] = [], 0
         out["fallback"] = screen(pane, "recent-unwrapped", 300)
     if a.get("agent_status") == "blocked":
         out["screen"] = screen(pane, "visible")
@@ -741,8 +759,13 @@ def chat_keys(b):
 
 
 def chat_text(b):
-    live_agent(b.get("pane"))
-    herdr("pane", "send-text", b["pane"], b.get("text") or "", timeout=15)
+    a, _ = live_agent(b.get("pane"))
+    text = b.get("text") or ""
+    if a.get("agent_status") != "blocked":
+        raise ApiError(409, "typing into the screen is only for answering a prompt; send a message instead")
+    if len(text) > 2000 or re.search(r"[\x00-\x1f\x7f]", text):
+        raise ApiError(400, "answers are one line of plain text (at most 2000 characters)")
+    herdr("pane", "send-text", b["pane"], text, timeout=15)
     return {"ok": True}
 
 
@@ -941,7 +964,7 @@ def run_plan(p, plan, job):
             if st["kind"] == "claude" and plan["keychain"]:
                 time.sleep(0.8)
                 herdr("pane", "run", pane, "export CLAUDE_CODE_OAUTH_TOKEN=\"$(security find-generic-password -s "
-                      f"{keychain_service()} -w)\"")
+                      f"{shlex.quote(keychain_service())} -w)\"")
                 time.sleep(1.5)   # let the shell finish the export before claude is typed
             name = unique_name(st["name"])
             try:
@@ -1022,7 +1045,8 @@ def term_argv(q):
 
 
 def term_env():
-    env = {k: v for k, v in os.environ.items() if k not in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_TAB_ID", "HERDR_WORKSPACE_ID")}
+    env = {k: v for k, v in os.environ.items() if k not in ("HERDR_ENV", "HERDR_PANE_ID", "HERDR_TAB_ID", "HERDR_WORKSPACE_ID",
+                                                           "CLAUDE_CODE_OAUTH_TOKEN")}
     env.update(TERM="xterm-256color", COLORTERM="truecolor")
     return env
 
@@ -1055,6 +1079,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype + "; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.close_connection = True          # one request per connection: no request can hide in a rejected body
         self.send_header("Content-Security-Policy",
                          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
                          "img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws://127.0.0.1:* ws://localhost:*")
@@ -1070,6 +1096,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.websocket(url.path, q)
         if not url.path.startswith("/api/"):
             return self.static(url.path)
+        if url.path == "/api/token":
+            return self.send(200, {"token": TOKEN})
+        if url.path != "/api/ping" and self.headers.get("X-RG-Token") != TOKEN:
+            return self.send(403, {"error": "missing or stale token: reload the page"})
         self.api(lambda: self.get_api(url.path, q))
 
     def static(self, path):
@@ -1081,7 +1111,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send(200, f.read(), STATIC_TYPES.get(os.path.splitext(full)[1], "application/octet-stream"))
 
     def websocket(self, path, q):
-        if self.headers.get("Origin") not in self.origins() or "websocket" not in (self.headers.get("Upgrade") or "").lower():
+        if self.headers.get("Origin") not in self.origins() or "websocket" not in (self.headers.get("Upgrade") or "").lower() \
+                or q.get("token") != TOKEN:
             return self.send(403, {"error": "forbidden"})
         try:
             argv, cwd, detach = term_argv(q)
@@ -1097,7 +1128,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         origin = self.headers.get("Origin")
-        if not self.allowed_host() or self.headers.get("X-RG") != "1" or (origin and origin not in self.origins()):
+        if not self.allowed_host() or self.headers.get("X-RG") != "1" or (origin and origin not in self.origins()) \
+                or self.headers.get("X-RG-Token") != TOKEN:
             return self.send(403, {"error": "forbidden"})
         n = int(self.headers.get("Content-Length") or 0)
         try:

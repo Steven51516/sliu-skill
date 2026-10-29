@@ -1,6 +1,6 @@
 // Bottom dock of terminals (xterm.js over the backend's /ws/term): attach to an agent's herdr pane, a shell in the
 // project, or ssh into the project's server. Terminals survive page changes; closing a tab detaches (agents keep running).
-import { S, $, esc, icon, hooks, popMenu, allAgents, agentLabel, toast } from "./core.js";
+import { S, $, esc, icon, hooks, popMenu, allAgents, agentLabel, toast, token } from "./core.js";
 
 const T = { tabs: [], active: null, open: false, seq: 0 };
 
@@ -41,9 +41,10 @@ function create(spec, key) {
   return t;
 }
 
-function connect(t) {
+async function connect(t) {
+  const tok = await token();
   const q = new URLSearchParams(Object.fromEntries(Object.entries({ kind: t.spec.kind, pane: t.spec.pane, project: t.spec.project, path: t.spec.path,
-    host: t.spec.host, session: t.spec.session }).filter(([, v]) => v)));
+    host: t.spec.host, session: t.spec.session, token: tok }).filter(([, v]) => v)));
   const ws = new WebSocket(`ws://${location.host}/ws/term?${q}`);
   ws.binaryType = "arraybuffer";
   t.ws = ws; t.alive = true;
@@ -55,7 +56,7 @@ function connect(t) {
     const m = document.createElement("div");
     m.className = "term-msg";
     m.innerHTML = `${t.spec.kind === "attach" ? "Detached" : "Ended"} · <a>reconnect</a>`;
-    m.querySelector("a").onclick = () => { t.term.reset(); connect(t); };
+    m.querySelector("a").onclick = async () => { t.term.reset(); await token(true); connect(t); };
     t.el.appendChild(m);
     renderTabs();
   };

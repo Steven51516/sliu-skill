@@ -116,7 +116,8 @@ export async function newSession(project, preset = null, fill = {}) {
     let prompt = "";
     if (kind === "claude") {
       if ((pre.needs || "").includes("text") && !text) return toast(`${pre.ask || "Text"} is empty`, "err");
-      prompt = pre.prompt.replace("{ticket}", $("#ns-ticket", d).value).replace("{map}", $("#ns-map", d).value).replace("{text}", text.replace(/"/g, '\\"'));
+      const tk = $("#ns-ticket", d).value, mp = $("#ns-map", d).value, tx = text.replace(/"/g, '\\"');
+      prompt = pre.prompt.replace("{ticket}", () => tk).replace("{map}", () => mp).replace("{text}", () => tx);
       if (pre.id === "custom") prompt = text;
     } else if (kind === "codex") prompt = text;
     const body = { project, kind, prompt, label: $("#ns-label", d).value.trim(), command: $("#ns-cmd", d).value.trim() };

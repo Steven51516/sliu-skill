@@ -139,7 +139,7 @@ async function loadMiniGpus(host) {
     const el = $("#ov-gpus");
     if (!el) return;
     const mine = g.gpus.filter((x) => x.mine).length;
-    el.innerHTML = gpuCache[host] = `<div style="display:flex;gap:4px;align-items:flex-end;height:46px">${g.gpus.map((x) => `<div title="GPU ${x.index}: ${x.util}% util, ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB${x.procs.length ? " · " + x.procs.map((p) => p.user).join(", ") : ""}"
+    el.innerHTML = gpuCache[host] = `<div style="display:flex;gap:4px;align-items:flex-end;height:46px">${g.gpus.map((x) => `<div title="GPU ${x.index}: ${x.util}% util, ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB${x.procs.length ? " · " + esc(x.procs.map((p) => p.user).join(", ")) : ""}"
         style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;background:var(--active);border-radius:4px;overflow:hidden;${x.mine ? "outline:2px solid var(--accent)" : ""}">
         <div style="height:${Math.max(3, x.util)}%;background:var(--c-work)"></div></div>`).join("")}</div>
       <div class="muted" style="font-size:11.5px;margin-top:6px">${g.gpus.filter((x) => x.util < 5 && !x.procs.length).length} free of ${g.gpus.length}${mine ? ` · ${mine} running yours` : ""} · ${esc(g.gpus[0]?.name || "")}</div>`;

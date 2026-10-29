@@ -115,8 +115,15 @@ function createWindow() {
   win.once("ready-to-show", () => win.show());
   win.on("close", saveBounds);
   win.on("closed", () => { win = null; });
-  win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: "deny" }; });
-  win.webContents.on("will-navigate", (e, url) => { if (!url.startsWith(URL)) { e.preventDefault(); shell.openExternal(url); } });
+  // the window only ever shows the app page; web links open in the browser, nothing else opens at all
+  const external = (url) => /^https?:\/\//i.test(url) && !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url);
+  win.webContents.setWindowOpenHandler(({ url }) => { if (external(url)) shell.openExternal(url); return { action: "deny" }; });
+  win.webContents.on("will-navigate", (e, url) => {
+    if (url === URL || url.startsWith(URL + "#")) return;
+    e.preventDefault();
+    if (external(url)) shell.openExternal(url);
+  });
+  win.webContents.session.setPermissionRequestHandler((_wc, permission, done) => done(permission === "notifications"));
   win.webContents.on("render-process-gone", () => win && win.reload());
   win.loadURL(URL);
 }

@@ -27,18 +27,22 @@ function loadPrefs() {
 export function savePrefs() { try { localStorage.setItem("rd.prefs", JSON.stringify(S.prefs)); } catch (_) { /* private mode */ } }
 export function store(key, val) { try { if (val === undefined) return JSON.parse(localStorage.getItem("rd." + key)); localStorage.setItem("rd." + key, JSON.stringify(val)); } catch (_) { return null; } }
 
-export async function get(path, params = {}) {
-  const r = await fetch(path + "?" + new URLSearchParams(params));
+// every /api and /ws call carries the backend's per-launch token; a restarted backend has a new one, so refetch once
+let TOKEN = null;
+export async function token(fresh = false) {
+  if (!TOKEN || fresh) TOKEN = (await (await fetch("/api/token")).json()).token;
+  return TOKEN;
+}
+export const tokenNow = () => TOKEN;
+async function call(make) {
+  let r = await make(await token());
+  if (r.status === 403) r = await make(await token(true));
   const j = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
   if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
   return j;
 }
-export async function post(path, body) {
-  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-RG": "1" }, body: JSON.stringify(body) });
-  const j = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-  if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-  return j;
-}
+export const get = (path, params = {}) => call((t) => fetch(path + "?" + new URLSearchParams(params), { headers: { "X-RG-Token": t } }));
+export const post = (path, body) => call((t) => fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-RG": "1", "X-RG-Token": t }, body: JSON.stringify(body) }));
 
 export function toast(msg, kind = "", ms = 3200) {
   const t = document.createElement("div");
@@ -60,6 +64,7 @@ export function ago(ts) {
 }
 const KNOWN = ["open", "claimed", "running", "held", "resolved", "parked", "superseded", "closed", "paused", "working", "idle", "done", "blocked", "unknown", "waiting"];
 export const scls = (s) => "s-" + (KNOWN.includes(s) ? s : "other");
+export const safeCls = (s) => String(s ?? "").replace(/[^\w-]/g, "");
 export const pill = (s, text) => `<span class="pill ${scls(s)}">${esc(text ?? s)}</span>`;
 export const AGENT_WORD = { blocked: "needs you", working: "working", idle: "idle", done: "done", unknown: "unknown" };
 
@@ -123,7 +128,7 @@ export function md(el, text, opt = {}) {
   // GFM strikes through ~single~ tildes; notes use ~ for "about", so only ~~ strikes (code left alone)
   text = text.split(/(```[\s\S]*?```|`[^`\n]*`)/).map((seg, i) => i % 2 ? seg : seg.replace(/(^|[^~\\])~(?=[^~]|$)/g, "$1\\~")).join("");
   el.classList.add("md");
-  el.innerHTML = fm + DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: !!opt.breaks }));
+  el.innerHTML = fm + DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: !!opt.breaks }), { SANITIZE_NAMED_PROPS: true });
   el.querySelectorAll("pre code").forEach((c) => { if (c.textContent.length < 150000) hljs.highlightElement(c); });
   if (opt.paths && S.data) {                    // project paths in `code` open in the file viewer
     const root = S.data.path + "/";
@@ -138,8 +143,14 @@ export function md(el, text, opt = {}) {
   }
   el.querySelectorAll("a[href]").forEach((a) => {
     const h = a.getAttribute("href");
-    if (/^https?:/i.test(h)) { a.target = "_blank"; a.rel = "noreferrer"; }
-    else if (opt.onLink && !h.startsWith("#")) a.onclick = (e) => { e.preventDefault(); opt.onLink(h); };
+    if (/^https?:/i.test(h)) { a.target = "_blank"; a.rel = "noreferrer"; return; }
+    a.onclick = (e) => {                      // relative links open in the app; they never navigate the window
+      e.preventDefault();
+      if (h.startsWith("#") || /^[a-z]+:/i.test(h)) return;
+      if (opt.onLink) return opt.onLink(h);
+      const rel = h.split("#")[0];
+      if (S.data && rel) hooks.openPath(S.data.name, rel.startsWith(S.data.path + "/") ? rel.slice(S.data.path.length + 1) : rel.replace(/^\.\//, ""));
+    };
   });
   return el;
 }

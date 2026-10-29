@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls } from "./core.js";
 
 const STATE_ORDER = [["blocked", "Needs you"], ["working", "Working"], ["idle", "Idle"]];
 
@@ -39,7 +39,7 @@ export function renderSidebar() {
       for (const m of maps) {
         const st = m.driven ? "working" : m.status;
         html += `<a class="nav sub ${r.view === "map" && r.map === m.folder ? "on" : ""}" href="${href({ project: p.name, map: m.folder, view: "map" })}" title="${esc(m.title)}">
-          <span class="dot ${st}"></span><span class="mid">${esc(m.id)}</span><span class="label">${esc(m.title)}</span></a>`;
+          <span class="dot ${safeCls(st)}"></span><span class="mid">${esc(m.id)}</span><span class="label">${esc(m.title)}</span></a>`;
       }
       const closed = S.data.maps.length - maps.length;
       if (closed) html += `<a class="nav sub" href="${href({ project: p.name })}#milestones"><span class="label muted">${closed} closed map${closed > 1 ? "s" : ""}</span></a>`;
@@ -62,7 +62,7 @@ export function renderSidebar() {
     html += group.map((a) => `<div class="agent-row ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2">${esc(a.status === "blocked" ? "Needs your answer" : a.title || AGENT_WORD[a.status] || "")}</div></div>
-      ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${a.status}"></span>`}</div>`).join("");
+      ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`).join("");
   }
   html += `</div><div class="side-foot">
     <a class="btn ghost sm icon" href="#/settings" title="Settings (⌘,)">${icon("gear")}</a>

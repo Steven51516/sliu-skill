@@ -144,9 +144,11 @@ export async function showDoc(el, side, path, opt = {}) {
     $("#vvs", el).onclick = () => vscode(side, path, false);
   };
   wire();
+  const req = (el._req = (el._req || 0) + 1);
   let f;
   try { f = await get("/api/file", { project: S.route.project, side, path, ...(opt.fresh ? { fresh: 1 } : {}), ...(opt.mode ? { mode: opt.mode } : {}) }); }
-  catch (e) { if (!opt.quiet) el.querySelector(".vbody").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  catch (e) { if (!opt.quiet && el._req === req) el.querySelector(".vbody").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  if (el._req !== req || !el.isConnected) return;
   const body = document.createElement("div");
   body.className = opt.bare ? "" : "vbody";
   if (f.kind === "image") body.innerHTML = `<img src="data:${esc(f.mime)};base64,${f.data}" alt="${esc(name)}">`;

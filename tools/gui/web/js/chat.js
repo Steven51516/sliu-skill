@@ -3,7 +3,7 @@
 import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs } from "./core.js";
 
 const C = S.chat;
-Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false });
+Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0 });
 
 export function openChat(pane, opt = {}) {
   const a = pane && agentByPane(pane);
@@ -12,7 +12,7 @@ export function openChat(pane, opt = {}) {
   $("#chat").hidden = false;
   $("#chat-resize").hidden = false;
   if (pane !== C.pane) switchTo(pane);
-  else render();
+  else { render(); poll(); }
   S.unread.delete(pane);
   hooks.sidebar && hooks.sidebar();
   if (opt.text != null) setComposer(opt.text);
@@ -52,12 +52,12 @@ function switchTo(pane) {
 async function poll() {
   clearTimeout(C.timer);
   if (!C.open || !C.pane) return;
-  const pane = C.pane;
+  const pane = C.pane, my = ++C.seq, from = C.offset;
   try {
     const params = { pane };
     if (C.offset != null) Object.assign(params, { after: C.offset, session: C.session || "" });
     const r = await get("/api/chat", params);
-    if (pane !== C.pane) return;
+    if (pane !== C.pane || my !== C.seq || from !== C.offset) return;      // a newer poll owns the state
     const reset = r.session !== C.session || C.offset == null;
     if (reset) { C.items = []; C.tools = new Map(); }
     C.session = r.session; C.offset = r.offset; C.cut = reset ? r.cut : C.cut; C.err = null;
@@ -70,6 +70,7 @@ async function poll() {
       if (statusChanged || fresh.length) renderLive();
     }
   } catch (e) {
+    if (my !== C.seq) return;
     C.err = e.message;
     renderLive();
   }
@@ -146,6 +147,7 @@ function nearBottom(el) { return el.scrollHeight - el.scrollTop - el.clientHeigh
 function appendItems(items, initial = false) {
   const body = $("#ch-body");
   if (!body) return;
+  body.querySelectorAll(".msg.queued, .working, .fallback").forEach((e) => e.remove());   // live bits go back after
   const stick = initial || nearBottom(body);
   for (const it of items) {
     if (it.k === "tool") {

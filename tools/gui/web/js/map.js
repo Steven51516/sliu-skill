@@ -1,6 +1,6 @@
 // A map: its DAG of tickets (blocked_by edges, destination, fog), the ticket panel with skill actions, the map document,
 // and its files.
-import { S, $, esc, icon, pill, go, goMap, hooks, popMenu, toast, store } from "./core.js";
+import { S, $, esc, icon, pill, go, goMap, hooks, popMenu, toast, store, safeCls } from "./core.js";
 import { renderFiles, showDoc, filesState, vscode, serverMapDir, localMapDir, openFile } from "./files.js";
 
 const M = { showClosed: false, view: null };
@@ -16,7 +16,7 @@ export function renderMap(full) {
     if (tab === "dag") { drawDag(m, true); renderTicket(m); }
     return;
   }
-  host.innerHTML = `<div class="page full" id="map-root" data-map="${esc(m.folder)}" data-tab="${tab}"><div class="mhead" id="mhead"></div><div class="tabbody" id="tabbody"></div></div>`;
+  host.innerHTML = `<div class="page full" id="map-root" data-map="${esc(m.folder)}" data-tab="${esc(tab)}"><div class="mhead" id="mhead"></div><div class="tabbody" id="tabbody"></div></div>`;
   renderHead(m);
   const body = $("#tabbody");
   if (tab === "dag") {
@@ -121,7 +121,7 @@ function nodeHtml(n, m) {
     <div class="ttl">${esc(n.other ? n.other.t.title : "")}</div></div>`;
   const t = n.t;
   const word = t.waiting ? "needs you" : t.frontier ? "ready" : t.status === "open" ? (t.unblocked ? "open" : "blocked") : t.status;
-  const cls = t.waiting ? "s-blocked" : t.frontier ? "s-open" : "s-" + t.status;
+  const cls = t.waiting ? "s-blocked" : t.frontier ? "s-open" : "s-" + safeCls(t.status);
   return `<div class="box" style="--stripe:var(${STRIPE[t.status] || "--c-dim"})" title="${esc(t.title + (t.verdict ? "\n\nVerdict: " + t.verdict : ""))}">
     <div class="nid">${esc(t.id)} <span class="t">${esc(t.type || "")}</span><span class="st ${cls}" style="background:none">${esc(word)}</span></div>
     <div class="ttl">${esc(t.title)}</div></div>`;
@@ -144,7 +144,7 @@ function drawDag(m, keepView) {
   }).join("");
   const nodes = g.nodes().map((id) => {
     const n = g.node(id);
-    const cls = n.kind === "ticket" ? [n.t.status, n.t.waiting ? "waiting" : "", n.t.folder === S.route.ticket ? "sel" : ""].join(" ") : n.kind;
+    const cls = n.kind === "ticket" ? [safeCls(n.t.status), n.t.waiting ? "waiting" : "", n.t.folder === S.route.ticket ? "sel" : ""].join(" ") : n.kind;
     return `<g class="node ${cls}" data-id="${esc(id)}" transform="translate(${n.x - n.width / 2},${n.y - n.height / 2})">
       <foreignObject width="${n.width}" height="${n.height}">${nodeHtml(n, m)}</foreignObject></g>`;
   }).join("");

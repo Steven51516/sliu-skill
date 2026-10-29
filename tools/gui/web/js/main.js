@@ -48,8 +48,9 @@ async function loadProject() {
   } catch (e) { S.err = e.message; S.data = null; return true; }
 }
 
+let again = false;
 async function poll(force = false) {
-  if (polling && !force) return;
+  if (polling) { if (force) again = true; return; }
   polling = true;
   try {
     const sum = await get("/api/projects");
@@ -64,7 +65,7 @@ async function poll(force = false) {
   } catch (e) {
     S.summary = S.summary || null;
     $("#titlebar .crumbs") && toastOnce("The backend is not answering: " + e.message);
-  } finally { polling = false; }
+  } finally { polling = false; if (again) { again = false; poll(); } }
 }
 
 let lastToast = 0;
