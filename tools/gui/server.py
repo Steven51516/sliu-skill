@@ -1231,6 +1231,7 @@ def main():
     app = app_installed()
     if app and not (ARGS.serve or ARGS.browser or ARGS.no_open or ARGS.dry_run or ARGS.port or ARGS.config):
         subprocess.run(["open", app])          # the app starts (or reuses) the backend itself
+        print(f"opening {APP_NAME} (its backend runs in the herdr workspace research-desk; --browser for a browser tab)")
         return
     port = ARGS.port or load_config().get("port", 8765)
     url = f"http://127.0.0.1:{port}/"
