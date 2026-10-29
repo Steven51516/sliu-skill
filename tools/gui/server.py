@@ -235,6 +235,60 @@ def live_driver_maps(agents, maps):
     return found
 
 
+_codex = {"t": 0, "runs": []}
+
+
+def etime_seconds(s):
+    """ps etime ([[dd-]hh:]mm:ss) -> seconds."""
+    days, _, rest = s.strip().rpartition("-")
+    parts = [int(x) for x in rest.split(":")]
+    while len(parts) < 3:
+        parts.insert(0, 0)
+    return (int(days) if days else 0) * 86400 + parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+def codex_runs():
+    """Running `codex exec` jobs (codex-run detaches them, so no pane shows them): folder, run dir, age; cached 3 s."""
+    if time.time() - _codex["t"] > 3:
+        code, out, _ = run(["ps", "-axo", "pid=,etime=,args="], timeout=10)
+        runs = []
+        for line in out.decode(errors="replace").splitlines() if code == 0 else []:
+            m = re.match(r"\s*(\d+)\s+(\S+)\s+(.*)$", line)
+            if not m or not re.search(r"(^|/)codex exec\b", m.group(3)):
+                continue
+            args = m.group(3)
+            cwd = re.search(r"(?:^|\s)-C\s+(\S+)", args)
+            outp = re.search(r"(?:^|\s)-o\s+(\S+)", args)
+            run_dir = os.path.dirname(outp.group(1)) if outp else ""
+            runs.append({"pid": int(m.group(1)), "seconds": etime_seconds(m.group(2)), "cwd": cwd.group(1) if cwd else "",
+                         "run": run_dir, "name": os.path.basename(run_dir) if run_dir else "codex exec"})
+        _codex.update(t=time.time(), runs=runs)
+    return _codex["runs"]
+
+
+def mark_codex(p, agents, maps):
+    """Codex runs in this project, each tied to its ticket (an id in the run's name) and to that ticket's worker; an
+    agent whose Codex run is still going is working, whatever its own screen says."""
+    ids = {str(k.get("id")).lower(): k.get("id") for m in maps for k in m["_tickets"] if k.get("id")}
+    runs = []
+    for r in codex_runs():
+        if not r["cwd"] or not in_folder(r["cwd"], p["path"]):
+            continue
+        r = dict(r, ticket=None, pane=None)
+        for low, tid in ids.items():
+            if re.search(rf"(^|[^a-z0-9]){re.escape(low)}([^0-9]|$)", r["name"].lower()):
+                r["ticket"] = tid
+                break
+        owner = next((a for a in agents if r["ticket"] and a.get("ticket") == r["ticket"]), None)
+        if owner:
+            r["pane"] = owner["pane"]
+            owner.setdefault("codex", []).append(r)
+            if owner["status"] in ("idle", "done", "unknown"):
+                owner["status_raw"], owner["status"] = owner["status"], "working"
+        runs.append(r)
+    return runs
+
+
 def mark_workers(agents, maps, drivers):
     """A worker is the session a driver opened for one ticket: its tab label or herdr name is the ticket id
     (TEAM-PROTOCOL, Workers). It is filed under the driver of that ticket's map."""
@@ -291,6 +345,7 @@ def project_state(p, with_agents=True):
     agents, herdr_err = project_agents(p) if with_agents else ([], None)
     driven = live_driver_maps(agents, maps)
     mark_workers(agents, maps, driven)
+    codex = mark_codex(p, agents, maps)
     out_maps, waiting = [], []
     for m in maps:
         folder = os.path.basename(os.path.dirname(m["_path"]))
@@ -317,7 +372,7 @@ def project_state(p, with_agents=True):
                 for a in agents if a["status"] == "blocked"]
     return {"name": p["name"], "path": p["path"], "server": p.get("server"), "server_root": p.get("server_root"),
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
-            "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps),
+            "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
             "keychain": keychain_has(), "dry_run": ARGS.dry_run}
 
 

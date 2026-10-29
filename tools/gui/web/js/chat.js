@@ -1,6 +1,6 @@
 // Chat with any live agent: its Claude Code transcript rendered, prompts answered from the exact screen, messages sent
 // through herdr. Polls fast while the agent works or waits, slowly while it is idle.
-import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs } from "./core.js";
+import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote } from "./core.js";
 
 const C = S.chat;
 Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0 });
@@ -215,13 +215,15 @@ function renderLive() {
   const live = $("#ch-live"), body = $("#ch-body");
   if (!live) return;
   const sub = $("#ch-sub");
-  if (sub) sub.innerHTML = C.err ? `<span class="err">${esc(C.err)}</span>` : `${esc(AGENT_WORD[C.status] || C.status || "…")}${C.title ? " · " + esc(C.title) : ""}`;
+  const codex = codexNote(agentByPane(C.pane));
+  if (sub) sub.innerHTML = C.err ? `<span class="err">${esc(C.err)}</span>` : `${esc(AGENT_WORD[C.status] || C.status || "…")}${codex ? " · " + esc(codex) : C.title ? " · " + esc(C.title) : ""}`;
   // queued messages + working indicator live at the bottom of the conversation
   body.querySelectorAll(".msg.queued, .working, .fallback").forEach((e) => e.remove());
   const stick = nearBottom(body);
   if (C.fallback && !C.items.length) body.insertAdjacentHTML("beforeend", `<div class="fallback"><div class="msg note">No transcript for this agent: its screen</div><pre class="mono" style="white-space:pre-wrap;font-size:11.5px">${esc(C.fallback)}</pre></div>`);
   C.queued.forEach((q) => body.insertAdjacentHTML("beforeend", `<div class="msg user queued" title="Queued: the agent reads it when its turn ends"><div class="bubble">${esc(q)}</div></div>`));
   if (C.status === "working") body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>${esc(C.title || "Working")}</div>`);
+  else if (codex) body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>Waiting on Codex (${esc(codex.replace("Codex running · ", ""))}); it reports back when the job ends</div>`);
   if (stick) body.scrollTop = body.scrollHeight;
   // a prompt the agent waits at
   const was = live.dataset.screen;
@@ -231,6 +233,8 @@ function renderLive() {
   if (pre) pre.scrollTop = pre.scrollHeight;           // the question sits at the bottom of the screen
   if (C.screen && was !== C.screen) live.querySelector(".opts .btn, #pc-text")?.focus({ preventScroll: true });
   live.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => keys(b.dataset.key.split(" ")));
+  const pt = live.querySelector("#pc-term");
+  if (pt) pt.onclick = () => hooks.openTerminal({ kind: "attach", pane: C.pane, label: agentLabel(agentByPane(C.pane)) });
   const tx = live.querySelector("#pc-text");
   if (tx) {
     const sendText = async (enter) => { if (!tx.value) return; await post("/api/chat/text", { pane: C.pane, text: tx.value }).catch((e) => toast(e.message, "err")); if (enter) await keys(["enter"]); tx.value = ""; };
@@ -254,7 +258,8 @@ function promptCard(screen) {
     const m = l.match(/^\s*[❯›>]?\s*(\d)[.)]\s+(.+?)\s*$/);
     if (m && !opts.some((o) => o.k === m[1])) opts.push({ k: m[1], t: m[2] });
   }
-  return `<div class="prompt-card"><div class="hd"><span class="dot blocked"></span>Waiting for your answer</div>
+  return `<div class="prompt-card"><div class="hd"><span class="dot blocked"></span>Waiting for your answer<span style="flex:1"></span>
+      <button class="btn sm" id="pc-term" title="Answer in its terminal, when the buttons below don't fit the screen">${icon("term")} Open terminal</button></div>
     <pre>${esc(tail)}</pre>
     ${opts.length ? `<div class="opts">${opts.map((o) => `<button class="btn" data-key="${o.k}"><kbd>${o.k}</kbd> ${esc(o.t)}</button>`).join("")}</div>` : ""}
     <div class="keys"><button class="btn sm" data-key="up">↑</button><button class="btn sm" data-key="down">↓</button>

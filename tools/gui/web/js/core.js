@@ -67,6 +67,9 @@ export const scls = (s) => "s-" + (KNOWN.includes(s) ? s : "other");
 export const safeCls = (s) => String(s ?? "").replace(/[^\w-]/g, "");
 export const pill = (s, text) => `<span class="pill ${scls(s)}">${esc(text ?? s)}</span>`;
 export const AGENT_WORD = { blocked: "needs you", working: "working", idle: "idle", done: "done", unknown: "unknown" };
+export const fmtDur = (s) => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
+// "Codex running · 9 min" when the agent's delegated Codex job is still going (its own screen may say idle)
+export const codexNote = (a) => a?.codex?.length ? `Codex running · ${fmtDur(Math.max(...a.codex.map((r) => r.seconds)))}` : "";
 
 // ---------- routing: #/inbox  #/gpus  #/settings  #/p/<project>[/files | /map/<folder>[/<tab>[/<ticket>]]] ----------
 

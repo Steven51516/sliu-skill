@@ -1,5 +1,5 @@
 // Pages: project overview, inbox, GPUs, settings, project files; and the title bar.
-import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs } from "./core.js";
+import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur } from "./core.js";
 import { renderFiles, vscode } from "./files.js";
 import { renderMap, curMap } from "./map.js";
 
@@ -102,7 +102,7 @@ function waitingRow(w) {
 
 function agentRow(a, sub = false) {
   return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
-    <div class="t2">${esc(a.status === "blocked" ? "waiting for your answer" : (a.role === "worker" ? a.ticket_title : "") || a.title || "")}</div></div>${pill(a.status, AGENT_WORD[a.status] || a.status)}
+    <div class="t2">${esc(a.status === "blocked" ? "waiting for your answer" : [codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
     <button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button></div>`;
 }
 function teamRows(agents) {
@@ -114,6 +114,9 @@ function teamRows(agents) {
     agents.filter((w) => w.role === "worker" && w.driver === dr.pane).forEach((w) => { out.push(agentRow(w, true)); placed.add(w.pane); });
   });
   agents.filter((a) => !placed.has(a.pane)).forEach((a) => out.push(agentRow(a, a.role === "worker")));
+  // Codex jobs no session here claims (codex-run detaches them): one row each, opening the run's folder
+  (S.data?.codex || []).filter((r) => !r.pane).forEach((r) => out.push(`<div class="row click" data-run="${esc(r.run)}" title="${esc(r.run)}">
+    <span class="avatar codex">X</span><div class="grow"><div class="t1">Codex · ${esc(r.name)}</div><div class="t2">${esc(r.ticket ? r.ticket + " · " : "")}running ${esc(fmtDur(r.seconds))}</div></div>${pill("working", "Codex")}</div>`));
   return out.join("");
 }
 
@@ -140,6 +143,7 @@ function wire(root) {
   });
   root.querySelectorAll("[data-pane]").forEach((el) => el.onclick = (e) => { if (e.target.closest("[data-term]")) return; e.stopPropagation(); hooks.openChat(el.dataset.pane); });
   root.querySelectorAll("[data-term]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); hooks.openTerminal({ kind: "attach", pane: el.dataset.term }); });
+  root.querySelectorAll("[data-run]").forEach((el) => el.onclick = () => hooks.openPath(S.route.project, el.dataset.run + "/codex.log"));
   root.querySelectorAll("[data-driver]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); hooks.startTeam(S.route.project, el.dataset.driver); });
 }
 
