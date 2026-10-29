@@ -327,7 +327,8 @@ html.app .side-top .brand { display: none; }
 .prompt-card .keys { display: flex; gap: 5px; padding: 0 12px 10px; flex-wrap: wrap; align-items: center; }
 .composer { flex: none; padding: 8px 12px 12px; position: relative; }
 .composer .box { border: 1px solid var(--line-2); border-radius: 14px; background: var(--raised); box-shadow: var(--shadow); padding: 8px 8px 6px 12px; }
-.composer .box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.composer .box:focus-within, body.dragging .composer .box { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+body.dragging .terms { outline: 2px dashed var(--accent); outline-offset: -4px; }
 .composer textarea { width: 100%; border: 0; background: transparent; resize: none; padding: 2px 0; max-height: 220px; min-height: 22px; box-shadow: none !important; font-size: 13.5px; line-height: 1.45; }
 .composer .bar2 { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
 .composer .bar2 .grow { flex: 1; }

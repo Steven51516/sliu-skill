@@ -108,6 +108,15 @@ export function newMenu(anchor) {
   popMenu(anchor, items);
 }
 
+export function typeIntoTerminal(el, text) {
+  // a file dropped on a terminal: its path goes to the pty as typed input, as in Terminal
+  const t = T.tabs.find((x) => x.el === el) || T.tabs.find((x) => x.id === T.active);
+  if (!t || !t.ws || t.ws.readyState !== 1) return false;
+  t.ws.send(JSON.stringify({ t: "in", d: text }));
+  t.term.focus();
+  return true;
+}
+
 export function show(on) {
   T.open = on;
   $("#dock").hidden = !on;

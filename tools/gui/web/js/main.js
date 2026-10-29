@@ -3,7 +3,7 @@ import { S, $, get, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, 
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
 import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane } from "./chat.js";
-import { initDock, toggleDock } from "./term.js";
+import { initDock, toggleDock, typeIntoTerminal } from "./term.js";
 import { startTeam, newSession, addProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
 import { resetFiles, openPathLater } from "./files.js";
@@ -187,6 +187,43 @@ if (isApp) window.desk.onCommand((cmd, arg) => {
   if (cmd === "openChat") return openChat(arg);
   if (cmd === "goTicket") return go({ project: arg[0], view: "map", map: arg[1], tab: "dag", ticket: arg[2] });
   (COMMANDS[cmd] || (() => {}))();
+});
+
+// ---------- dropping files: their paths are typed where they land, as in Terminal ----------
+
+const shellPath = (p) => p.replace(/([\s'"()&;|<>$`\\!*?[\]{}#~^])/g, "\\$1");
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+
+function insertAt(field, text) {
+  const s = field.selectionStart ?? field.value.length, end = field.selectionEnd ?? s;
+  const before = field.value.slice(0, s), pad = before && !/\s$/.test(before) ? " " : "";
+  field.value = before + pad + text + field.value.slice(end);
+  const pos = (before + pad + text).length;
+  field.setSelectionRange(pos, pos);
+  field.focus();
+  field.dispatchEvent(new Event("input", { bubbles: true }));   // autosize, draft, menus
+}
+
+document.addEventListener("dragover", (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "copy";
+  document.body.classList.add("dragging");
+});
+document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("dragging"); });
+document.addEventListener("drop", (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  document.body.classList.remove("dragging");
+  const paths = [...e.dataTransfer.files].map((f) => (window.desk?.pathForFile ? window.desk.pathForFile(f) : "")).filter(Boolean);
+  if (!paths.length) return toast(isApp ? "Couldn't read the dropped file's path" : "Dropped files give their path only in the app (a browser hides it)", "err", 5000);
+  const text = paths.map(shellPath).join(" ") + " ";
+  const term = e.target.closest?.(".term");
+  if (term && typeIntoTerminal(term, text)) return;
+  const field = e.target.closest?.("textarea, input:not([type]), input[type=text], input[type=search]");
+  if (field && !field.disabled) return insertAt(field, text);
+  if (!S.chat.open || !$("#composer")) openChat(S.chat.pane, { focus: false });
+  setTimeout(() => { const c = $("#composer"); if (c && !c.disabled) insertAt(c, text); else toast("No agent to drop the path into: open a chat first", "err"); }, 60);
 });
 
 // ---------- start ----------
