@@ -122,7 +122,7 @@ function nodeHtml(n, m) {
   const t = n.t;
   const word = t.waiting ? "needs you" : t.frontier ? "ready" : t.status === "open" ? (t.unblocked ? "open" : "blocked") : t.status;
   const cls = t.waiting ? "s-blocked" : t.frontier ? "s-open" : "s-" + t.status;
-  return `<div class="box" style="--stripe:var(${STRIPE[t.status] || "--c-dim"})" title="${esc(t.title)}">
+  return `<div class="box" style="--stripe:var(${STRIPE[t.status] || "--c-dim"})" title="${esc(t.title + (t.verdict ? "\n\nVerdict: " + t.verdict : ""))}">
     <div class="nid">${esc(t.id)} <span class="t">${esc(t.type || "")}</span><span class="st ${cls}" style="background:none">${esc(word)}</span></div>
     <div class="ttl">${esc(t.title)}</div></div>`;
 }

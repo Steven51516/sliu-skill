@@ -19,7 +19,7 @@ export function renderTitlebar() {
   $("#titlebar").innerHTML = `<div class="crumbs">${crumbs.map((c, i) => (i ? `<span class="sep">/</span>` : "") + `<span class="${i === crumbs.length - 1 ? "cur" : ""}">${c}</span>`).join("")}</div>
     <span class="grow"></span>
     <button class="btn ghost sm icon" id="tb-term" title="Terminals (⌃\`)">${icon("bottom")}</button>
-    <button class="btn ghost sm" id="tb-chat" title="Chat (⌘J)">${icon("chat")} Chat${unread ? ` <span class="count alert">${unread}</span>` : ""}</button>`;
+    <button class="btn ${S.chat.open ? "" : "ghost"} sm" id="tb-chat" title="Chat (⌘J)">${icon("chat")} Chat${unread ? ` <span class="count alert">${unread}</span>` : ""}</button>`;
   $("#tb-term").onclick = () => hooks.toggleDock();
   $("#tb-chat").onclick = () => hooks.toggleChat();
 }
@@ -159,7 +159,9 @@ export function renderInbox() {
   host.innerHTML = `<div class="page" style="max-width:920px">
     <div class="ph"><div class="grow"><h1>Inbox</h1><div class="sub">Everything waiting on you, across projects</div></div>
       ${unread.length ? `<div class="actions"><button class="btn" id="ib-clear">${icon("check")} Mark all read</button></div>` : ""}</div>
-    ${none ? `<div class="card empty big">${icon("check")} All clear. Nothing is waiting on you.</div>` : ""}
+    ${!sum.projects.length ? `<div class="card pad" style="padding:22px 24px"><h2 style="margin:0 0 6px;font-size:16px">Welcome to Research Desk</h2>
+      <div class="muted" style="margin-bottom:12px">Add a project folder that uses the research harness (it has <code>maps/</code>), and its maps, tickets, agents and files appear here.</div>
+      <button class="btn primary" id="ib-add">${icon("plus")} Add a project</button></div>` : none ? `<div class="card empty big">${icon("check")} All clear. Nothing is waiting on you.</div>` : ""}
     ${blocked.length ? `<div class="sec"><h2>Waiting for your answer</h2><span class="meta">agents stopped at a prompt</span></div><div class="card rows">${blocked.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2">${esc(a.title || "")}</div></div>
       <button class="btn sm primary">Answer</button></div>`).join("")}</div>` : ""}
@@ -174,6 +176,7 @@ export function renderInbox() {
   </div>`;
   host.querySelectorAll("[data-map]").forEach((el) => el.onclick = () => goMap(el.dataset.project, el.dataset.map, el.dataset.ticket || null));
   host.querySelectorAll("[data-pane]").forEach((el) => el.onclick = () => hooks.openChat(el.dataset.pane));
+  if ($("#ib-add")) $("#ib-add").onclick = () => hooks.addProject();
   if ($("#ib-clear")) $("#ib-clear").onclick = () => { S.unread.clear(); hooks.badge(); renderInbox(); };
 }
 
@@ -216,7 +219,8 @@ export async function renderSettings() {
       <label><input type="checkbox" id="pf-prompt" ${pr.notifyPrompt ? "checked" : ""}> When an agent stops at a prompt and needs your answer</label>
       <label><input type="checkbox" id="pf-done" ${pr.notifyDone ? "checked" : ""}> When an agent finishes a turn you started from here (only if you aren't looking at it)</label>
       <label><input type="checkbox" id="pf-progress" ${pr.notifyProgress ? "checked" : ""}> When a ticket resolves, starts running, is held or parked, or a map closes (in projects you aren't looking at)</label>
-      <label><input type="checkbox" id="pf-verbose" ${pr.verbose ? "checked" : ""}> Show every tool call in the chat (otherwise long runs fold)</label></div>
+      <label><input type="checkbox" id="pf-verbose" ${pr.verbose ? "checked" : ""}> Show every tool call in the chat (otherwise long runs fold)</label>
+      ${window.desk?.loginItem ? `<label><input type="checkbox" id="pf-login"> Open Research Desk when you log in</label>` : ""}</div>
     <div class="sec"><h2>Status</h2></div><div class="card pad kv">
       <span class="k">herdr</span><span>${sum.herdr_error ? `<span class="err">${esc(sum.herdr_error)}</span>` : "connected"}</span>
       <span class="k">Claude token</span><span>${S.data ? (S.data.keychain ? "Keychain item found; agents get it when they start" : "no Keychain item; agents use claude's own login") : "—"}</span>
@@ -227,6 +231,10 @@ export async function renderSettings() {
       <textarea class="code" id="st-cfg" spellcheck="false">${esc(cfg.text)}</textarea>
       <div class="actions" style="margin-top:8px"><button class="btn primary" id="st-save">Save</button><span class="muted" id="st-msg"></span></div></div></div>`;
   const pref = (id, k) => { $(id).onchange = (e) => { S.prefs[k] = e.target.checked; savePrefs(); }; };
+  if ($("#pf-login")) {
+    window.desk.loginItem().then((on) => { $("#pf-login").checked = on; });
+    $("#pf-login").onchange = (e) => window.desk.loginItem(e.target.checked);
+  }
   pref("#pf-prompt", "notifyPrompt"); pref("#pf-done", "notifyDone"); pref("#pf-progress", "notifyProgress"); pref("#pf-verbose", "verbose");
   $("#st-add").onclick = () => hooks.addProject();
   $("#st-save").onclick = async () => {

@@ -10,7 +10,7 @@ import { resetFiles, openPathLater } from "./files.js";
 import { resetMap } from "./map.js";
 
 const POLL_MS = 4000;
-let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false;
+let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, lastAttention = "";
 
 Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob,
@@ -139,7 +139,16 @@ function badge() {
   const blocked = allAgents().filter((a) => a.status === "blocked").length;
   const n = blocked + S.unread.size;
   document.title = n ? `(${n}) Research Desk` : "Research Desk";
-  if (isApp) window.desk.setBadge(n);
+  if (isApp) {
+    window.desk.setBadge(n);
+    const items = [
+      ...allAgents().filter((a) => a.status === "blocked").map((a) => ({ label: `● ${agentLabel(a)}${a.project ? " · " + a.project : ""} needs your answer`, cmd: "openChat", arg: a.pane })),
+      ...[...S.unread.entries()].map(([pane, u]) => ({ label: `✓ ${u.label}${u.project ? " · " + u.project : ""} finished`, cmd: "openChat", arg: pane })),
+      ...(S.summary?.projects || []).flatMap((p) => (p.waiting || []).filter((w) => w.kind === "ticket").map((w) => ({ label: `◆ ${p.name} · ${w.id}: ${w.text}`, cmd: "goTicket", arg: [p.name, w.map_folder, w.folder] }))),
+    ];
+    const sig = JSON.stringify(items);
+    if (window.desk.attention && sig !== lastAttention) { lastAttention = sig; window.desk.attention(items); }
+  }
   void inboxCount;
 }
 
@@ -166,7 +175,7 @@ document.addEventListener("keydown", (e) => {
   if (isApp) return;                                       // the app's menu owns the ⌘ shortcuts
   if (!mod) return;
   const k = e.key.toLowerCase();
-  const map = { k: "palette", j: "chat", n: "newSession", i: "inbox", ",": "settings", "/": "shortcuts" };
+  const map = { k: "palette", j: "chat", n: "newSession", i: "inbox", ",": "settings", "/": "shortcuts", g: "gpus" };
   if (e.ctrlKey && e.key === "`") { e.preventDefault(); return toggleDock(); }
   if (map[k] && e.metaKey) { e.preventDefault(); COMMANDS[map[k]](); }
   else if (e.metaKey && /^[1-9]$/.test(k)) { e.preventDefault(); project(+k - 1); }
@@ -175,6 +184,7 @@ document.addEventListener("keydown", (e) => {
 if (isApp) window.desk.onCommand((cmd, arg) => {
   if (cmd === "project") return project(arg);
   if (cmd === "openChat") return openChat(arg);
+  if (cmd === "goTicket") return go({ project: arg[0], view: "map", map: arg[1], tab: "dag", ticket: arg[2] });
   (COMMANDS[cmd] || (() => {}))();
 });
 

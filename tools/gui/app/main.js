@@ -1,7 +1,7 @@
 // Research Desk: the macOS app shell. Starts (or reuses) the Python backend on 127.0.0.1 and shows its page in a native
 // window with a menu, dock badge and notifications. The page and backend live in the harness (tools/gui), so editing
 // them needs no rebuild; only this file and preload.js are packaged.
-const { app, BrowserWindow, Menu, shell, ipcMain, dialog } = require("electron");
+const { app, BrowserWindow, Menu, Tray, nativeImage, shell, ipcMain, dialog } = require("electron");
 const { spawn, execFileSync } = require("child_process");
 const fs = require("fs");
 const http = require("http");
@@ -12,7 +12,7 @@ const PORT = Number(process.env.RD_PORT || 8765);
 const URL = `http://127.0.0.1:${PORT}/`;
 const LOG_DIR = path.join(os.homedir(), "Library", "Logs", "Research Desk");
 const STATE = () => path.join(app.getPath("userData"), "window.json");
-let win = null, backend = null, owned = false, restarts = 0, quitting = false;
+let win = null, backend = null, owned = false, restarts = 0, quitting = false, tray = null, attention = [];
 
 function serverPath() {
   const cands = [process.env.RD_SERVER, path.join(os.homedir(), "research-harness", "tools", "gui", "server.py"), path.join(__dirname, "..", "server.py")];
@@ -147,6 +147,26 @@ function menu() {
 }
 
 ipcMain.on("badge", (_e, n) => app.dock && app.dock.setBadge(n ? String(n) : ""));
+ipcMain.on("attention", (_e, items) => { attention = Array.isArray(items) ? items.slice(0, 12) : []; updateTray(); });
+ipcMain.handle("login-item", (_e, on) => {
+  if (typeof on === "boolean") app.setLoginItemSettings({ openAtLogin: on });
+  return app.getLoginItemSettings().openAtLogin;
+});
+
+function show() { if (!win) createWindow(); else { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } }
+function updateTray() {
+  // the menu-bar icon: how many things wait on you, and a menu that jumps straight to each
+  if (!tray) {
+    tray = new Tray(nativeImage.createFromPath(path.join(__dirname, "assets", "trayTemplate.png")));
+    tray.setToolTip("Research Desk");
+  }
+  tray.setTitle(attention.length ? ` ${attention.length}` : "");
+  tray.setContextMenu(Menu.buildFromTemplate([
+    ...(attention.length ? attention.map((a) => ({ label: a.label.slice(0, 70), click: () => { show(); send(a.cmd, a.arg); } })) : [{ label: "Nothing waits on you", enabled: false }]),
+    { type: "separator" }, { label: "Open Research Desk", click: show }, { label: "Inbox", click: () => { show(); send("inbox"); } },
+    { type: "separator" }, { label: "Quit", click: () => app.quit() },
+  ]));
+}
 ipcMain.on("focus", () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
 
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -155,6 +175,7 @@ else {
   app.whenReady().then(async () => {
     app.setAboutPanelOptions({ applicationName: "Research Desk", applicationVersion: app.getVersion(), credits: "A desk over the research harness, with herdr as the runtime." });
     menu();
+    updateTray();
     try { await ensureBackend(); createWindow(); } catch (e) { errorWindow(e.message); }
     let misses = 0;                                      // watchdog: bring the backend back if it stops answering
     setInterval(async () => {
