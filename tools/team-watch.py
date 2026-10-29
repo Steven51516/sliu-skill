@@ -6,14 +6,15 @@ Usage (from the project folder, inside herdr):  team-watch                 every
                                                 team-watch <map> <driver pane> [agent name]   one driver
 team-up starts it; after starting a team any other way, run it once in a spare tab: `caffeinate -dimsu team-watch`.
 
-Every 5 minutes it looks at the driver's pane. The driver is stuck when it is idle and either the safeguard-stop hook
-logged that it let this session stop (Claude's safeguards stopped its replies twice), or no pass has been logged in
+Every 5 minutes it looks at the driver's pane. The driver is stuck when it is idle and either its session ended on a
+safeguard stop (Claude Code then waits for a human to retry or switch model), or no pass has been logged in
 scratch/agents/driver.log for 90 minutes (longer than the driver's longest sleep, an hour). A driver waiting on a
 permission prompt (`blocked`) needs the human and is left alone. A stuck driver is closed and a fresh one started on
 Sonnet 5.5 in the same pane with `/team driver <map>`; the map and its tickets hold its state, so it picks up from
 there. At most 3 restarts per run; every action is logged to driver.log.
 """
 import datetime as dt
+import glob
 import json
 import os
 import subprocess
@@ -22,7 +23,6 @@ import time
 
 EVERY, STALE_MIN, MAX_RESTARTS, MODEL = 300, 90, 3, "sonnet"
 LOG = os.path.join("scratch", "agents", "driver.log")
-SAFEGUARD_LOG = os.path.join("scratch", "agents", "safeguard-stop.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
 
 
@@ -60,15 +60,41 @@ def note(text):
     print(f"{now()}  watchdog: {text}", flush=True)
 
 
+def ended_on_safeguard_stop(session_id):
+    """True when the session's transcript ends on a reply Claude's safeguards stopped (or Claude Code's retry note)."""
+    if not session_id:
+        return False
+    hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{session_id}.jsonl"))
+    if not hits:
+        return False
+    with open(max(hits, key=os.path.getmtime), "rb") as f:
+        f.seek(max(0, f.seek(0, 2) - (256 << 10)))
+        lines = f.read().split(b"\n")
+    for line in reversed(lines):
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        if d.get("isSidechain") or d.get("type") not in ("user", "assistant"):
+            continue
+        msg = d.get("message") or {}
+        if d["type"] == "assistant":
+            return msg.get("stop_reason") == "refusal"
+        c = msg.get("content")
+        if isinstance(c, str):
+            return "stopped by a safety classifier" in c
+        if any(isinstance(x, dict) and x.get("type") == "tool_result" for x in c or []):
+            continue
+        return any("stopped by a safety classifier" in (x.get("text") or "") for x in c or [] if isinstance(x, dict))
+    return False
+
+
 def stuck_reason(agent):
     if not agent or agent.get("agent_status") in ("working", "blocked"):
         return None
     last_pass = os.path.getmtime(LOG) if os.path.exists(LOG) else 0
-    sid = ((agent.get("agent_session") or {}).get("value") or "")[:8]
-    if sid and os.path.exists(SAFEGUARD_LOG) and os.path.getmtime(SAFEGUARD_LOG) > last_pass:
-        with open(SAFEGUARD_LOG) as f:
-            if any(sid in line and "letting it stop" in line for line in f.readlines()[-50:]):
-                return "Claude's safeguards stopped its replies twice"
+    if ended_on_safeguard_stop((agent.get("agent_session") or {}).get("value")):
+        return "its last reply was stopped by Claude's safeguards"
     idle_min = (time.time() - last_pass) / 60
     if last_pass and idle_min > STALE_MIN:
         return f"no pass logged for {idle_min:.0f} min"
