@@ -10,7 +10,7 @@ import { resetFiles, openPathLater } from "./files.js";
 import { resetMap } from "./map.js";
 
 const POLL_MS = 4000;
-let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, lastAttention = "";
+let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, lastAttention = "", prevGuard = new Map(), guardPrimed = false;
 
 Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob,
@@ -96,6 +96,14 @@ function attention(sum) {
   });
   for (const pane of [...S.unread.keys()]) if (!now.has(pane)) S.unread.delete(pane);
   prevStatus = now;
+  allAgents().forEach((a) => {                           // a new Opus-safeguard flag on any agent
+    const at = a.safeguard?.ts, seen = prevGuard.get(a.pane);
+    prevGuard.set(a.pane, at);
+    if (!at || at === seen || seen === undefined && !guardPrimed) return;
+    note("blocked", `${agentLabel(a)}${a.project ? " · " + a.project : ""}: ${a.safeguard.text}`);
+    if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)}: Opus safeguards`, a.safeguard.text, a.pane);
+  });
+  guardPrimed = true;
   progress(sum);
   badge();
 }

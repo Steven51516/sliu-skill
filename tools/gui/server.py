@@ -206,7 +206,15 @@ def agent_view(a, snap, ros):
             "workspace_label": spaces.get(a.get("workspace_id"), {}).get("label", ""),
             "agent": a.get("agent"), "status": a.get("agent_status"), "title": a.get("terminal_title_stripped"),
             "tab_label": label, "role": role, "map": r.get("map", ""), "session": r.get("session", ""),
-            "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value"))}
+            "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value")), "safeguard": guard_of(a)}
+
+
+def guard_of(a):
+    """The agent's latest Opus-safeguard event, if any (Claude sessions only)."""
+    if a.get("agent") != "claude":
+        return None
+    path = rg_chat.transcript_path((a.get("agent_session") or {}).get("value"))
+    return rg_chat.last_safeguard(path) if path else None
 
 
 def project_agents(p):

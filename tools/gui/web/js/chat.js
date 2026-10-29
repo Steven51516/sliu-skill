@@ -168,6 +168,14 @@ function appendItems(items, initial = false) {
     if (it.k === "user") d.innerHTML = `<div class="bubble">${esc(it.text)}</div>`;
     else if (it.k === "cmd") d.innerHTML = `<code>${esc(it.text)}</code>`;
     else if (it.k === "note") d.textContent = it.text;
+    else if (it.k === "safeguard") {
+      d.innerHTML = `<div class="who">⚠ ${it.kind === "fallback" ? "Model switched by safeguards" : "Reply stopped by safeguards"}</div><div>${esc(it.text)}
+        This is often a false positive on biology work.</div><div class="actions" style="margin-top:6px">
+        <button class="btn sm" data-model="sonnet" title="Sends /model sonnet to this session (Claude Code also saves it as the default for new sessions)">Use Sonnet here</button>
+        <button class="btn sm" data-model="opus" title="Sends /model opus to this session">Back to Opus</button></div>`;
+      d.querySelectorAll("[data-model]").forEach((b) => b.onclick = () => post("/api/chat/send", { pane: C.pane, text: "/model " + b.dataset.model })
+        .then(() => { toast(`Sent /model ${b.dataset.model}`); setTimeout(poll, 500); }).catch((e) => toast(e.message, "err")));
+    }
     else if (it.k === "turn") {
       if (!body.lastElementChild || body.lastElementChild.classList.contains("turn")) continue;   // no empty turns
       const t = it.ts ? new Date(it.ts) : null, s = Math.round((it.ms || 0) / 1000);

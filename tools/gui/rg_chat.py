@@ -122,7 +122,8 @@ def entry_items(d):
             return [{"k": "note", "id": uid, "ts": ts, "text": "context compacted"}]
         if d.get("subtype") == "turn_duration":            # the end of a turn: drawn as a divider
             return [{"k": "turn", "id": uid, "ts": ts, "ms": d.get("durationMs")}]
-        return []
+        ev = safeguard_event(d)
+        return [ev] if ev else []
     if t == "attachment":
         # messages that arrive while the agent is busy (yours, another session's, a background task's) are queued
         # and delivered as attachments, not as user lines
@@ -198,3 +199,50 @@ def codex_items(d):
         return [{"k": "result", "id": p.get("call_id"), "ts": ts, "error": False, "text": text[:RESULT_CHARS],
                  "more": max(0, len(text) - RESULT_CHARS)}]
     return []
+
+
+def safeguard_event(d):
+    """Opus safeguards (often a false positive on biology work): a stopped response, or the session handed to an
+    older model. Claude Code records both as system lines."""
+    text = d.get("content") if isinstance(d.get("content"), str) else ""
+    if d.get("subtype") == "model_refusal_fallback":
+        detail = re.search(r"Details:\s*`?\[?([\w-]+)", text)
+        model = re.search(r"(\S+ [\d.]+) is answering instead", text)
+        return {"k": "safeguard", "kind": "fallback", "id": d.get("uuid"), "ts": d.get("timestamp"),
+                "text": f"Opus safeguards flagged this session{f' ({detail.group(1)})' if detail else ''}: "
+                        f"{model.group(1) if model else 'an older model'} is answering instead."}
+    if d.get("subtype") == "informational" and "safeguards" in text:
+        return {"k": "safeguard", "kind": "stopped", "id": d.get("uuid"), "ts": d.get("timestamp"),
+                "text": "Opus safeguards stopped part of a reply; Claude retried once with that noted."}
+    return None
+
+
+_guards = {}
+
+
+def last_safeguard(path):
+    """The latest safeguard event in a transcript, reading only what was appended since the last call."""
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return None
+    st = _guards.get(path)
+    if not st or size < st["size"]:
+        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None}
+    if size > st["size"]:
+        with open(path, "rb") as f:
+            f.seek(st["size"])
+            data = f.read(size - st["size"])
+        end = data.rfind(b"\n")
+        if end >= 0:
+            for line in data[:end].split(b"\n"):
+                if b"safeguards" not in line:
+                    continue
+                try:
+                    ev = safeguard_event(json.loads(line))
+                except ValueError:
+                    continue
+                if ev:
+                    st["last"] = ev
+            st["size"] += end + 1
+    return st["last"]

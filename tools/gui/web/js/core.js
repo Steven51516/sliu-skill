@@ -69,6 +69,12 @@ export const pill = (s, text) => `<span class="pill ${scls(s)}">${esc(text ?? s)
 export const AGENT_WORD = { blocked: "needs you", working: "working", idle: "idle", done: "done", unknown: "unknown" };
 export const fmtDur = (s) => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
 // "Codex running · 9 min" when the agent's delegated Codex job is still going (its own screen may say idle)
+// an Opus safeguard flag in the last two hours (biology work trips them falsely now and then)
+export const guardNote = (a) => {
+  const g = a?.safeguard;
+  if (!g || Date.now() - Date.parse(g.ts) > 2 * 3600 * 1000) return "";
+  return g.kind === "fallback" ? "⚠ Opus safeguards: an older model is answering" : "⚠ Opus safeguards stopped a reply";
+};
 export const codexNote = (a) => a?.codex?.length ? `Codex running · ${fmtDur(Math.max(...a.codex.map((r) => r.seconds)))}` : "";
 
 // ---------- routing: #/inbox  #/gpus  #/settings  #/p/<project>[/files | /map/<folder>[/<tab>[/<ticket>]]] ----------

@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote } from "./core.js";
 
 const STATE_ORDER = [["blocked", "Needs you"], ["working", "Working"], ["idle", "Idle"]];
 
@@ -57,7 +57,7 @@ export function renderSidebar() {
   if (!agents.length) html += `<div class="empty" style="padding:4px 8px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent"}${cur ? " in this project" : ""}.</div>`;
   const row = (a, sub = false) => `<div class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
-      <div class="l2">${esc(a.status === "blocked" ? "Needs your answer" : codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
+      <div class="l2 ${guardNote(a) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
       ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
   if (cur) {
     // the team as a tree: desk, then each driver with the workers it opened, then everything else
