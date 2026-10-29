@@ -55,14 +55,29 @@ export function renderSidebar() {
   html += `<div class="side-sec"><span class="grow">${cur ? "Sessions" : "All sessions"}</span>
     <button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button></div>`;
   if (!agents.length) html += `<div class="empty" style="padding:4px 8px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent"}${cur ? " in this project" : ""}.</div>`;
-  for (const [st, label] of STATE_ORDER) {
+  const row = (a, sub = false) => `<div class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
+      ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
+      <div class="l2">${esc(a.status === "blocked" ? "Needs your answer" : (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
+      ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
+  if (cur) {
+    // the team as a tree: desk, then each driver with the workers it opened, then everything else
+    const workers = agents.filter((a) => a.role === "worker");
+    const placed = new Set();
+    for (const a of agents.filter((x) => x.role === "desk")) { html += row(a); placed.add(a.pane); }
+    for (const d of agents.filter((x) => x.role === "driver")) {
+      html += row(d); placed.add(d.pane);
+      for (const w of workers.filter((x) => x.driver === d.pane)) { html += row(w, true); placed.add(w.pane); }
+    }
+    const loose = workers.filter((w) => !placed.has(w.pane));
+    if (loose.length) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">Workers without a live driver</div>` + loose.map((w) => { placed.add(w.pane); return row(w, true); }).join("");
+    const rest = agents.filter((a) => !placed.has(a.pane));
+    if (rest.length && placed.size) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">Other sessions</div>`;
+    html += rest.map((a) => row(a)).join("");
+  } else for (const [st, label] of STATE_ORDER) {
     const group = agents.filter((a) => (st === "idle" ? !["blocked", "working"].includes(a.status) : a.status === st));
     if (!group.length) continue;
     if (agents.length > 3) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">${label}</div>`;
-    html += group.map((a) => `<div class="agent-row ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
-      ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
-      <div class="l2">${esc(a.status === "blocked" ? "Needs your answer" : a.title || AGENT_WORD[a.status] || "")}</div></div>
-      ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`).join("");
+    html += group.map((a) => row(a)).join("");
   }
   html += `</div><div class="side-foot">
     <a class="btn ghost sm icon" href="#/settings" title="Settings (⌘,)">${icon("gear")}</a>

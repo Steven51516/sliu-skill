@@ -59,7 +59,7 @@ export function renderOverview() {
       <div class="grid">${open.map(mapCard).join("") || `<div class="card empty">No open map. Chart one with “New map from an idea”.</div>`}</div>
     </div><div>
       <div class="sec"><h2>Team</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
-      <div class="card rows">${d.agents.map(agentRow).join("") || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
+      <div class="card rows">${teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
       ${d.server ? `<div class="sec"><h2>GPUs · ${esc(d.server)}</h2><span class="grow"></span><a href="#/gpus" class="meta">all hosts</a></div><div class="card pad" id="ov-gpus">${gpuCache[d.server] || `<div class="spin"></div>`}</div>` : ""}
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
       <div class="card pad"><div class="timeline">${closed.map((m) => `<div class="tl" data-map="${esc(m.folder)}"><div class="h"><span class="mid">${esc(m.id)}</span>${esc(m.title)}</div>
@@ -100,10 +100,21 @@ function waitingRow(w) {
   return `<div class="row click" data-map="${esc(w.map_folder)}">${pill("waiting", "map")}<div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.map)}</div></div></div>`;
 }
 
-function agentRow(a) {
-  return `<div class="row click" data-pane="${esc(a.pane)}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
-    <div class="t2">${esc(a.status === "blocked" ? "waiting for your answer" : a.title || "")}</div></div>${pill(a.status, AGENT_WORD[a.status] || a.status)}
+function agentRow(a, sub = false) {
+  return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
+    <div class="t2">${esc(a.status === "blocked" ? "waiting for your answer" : (a.role === "worker" ? a.ticket_title : "") || a.title || "")}</div></div>${pill(a.status, AGENT_WORD[a.status] || a.status)}
     <button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button></div>`;
+}
+function teamRows(agents) {
+  // desk, each driver followed by the workers it opened, then the rest
+  const out = [], placed = new Set();
+  agents.filter((a) => a.role === "desk").forEach((a) => { out.push(agentRow(a)); placed.add(a.pane); });
+  agents.filter((a) => a.role === "driver").forEach((dr) => {
+    out.push(agentRow(dr)); placed.add(dr.pane);
+    agents.filter((w) => w.role === "worker" && w.driver === dr.pane).forEach((w) => { out.push(agentRow(w, true)); placed.add(w.pane); });
+  });
+  agents.filter((a) => !placed.has(a.pane)).forEach((a) => out.push(agentRow(a, a.role === "worker")));
+  return out.join("");
 }
 
 const BAR = [["resolved", "--c-ok"], ["running", "--c-work"], ["claimed", "--c-work"], ["held", "--c-held"], ["open", "--c-open"], ["parked", "--c-dim"], ["superseded", "--c-dim"]];

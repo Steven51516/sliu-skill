@@ -111,6 +111,8 @@ html.app .side-top .brand { display: none; }
 .tag.warn { background: color-mix(in srgb, var(--c-work) 18%, transparent); color: var(--c-work); }
 .agent-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
 .agent-row:hover { background: var(--hover); }
+.agent-row.sub { margin-left: 18px; padding-left: 8px; border-left: 1.5px solid var(--line-2); border-radius: 0 6px 6px 0; }
+.agent-row.sub .avatar { width: 18px; height: 18px; font-size: 9.5px; }
 .agent-row.on { background: var(--active); }
 .agent-row .who { flex: 1; min-width: 0; }
 .agent-row .who .l1 { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

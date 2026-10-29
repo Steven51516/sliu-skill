@@ -147,6 +147,22 @@ def herdr(*args, timeout=150):
         return {}
 
 
+_names = {"t": 0, "map": {}}
+
+
+def agent_names():
+    """pane -> herdr agent name (the snapshot has no names), cached briefly."""
+    with _snap_lock:
+        if time.time() - _names["t"] > 1.5:
+            code, out, _ = run(["herdr", "agent", "list"], timeout=10)
+            try:
+                _names["map"] = {a["pane_id"]: a.get("name") for a in json.loads(out)["result"]["agents"]} if code == 0 else {}
+            except (ValueError, KeyError):
+                _names["map"] = {}
+            _names["t"] = time.time()
+        return _names["map"]
+
+
 def live_agent(pane):
     snap, err = herdr_snapshot()
     if not snap:
@@ -186,7 +202,7 @@ def agent_view(a, snap, ros):
     r = ros.get(a["pane_id"], {})
     label = tab.get("label", "")
     role = r.get("role") or next((w for w in ("desk", "driver", "worker", "implementer") if w in label.lower()), "")
-    return {"pane": a["pane_id"], "tab": a.get("tab_id"), "workspace": a.get("workspace_id"),
+    return {"pane": a["pane_id"], "tab": a.get("tab_id"), "workspace": a.get("workspace_id"), "name": agent_names().get(a["pane_id"]),
             "workspace_label": spaces.get(a.get("workspace_id"), {}).get("label", ""),
             "agent": a.get("agent"), "status": a.get("agent_status"), "title": a.get("terminal_title_stripped"),
             "tab_label": label, "role": role, "map": r.get("map", ""), "session": r.get("session", ""),
@@ -200,23 +216,44 @@ def project_agents(p):
         return [], err
     ros = roster(p)
     out = [agent_view(a, snap, ros) for a in snap.get("agents", []) if in_folder(a.get("cwd"), p["path"])]
-    order = {"desk": 0, "driver": 1, "implementer": 2, "worker": 2}
+    order = {"desk": 0, "driver": 1, "worker": 2, "implementer": 2}
     out.sort(key=lambda a: (order.get(a["role"], 3), a["tab_label"]))
     return out, None
 
 
 def live_driver_maps(agents, maps):
-    """Map folders that already have a live driver (roster map field or tab label naming the map id)."""
-    found = set()
+    """Map folder -> the pane of its live driver (roster map field, or a tab label naming the map id)."""
+    found = {}
     for a in agents:
         if a["role"] != "driver":
             continue
         for m in maps:
             folder = os.path.basename(os.path.dirname(m["_path"]))
             mid = (m.get("id") or "").lower()
-            if re.search(rf"(^|/){re.escape(folder)}(/|$|\s)", a["map"]) or re.search(rf"\b{re.escape(mid)}\b", a["tab_label"].lower()):
-                found.add(folder)
+            if re.search(rf"(^|/){re.escape(folder)}(/|$|\s)", a["map"]) or re.search(rf"\b{re.escape(mid)}\b(?!-)", a["tab_label"].lower()):
+                found.setdefault(folder, a["pane"])
     return found
+
+
+def mark_workers(agents, maps, drivers):
+    """A worker is the session a driver opened for one ticket: its tab label or herdr name is the ticket id
+    (TEAM-PROTOCOL, Workers). It is filed under the driver of that ticket's map."""
+    tickets = {}
+    for m in maps:
+        folder = os.path.basename(os.path.dirname(m["_path"]))
+        for k in m["_tickets"]:
+            if k.get("id"):
+                tickets[str(k["id"]).lower()] = (k, folder)
+    for a in agents:
+        if a["role"] in ("desk", "driver"):
+            continue
+        for key in (a.get("name"), a["tab_label"]):
+            hit = tickets.get((key or "").strip().lower())
+            if hit:
+                k, folder = hit
+                a.update(role="worker", ticket=k.get("id"), ticket_title=k.get("title"), map_folder=folder,
+                         ticket_folder=os.path.basename(os.path.dirname(k["_path"])), driver=drivers.get(folder))
+                break
 
 
 # ---------- tracker ----------
@@ -253,6 +290,7 @@ def project_state(p, with_agents=True):
     by_id.update({k.get("id"): k for m in maps for k in m["_tickets"]})
     agents, herdr_err = project_agents(p) if with_agents else ([], None)
     driven = live_driver_maps(agents, maps)
+    mark_workers(agents, maps, driven)
     out_maps, waiting = [], []
     for m in maps:
         folder = os.path.basename(os.path.dirname(m["_path"]))

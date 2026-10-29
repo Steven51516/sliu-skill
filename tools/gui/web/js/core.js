@@ -101,6 +101,7 @@ export function allAgents() {
 export const agentByPane = (pane) => allAgents().find((a) => a.pane === pane);
 export function agentLabel(a) {
   if (!a) return "agent";
+  if (a.role === "worker" && a.ticket) return `Worker · ${a.ticket}`;
   const role = a.role ? a.role[0].toUpperCase() + a.role.slice(1) : (a.agent || "agent");
   const tab = a.tab_label && !/^\d+$/.test(a.tab_label) && !a.tab_label.toLowerCase().includes(a.role || "\0") ? ` · ${a.tab_label}` : "";
   return role + tab;

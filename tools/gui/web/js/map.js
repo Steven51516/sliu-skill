@@ -1,6 +1,8 @@
 // A map: its DAG of tickets (blocked_by edges, destination, fog), the ticket panel with skill actions, the map document,
 // and its files.
-import { S, $, esc, icon, pill, go, goMap, hooks, popMenu, toast, store, safeCls } from "./core.js";
+import { S, $, esc, icon, pill, go, goMap, hooks, popMenu, toast, store, safeCls, agentLabel, AGENT_WORD } from "./core.js";
+const workersOf = (m) => (S.data?.agents || []).filter((a) => a.role === "worker" && a.map_folder === m.folder);
+const workerFor = (t) => (S.data?.agents || []).find((a) => a.role === "worker" && a.ticket === t.id);
 import { renderFiles, showDoc, filesState, vscode, serverMapDir, localMapDir, openFile } from "./files.js";
 
 const M = { showClosed: false, view: null };
@@ -47,7 +49,9 @@ function renderHead(m) {
       <div class="sub"><span class="mono">${esc(m.id)}</span> · ${pill(m.driven ? "working" : m.status, m.driven ? "driver live" : m.status)}
         ${m.status === "paused" ? `<span class="muted">${esc((m.status_text || "").replace(/^paused\s*/, ""))}</span>` : ""}
         · ${done}/${n} resolved${running ? ` · ${running} running` : ""}${ready ? ` · ${ready} ready` : ""}${waiting ? ` · <span class="err">${waiting} need you</span>` : ""}</div>
-      <div style="margin-top:6px;color:var(--ink-2);font-size:12.5px;max-width:980px">${esc(m.status === "closed" ? "Outcome: " + (m.outcome || "") : m.destination)}</div></div>
+      <div style="margin-top:6px;color:var(--ink-2);font-size:12.5px;max-width:980px">${esc(m.status === "closed" ? "Outcome: " + (m.outcome || "") : m.destination)}</div>
+      ${workersOf(m).length ? `<div class="actions" style="margin-top:8px"><span class="muted" style="font-size:12px">Workers</span>${workersOf(m).map((w) =>
+        `<button class="btn sm" data-wpane="${esc(w.pane)}" title="${esc(w.ticket_title || "")} · ${esc(AGENT_WORD[w.status] || w.status)}"><span class="dot ${safeCls(w.status)}"></span>${esc(w.ticket)}</button>`).join("")}</div>` : ""}</div>
     <div class="actions">
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
       <button class="btn" id="mh-ticket">${icon("plus")} Add ticket</button>
@@ -55,6 +59,7 @@ function renderHead(m) {
       <button class="btn icon" id="mh-more" title="More">${icon("more")}</button></div></div>
     <div class="tabs">${[["dag", "Graph"], ["doc", "Map"], ["files", "Files"]].map(([k, l]) => `<a class="${tab === k ? "on" : ""}" data-tab="${k}">${l}</a>`).join("")}</div>`;
   el.querySelectorAll("[data-tab]").forEach((a) => a.onclick = () => go({ ...S.route, tab: a.dataset.tab }));
+  el.querySelectorAll("[data-wpane]").forEach((b) => b.onclick = () => hooks.openChat(b.dataset.wpane));
   if ($("#mh-driver")) $("#mh-driver").onclick = () => hooks.startTeam(S.route.project, m.folder);
   $("#mh-ticket").onclick = () => addTicket(m);
   $("#mh-ask").onclick = () => askDesk(`About map ${m.id} (${m.path}): `);
@@ -119,9 +124,10 @@ function nodeHtml(n, m) {
   if (n.kind === "fog") return `<div class="box" title="Not yet specified: ${esc(n.text)}"><div class="ttl">${esc(n.text)}</div></div>`;
   if (n.kind === "ext") return `<div class="box"><div class="nid">${esc(n.ref)} <span class="t">${n.other ? "in " + esc(n.other.map.id) : "unknown ticket"}</span></div>
     <div class="ttl">${esc(n.other ? n.other.t.title : "")}</div></div>`;
-  const t = n.t;
-  const word = t.waiting ? "needs you" : t.frontier ? "ready" : t.status === "open" ? (t.unblocked ? "open" : "blocked") : t.status;
-  const cls = t.waiting ? "s-blocked" : t.frontier ? "s-open" : "s-" + safeCls(t.status);
+  const t = n.t, w = workerFor(t);
+  const word = w ? (w.status === "blocked" ? "worker needs you" : `worker ${AGENT_WORD[w.status] || w.status}`)
+    : t.waiting ? "needs you" : t.frontier ? "ready" : t.status === "open" ? (t.unblocked ? "open" : "blocked") : t.status;
+  const cls = w ? "s-" + safeCls(w.status === "blocked" ? "blocked" : "working") : t.waiting ? "s-blocked" : t.frontier ? "s-open" : "s-" + safeCls(t.status);
   return `<div class="box" style="--stripe:var(${STRIPE[t.status] || "--c-dim"})" title="${esc(t.title + (t.verdict ? "\n\nVerdict: " + t.verdict : ""))}">
     <div class="nid">${esc(t.id)} <span class="t">${esc(t.type || "")}</span><span class="st ${cls}" style="background:none">${esc(word)}</span></div>
     <div class="ttl">${esc(t.title)}</div></div>`;
@@ -212,7 +218,8 @@ function renderTicket(m) {
   const t = m.tickets.find((x) => x.folder === S.route.ticket);
   if (!t) { panel.hidden = true; panel.dataset.key = ""; return; }
   panel.hidden = false;
-  const key = t.path + "|" + t.status_text;
+  const wk = workerFor(t);
+  const key = t.path + "|" + t.status_text + "|" + (wk ? wk.pane + wk.status : "");
   if (panel.dataset.key === key) return;
   panel.dataset.key = key;
   const dir = t.path.replace(/\/ticket\.md$/, ""), sdir = `${serverMapDir(m)}/tickets/${t.folder}`;
@@ -221,16 +228,21 @@ function renderTicket(m) {
       <span class="pill plain">${esc(t.type || "")}</span><span class="grow"></span><button class="btn ghost sm icon" id="tp-close" title="Close">${icon("x")}</button></div>
     <h3>${esc(t.title)}</h3>
     <div class="actions">
-      ${open && t.type !== "grilling" ? `<button class="btn sm primary" id="tp-work">${icon("play")} Work on it</button>` : ""}
+      ${open && t.type !== "grilling" && !wk && !m.driven ? `<button class="btn sm primary" id="tp-work">${icon("play")} Work on it</button>` : ""}
       ${t.waiting ? `<button class="btn sm primary" id="tp-answer">${icon("chat")} Answer with the desk</button>` : ""}
       ${t.status === "resolved" ? `<button class="btn sm" id="tp-review">${icon("check")} Review</button>` : ""}
       <button class="btn sm" id="tp-ask">${icon("chat")} Ask the desk</button>
       <button class="btn sm" id="tp-files">${icon("folder")} Files</button>
       <button class="btn sm icon" id="tp-more" title="More">${icon("more")}</button></div></div>
+    ${wk ? `<div class="panel-body" style="padding-bottom:0"><div class="card rows"><div class="row">
+      <span class="dot ${safeCls(wk.status)}"></span><div class="grow"><div class="t1">${esc(agentLabel(wk))} is ${esc(AGENT_WORD[wk.status] || wk.status)}</div>
+      <div class="t2">${esc(wk.title || "")}</div></div>
+      <button class="btn sm primary" id="tp-wchat">${icon("chat")} Open its chat</button><button class="btn sm" id="tp-wterm">${icon("term")} Terminal</button></div></div></div>` : ""}
     ${t.jobs.length ? `<div class="panel-body" style="padding-bottom:0"><div class="sec" style="margin:0 0 6px"><h2>Jobs</h2><span class="meta">from the ticket's jobs field</span></div>
       <div class="card rows">${t.jobs.map((j, i) => jobRow(j, i)).join("")}</div></div>` : ""}
     <div class="panel-body" id="tdoc"><div class="spin"></div></div>`;
   $("#tp-close").onclick = () => goMap(S.route.project, m.folder, null);
+  if (wk) { $("#tp-wchat").onclick = () => hooks.openChat(wk.pane); $("#tp-wterm").onclick = () => hooks.openTerminal({ kind: "attach", pane: wk.pane, label: agentLabel(wk) }); }
   panel.querySelectorAll("[data-peek]").forEach((b) => b.onclick = () => { const j = parseJob(t.jobs[+b.dataset.peek]); hooks.peekJob(j.host, j.session); });
   panel.querySelectorAll("[data-attach]").forEach((b) => b.onclick = () => { const j = parseJob(t.jobs[+b.dataset.attach]);
     hooks.openTerminal({ kind: "tmux", host: j.host, session: j.session, label: `tmux ${j.session} @ ${j.host}` }); });
