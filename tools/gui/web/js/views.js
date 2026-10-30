@@ -250,12 +250,13 @@ export async function renderGpus(fresh = false, quiet = false) {
       <span class="muted" style="font-size:12px">${x.util}% · ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB · pid ${esc(x.procs.filter((p) => p.user === me).map((p) => p.pid).join(", "))}</span></div>`).join("")}</div>` : ""}
     ${Object.entries(data.pools).map(([pool, hosts]) => {
       const all = hosts.flatMap((h) => data.by[h]?.gpus || []);
-      return `<div class="sec"><h2>${esc(pool)}</h2><span class="meta">${all.filter(isFree).length} of ${all.length} free · ${all.filter((x) => x.mine).length} yours</span></div>
+      const model = (hosts.map((h) => data.by[h]?.gpus?.[0]?.name).find(Boolean) || "").replace(/^NVIDIA\s+/, "");
+      return `<div class="sec"><h2>${esc(pool)}</h2><span class="meta">${all.filter(isFree).length} of ${all.length} free · ${all.filter((x) => x.mine).length} yours${model ? " · " + esc(model) : ""}</span></div>
       <div class="card rows">${hosts.map((h) => { const g = data.by[h] || {};
-        if (g.error) return `<div class="row"><b class="mono" style="width:96px">${esc(h)}</b><span class="err" style="font-size:12px">${esc(g.error)}</span></div>`;
+        if (g.error) return `<div class="row grow-row"><b class="mono gname">${esc(h)}</b><span class="err" style="font-size:12px">${esc(g.error)}</span></div>`;
         const gs = g.gpus || [];
-        return `<div class="row"><b class="mono" style="width:96px">${esc(h)}</b><div class="gcells">${gs.map((x) => cell(h, x)).join("")}</div>
-          <span class="muted" style="font-size:12px;white-space:nowrap">${gs.filter(isFree).length}/${gs.length} free · ${esc(gs[0]?.name?.replace(/NVIDIA |GeForce /g, "") || "")}</span></div>`; }).join("")}</div>`;
+        return `<div class="row grow-row"><b class="mono gname">${esc(h)}</b><div class="gcells">${gs.map((x) => cell(h, x)).join("")}</div>
+          <span class="gfree">${gs.filter(isFree).length}/${gs.length} free</span></div>`; }).join("")}</div>`;
     }).join("")}
     <div class="legend-inline"><span><i class="gcell mine"></i> yours</span><span><i class="gcell busy"></i> someone's job</span><span><i class="gcell free"></i> free</span><span class="muted">bar height: utilisation · line: memory</span></div>`;
 }

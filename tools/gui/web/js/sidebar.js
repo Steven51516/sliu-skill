@@ -1,8 +1,6 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
 import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead } from "./core.js";
 
-const STATE_ORDER = [["blocked", "Needs you"], ["working", "Working"], ["idle", "Idle"]];
-
 export function inboxCount() {
   if (!S.summary) return 0;
   const waiting = S.summary.projects.reduce((n, p) => n + (p.waiting || []).length, 0);
@@ -51,11 +49,15 @@ export function renderSidebar() {
     html += `<div class="side-sec">Found, not added</div>` + sum.unregistered.map((u) =>
       `<a class="nav" data-add="${esc(u.name)}" data-path="${esc(u.path)}">${icon("plus")}<span class="label muted">${esc(u.name)}</span></a>`).join("");
   }
-  // sessions of the open project (else all), grouped by state
-  const agents = allAgents().filter((a) => cur ? a.project === cur : true);
-  html += `<div class="side-sec"><span class="grow">${cur ? "Sessions" : "All sessions"}</span>
-    <button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button></div>`;
-  if (!agents.length) html += `<div class="empty" style="padding:4px 8px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent"}${cur ? " in this project" : ""}.</div>`;
+  // inside a project: its sessions as a team tree. Outside one (Inbox, GPUs, Settings): only sessions that need you;
+  // the project rows above already show how busy each project is
+  const needsYou = (a) => a.status === "blocked" || S.unread.has(a.pane) || loopDead(a) || !!guardNote(a);
+  const agents = allAgents().filter((a) => (cur ? a.project === cur : needsYou(a)));
+  if (cur || agents.length) {
+    html += `<div class="side-sec"><span class="grow">${cur ? "Sessions" : "Needs you"}</span>
+      ${cur ? `<button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button>` : ""}</div>`;
+    if (!agents.length) html += `<div class="empty" style="padding:4px 10px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent in this project"}.</div>`;
+  }
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
@@ -74,12 +76,7 @@ export function renderSidebar() {
     const rest = agents.filter((a) => !placed.has(a.pane));
     if (rest.length && placed.size) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">Other sessions</div>`;
     html += rest.map((a) => row(a)).join("");
-  } else for (const [st, label] of STATE_ORDER) {
-    const group = agents.filter((a) => (st === "idle" ? !["blocked", "working"].includes(a.status) : a.status === st));
-    if (!group.length) continue;
-    if (agents.length > 3) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">${label}</div>`;
-    html += group.map((a) => row(a)).join("");
-  }
+  } else html += agents.map((a) => row(a)).join("");
   html += `</div><div class="side-foot">
     <button class="btn ghost sm icon ${r.view === "settings" ? "on" : ""}" id="sb-gear" title="Settings (⌘,)">${icon("gear")}</button>
     <span class="dot ${sum && !sum.herdr_error ? "idle" : "blocked"}" title="${esc(sum?.herdr_error || "herdr connected")}"></span>
@@ -90,7 +87,8 @@ export function renderSidebar() {
   el.innerHTML = html;
   el.querySelector(".side-scroll").scrollTop = scroll;
   $("#sb-search").onclick = () => hooks.palette();
-  $("#sb-new").onclick = $("#sb-new2").onclick = () => hooks.newSession(cur);
+  $("#sb-new").onclick = () => hooks.newSession(cur);
+  if ($("#sb-new2")) $("#sb-new2").onclick = () => hooks.newSession(cur);
   $("#sb-add").onclick = () => hooks.addProject();
   $("#sb-gear").onclick = () => (S.route.view === "settings" ? hooks.leaveSettings() : go({ view: "settings" }));
   el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {
