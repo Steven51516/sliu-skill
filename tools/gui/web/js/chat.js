@@ -28,12 +28,14 @@ export function closeChat() {
 export function toggleChat() { C.open ? closeChat() : openChat(C.pane); }
 
 function defaultPane() {
+  // the desk is who you talk to; without one, the session you last talked to here, else one waiting for you
   const proj = S.route.project;
-  const remembered = proj && store("chat." + proj);
   const agents = allAgents().filter((a) => !proj || a.project === proj);
-  if (remembered && agents.some((a) => a.pane === remembered)) return remembered;
   const desk = agents.find((a) => a.role === "desk");
-  return (desk || agents.find((a) => a.status === "blocked") || agents[0] || {}).pane || null;
+  if (desk) return desk.pane;
+  const remembered = proj && store("chat." + proj);
+  if (remembered && agents.some((a) => a.pane === remembered)) return remembered;
+  return (agents.find((a) => a.status === "blocked") || agents[0] || {}).pane || null;
 }
 export function deskPane(project) {
   const a = allAgents().find((x) => x.project === project && x.role === "desk");

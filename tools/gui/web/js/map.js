@@ -59,9 +59,9 @@ function renderHead(m) {
         `<button class="btn sm" data-wpane="${esc(w.pane)}" title="${esc(w.ticket_title || "")} · ${esc(AGENT_WORD[w.status] || w.status)}"><span class="dot ${safeCls(w.status)}"></span>${esc(w.ticket)}</button>`).join("")}</div>` : ""}</div>
     <div class="actions">
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
-      ${m.driver ? `<button class="btn primary" id="mh-driverchat" title="The driver owns this map: plan, re-chart and add questions with it">${icon("chat")} Talk to driver</button>` : ""}
+      <button class="btn primary" id="mh-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
       <button class="btn" id="mh-ticket">${icon("plus")} Add ticket</button>
-      <button class="btn" id="mh-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
+      ${m.driver ? `<button class="btn" id="mh-driverchat" title="For planning this map with the driver that owns it (charting, re-charting, the next questions)">${icon("map")} Plan with driver</button>` : ""}
       <button class="btn icon" id="mh-more" title="More">${icon("more")}</button></div></div>
     <div class="tabs">${[["dag", "Graph"], ["doc", "Map"], ["files", "Files"]].map(([k, l]) => `<a class="${tab === k ? "on" : ""}" data-tab="${k}">${l}</a>`).join("")}</div>`;
   el.querySelectorAll("[data-tab]").forEach((a) => a.onclick = () => go({ ...S.route, tab: a.dataset.tab }));
@@ -71,7 +71,7 @@ function renderHead(m) {
   if ($("#mh-driverchat")) $("#mh-driverchat").onclick = () => hooks.openChat(m.driver);
   $("#mh-ask").onclick = () => askDesk(`About map ${m.id} (${m.path}): `);
   $("#mh-more").onclick = (e) => popMenu(e.currentTarget, [
-    { label: "Re-chart this map", icon: "map", run: () => m.driver ? hooks.openChat(m.driver, { text: "Re-chart this map: " })
+    { label: m.driver ? "Re-chart with the driver" : "Re-chart this map", icon: "map", run: () => m.driver ? hooks.openChat(m.driver, { text: "Re-chart this map: " })
       : hooks.newSession(S.route.project, "rechart", { map: localMapDir(m) }) },
     { label: "Run one research-drive pass", icon: "bolt", run: () => hooks.newSession(S.route.project, "drive", { map: localMapDir(m) }) },
     "-",
@@ -86,8 +86,7 @@ function renderHead(m) {
 export function askDesk(text) { hooks.askProject(S.route.project, text); }
 
 async function addTicket(m) {
-  if (m.driver) return hooks.openChat(m.driver, { text: "New question for this map: " });   // the driver owns the map
-  const desk = hooks.deskPane(S.route.project);
+  const desk = hooks.deskPane(S.route.project);   // the desk relays `new <question>` to the map's driver
   if (desk) return hooks.openChat(desk, { text: `new (map ${m.id}): ` });
   hooks.newSession(S.route.project, "tickets", { map: localMapDir(m) });
 }
