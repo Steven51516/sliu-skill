@@ -55,18 +55,20 @@ export function renderSidebar() {
   }
   // inside a project: its sessions as a team tree. Outside one (Inbox, GPUs, Settings): only sessions that need you;
   // the project rows above already show how busy each project is
+  // a folded project shows its sessions the same way: only those that need you
   const needsYou = (a) => a.status === "blocked" || S.unread.has(a.pane) || loopDead(a) || !!guardNote(a);
-  const agents = allAgents().filter((a) => (cur ? a.project === cur : needsYou(a)));
-  if (cur || agents.length) {
-    html += `<div class="side-sec"><span class="grow">${cur ? "Sessions" : "Needs you"}</span>
-      ${cur ? `<button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button>` : ""}</div>`;
+  const tree = cur && !folded.has(cur);
+  const agents = allAgents().filter((a) => (tree ? a.project === cur : needsYou(a)));
+  if (tree || agents.length) {
+    html += `<div class="side-sec"><span class="grow">${tree ? "Sessions" : "Needs you"}</span>
+      ${tree ? `<button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button>` : ""}</div>`;
     if (!agents.length) html += `<div class="empty" style="padding:4px 10px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent in this project"}.</div>`;
   }
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
       ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
-  if (cur) {
+  if (tree) {
     // the team as a tree: desk, then each driver with the workers it opened, then everything else
     const workers = agents.filter((a) => a.role === "worker");
     const placed = new Set();
