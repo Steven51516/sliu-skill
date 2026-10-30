@@ -223,7 +223,15 @@ def project_agents(p):
     if not snap:
         return [], err
     ros = roster(p)
-    out = [agent_view(a, snap, ros) for a in snap.get("agents", []) if in_folder(a.get("cwd"), p["path"])]
+    others = [q["path"] for q in load_config()["projects"].values() if q["name"] != p["name"]]
+
+    def mine(a):
+        # its folder is the project's, or the project's roster names its pane (a desk started from a parent folder),
+        # as long as it isn't sitting inside another registered project
+        if in_folder(a.get("cwd"), p["path"]):
+            return True
+        return a["pane_id"] in ros and not any(in_folder(a.get("cwd"), o) for o in others)
+    out = [agent_view(a, snap, ros) for a in snap.get("agents", []) if mine(a)]
     order = {"desk": 0, "driver": 1, "worker": 2, "implementer": 2}
     out.sort(key=lambda a: (order.get(a["role"], 3), a["tab_label"]))
     return out, None
@@ -238,7 +246,8 @@ def live_driver_maps(agents, maps):
         for m in maps:
             folder = os.path.basename(os.path.dirname(m["_path"]))
             mid = (m.get("id") or "").lower()
-            if re.search(rf"(^|/){re.escape(folder)}(/|$|\s)", a["map"]) or re.search(rf"\b{re.escape(mid)}\b(?!-)", a["tab_label"].lower()):
+            named = re.search(rf"(^|/){re.escape(folder)}(/|$|\s)", a["map"]) or (mid and re.search(rf"\b{re.escape(mid)}\b(?!-)", a["map"].lower()))
+            if named or (mid and re.search(rf"\b{re.escape(mid)}\b(?!-)", a["tab_label"].lower())):
                 found.setdefault(folder, a["pane"])
     return found
 
@@ -410,7 +419,8 @@ def projects_summary():
     others = []
     if snap:
         for a in snap.get("agents", []):
-            if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()):
+            claimed = {pane for q in cfg["projects"].values() for pane in roster(q)}
+            if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed:
                 others.append(agent_view(a, snap, {}))
     return {"projects": out, "unregistered": found, "config": CONFIG, "other_agents": others, "herdr_error": err,
             "dry_run": ARGS.dry_run, "version": VERSION}
