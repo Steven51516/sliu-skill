@@ -815,9 +815,19 @@ def tmux_peek(host, session, lines=200):
 
 # ---------- skills (for the composer's / menu) ----------
 
-BUILTIN = [("clear", "Start a fresh conversation"), ("compact", "Summarize the conversation to free context"),
-           ("loop", "Run a prompt or command on an interval"), ("model", "Switch the model"),
-           ("context", "Show context usage"), ("resume", "Resume an earlier conversation")]
+# Claude Code's own commands. Many open a menu on the terminal screen rather than writing to the conversation; the chat
+# shows the live screen after any of them is sent.
+BUILTIN = [("rewind", "Go back to an earlier point in the conversation (and code)"), ("clear", "Start a fresh conversation"),
+           ("compact", "Summarize the conversation to free context"), ("resume", "Resume an earlier conversation"),
+           ("model", "Switch the model"), ("effort", "Set the reasoning effort"), ("context", "Show context usage"),
+           ("cost", "Show this session's cost and duration"), ("usage", "Show plan usage limits"),
+           ("status", "Show version, model, account and connectivity"), ("config", "Open settings"),
+           ("permissions", "View or change tool permissions"), ("memory", "Edit memory files"),
+           ("agents", "Manage subagents"), ("mcp", "Manage MCP servers"), ("hooks", "Manage hooks"),
+           ("plugin", "Manage plugins"), ("todos", "Show the current todo list"), ("export", "Export the conversation"),
+           ("add-dir", "Add a working directory"), ("init", "Write a CLAUDE.md for this project"),
+           ("doctor", "Check the installation"), ("loop", "Run a prompt or command on an interval"),
+           ("help", "List commands")]
 
 
 def skills():
@@ -836,7 +846,7 @@ def skills():
 
 # ---------- chat ----------
 
-def chat(pane, after, session):
+def chat(pane, after, session, want_screen=False):
     try:
         a, snap = live_agent(pane)
     except ApiError as e:
@@ -860,7 +870,7 @@ def chat(pane, after, session):
     else:
         out["items"], out["offset"] = [], 0
         out["fallback"] = screen(pane, "recent-unwrapped", 300)
-    if a.get("agent_status") == "blocked":
+    if a.get("agent_status") == "blocked" or want_screen:      # a prompt, or a menu a /command opened
         out["screen"] = screen(pane, "visible")
     return out
 
@@ -916,8 +926,8 @@ def chat_keys(b):
 def chat_text(b):
     a, _ = live_agent(b.get("pane"))
     text = b.get("text") or ""
-    if a.get("agent_status") != "blocked":
-        raise ApiError(409, "typing into the screen is only for answering a prompt; send a message instead")
+    if a.get("agent_status") != "blocked" and not b.get("menu"):
+        raise ApiError(409, "typing into the screen is only for answering a prompt or a menu; send a message instead")
     if len(text) > 2000 or re.search(r"[\x00-\x1f\x7f]", text):
         raise ApiError(400, "answers are one line of plain text (at most 2000 characters)")
     herdr("pane", "send-text", b["pane"], text, timeout=15)
@@ -1348,7 +1358,7 @@ class Handler(BaseHTTPRequestHandler):
             return job
         if path == "/api/chat":
             after = q.get("after")
-            return chat(q.get("pane"), int(after) if after and after.isdigit() else None, q.get("session"))
+            return chat(q.get("pane"), int(after) if after and after.isdigit() else None, q.get("session"), q.get("screen") == "1")
         if path == "/api/skills":
             return skills()
         if path == "/api/gpus":

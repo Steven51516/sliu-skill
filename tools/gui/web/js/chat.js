@@ -58,6 +58,7 @@ async function poll() {
   try {
     const params = { pane };
     if (C.offset != null) Object.assign(params, { after: C.offset, session: C.session || "" });
+    if (menuOn()) params.screen = 1;
     const r = await get("/api/chat", params);
     if (pane !== C.pane || my !== C.seq || from !== C.offset) return;      // a newer poll owns the state
     const reset = r.session !== C.session || C.offset == null;
@@ -69,6 +70,7 @@ async function poll() {
     else {
       const fresh = ingest(r.items);
       if (fresh.length) appendItems(fresh);
+      if (C.menu && fresh.some((it) => it.k !== "cmd" && it.ts && Date.parse(it.ts) > C.menu.at + 1500)) C.menu = null;
       if (statusChanged || fresh.length) renderLive();
     }
   } catch (e) {
@@ -76,7 +78,7 @@ async function poll() {
     C.err = e.message;
     renderLive();
   }
-  const fast = C.status === "working" || C.status === "blocked" || C.queued.length;
+  const fast = C.status === "working" || C.status === "blocked" || C.queued.length || menuOn();
   C.timer = setTimeout(poll, C.status === "ended" ? 15000 : fast ? 1000 : 2500);
 }
 
@@ -248,15 +250,25 @@ function renderLive() {
   else if (codex) body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>Waiting on Codex (${esc(codex.replace("Codex running · ", ""))}); it reports back when the job ends</div>`);
   if (stick) body.scrollTop = body.scrollHeight;
   // a prompt the agent waits at
-  const want = C.status === "blocked" && C.screen ? C.pane + "\n" + C.screen : "";
+  const asking = C.status === "blocked" || menuOn();
+  const want = asking && C.screen ? C.pane + "\n" + (menuOn() && C.status !== "blocked" ? "menu" : "ask") + "\n" + C.screen : "";
   if (want !== (live.dataset.screen || "")) {          // rebuild only when the question changed: keeps a typed answer
     const pane = C.pane;
-    live.innerHTML = want ? promptCard(C.screen) : "";
+    live.innerHTML = want ? promptCard(C.screen, C.status !== "blocked" && menuOn() ? C.menu.cmd : null) : "";
     live.dataset.screen = want;
     const pre = live.querySelector("pre");
     if (pre) pre.scrollTop = pre.scrollHeight;         // the question sits at the bottom of the screen
     live.querySelector(".opts .btn, #pc-text")?.focus({ preventScroll: true });
-    live.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => keys(b.dataset.key.split(" "), pane));
+    live.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => {
+      const k = b.dataset.key;
+      if (menuOn()) {                                     // Esc closes a menu at once; after Enter, give it a few seconds
+        if (k === "esc") setTimeout(() => { C.menu = null; renderLive(); }, 900);
+        else if (k === "enter") C.menu.at = Math.min(C.menu.at, Date.now() - 172000);
+      }
+      keys(k.split(" "), pane);
+    });
+    const pc = live.querySelector("#pc-close");
+    if (pc) pc.onclick = () => { C.menu = null; renderLive(); };
     const pt = live.querySelector("#pc-term");
     if (pt) pt.onclick = () => hooks.openTerminal({ kind: "attach", pane, label: agentLabel(agentByPane(pane)) });
     const tx = live.querySelector("#pc-text");
@@ -265,7 +277,7 @@ function renderLive() {
       const sendText = async () => {
         if (!tx.value || busy) return;
         busy = true;
-        try { await post("/api/chat/text", { pane, text: tx.value, enter: true }); tx.value = ""; markSent(pane); setTimeout(poll, 350); }
+        try { await post("/api/chat/text", { pane, text: tx.value, enter: true, menu: menuOn() }); tx.value = ""; markSent(pane); setTimeout(poll, 350); }
         catch (e) { toast(e.message, "err"); }                 // the answer stays in the box
         busy = false;
       };
@@ -282,7 +294,11 @@ function renderLive() {
   }
 }
 
-function promptCard(screen) {
+// after a /command, Claude may show a menu (rewind's checkpoints, /model, /config…) that never reaches the transcript:
+// the chat shows the live screen with keys until the conversation moves on, you close it, or three minutes pass
+const menuOn = () => C.menu && C.menu.pane === C.pane && Date.now() - C.menu.at < 180000;
+
+function promptCard(screen, menuCmd = null) {
   const lines = screen.split("\n");
   const tail = lines.slice(-40).join("\n");
   const opts = [];
@@ -290,8 +306,9 @@ function promptCard(screen) {
     const m = l.match(/^\s*[❯›>]?\s*(\d)[.)]\s+(.+?)\s*$/);
     if (m && !opts.some((o) => o.k === m[1])) opts.push({ k: m[1], t: m[2] });
   }
-  return `<div class="prompt-card"><div class="hd"><span class="dot blocked"></span>Waiting for your answer<span style="flex:1"></span>
-      <button class="btn sm" id="pc-term" title="Answer in its terminal, when the buttons below don't fit the screen">${icon("term")} Open terminal</button></div>
+  return `<div class="prompt-card ${menuCmd ? "screenmode" : ""}"><div class="hd"><span class="dot ${menuCmd ? "working" : "blocked"}"></span>${menuCmd ? `Claude's screen after <code>${esc(menuCmd)}</code>` : "Waiting for your answer"}<span style="flex:1"></span>
+      <button class="btn sm" id="pc-term" title="Answer in its terminal, when the buttons below don't fit the screen">${icon("term")} Open terminal</button>
+      ${menuCmd ? `<button class="btn sm icon" id="pc-close" title="Hide the screen">${icon("x")}</button>` : ""}</div>
     <pre>${esc(tail)}</pre>
     ${opts.length ? `<div class="opts">${opts.map((o) => `<button class="btn" data-key="${o.k}"><kbd>${o.k}</kbd> ${esc(o.t)}</button>`).join("")}</div>` : ""}
     <div class="keys"><button class="btn sm" data-key="up">↑</button><button class="btn sm" data-key="down">↓</button>
@@ -379,10 +396,13 @@ function wireComposer() {
     const text = t.value.trim();
     if (!text || !C.pane) return;
     if (C.status === "blocked") return toast("It's waiting at a prompt: answer that first", "err");
+    closeMenu();
     t.value = ""; autosize(t); store("draft." + C.pane, "");
     if (C.status === "working") { C.queued.push(text); renderLive(); }
     try {
       await post("/api/chat/send", { pane: C.pane, text });
+      const cmd = text.match(/^\/([\w:-]+)/);                // a Claude Code command (not a skill): watch its screen
+      if (cmd && S.skills.some((s) => s.kind === "builtin" && s.name === cmd[1])) C.menu = { pane: C.pane, at: Date.now(), cmd: "/" + cmd[1] };
       markSent(C.pane);
       if (!window.desk && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
       setTimeout(poll, 400);

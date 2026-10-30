@@ -346,6 +346,9 @@ details.fmd .fm { margin-top: 6px; }
 .working .dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--c-work); margin-right: 3px; animation: pulse 1.2s infinite; }
 .working .dots span:nth-child(2) { animation-delay: .2s; } .working .dots span:nth-child(3) { animation-delay: .4s; }
 .prompt-card { margin: 0 12px 10px; border: 1px solid color-mix(in srgb, var(--c-alert) 55%, var(--line)); border-radius: 12px; background: var(--raised); box-shadow: var(--shadow); overflow: hidden; }
+.prompt-card.screenmode { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.prompt-card.screenmode .hd { background: var(--accent-soft); }
+#ch-live { flex: none; max-height: 62%; overflow: auto; }
 .prompt-card .hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-weight: 600; background: color-mix(in srgb, var(--c-alert) 9%, transparent); }
 .prompt-card pre { margin: 0; padding: 8px 12px; max-height: 240px; overflow: auto; font-size: 11.5px; line-height: 1.4; background: var(--code-bg); white-space: pre; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .prompt-card .opts { display: flex; flex-direction: column; gap: 5px; padding: 8px 12px; }
