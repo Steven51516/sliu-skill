@@ -1,5 +1,5 @@
 // Entry point: routing, the 4-second poll, attention (notifications, dock badge, title), keyboard, module wiring.
-import { S, $, get, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
+import { S, $, get, post, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
 import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive } from "./chat.js";
@@ -16,6 +16,11 @@ Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob, askProject, askLabel, openArchive,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
   nextAttention,
+  setMoshiMode: async (on) => {
+    try { await post("/api/moshi-mode", { on }); toast(on ? "Moshi mode on: yes/no and multiple-choice questions go to your phone" : "Moshi mode off: agents ask in the chat"); }
+    catch (e) { toast(e.message, "err"); }
+    poll(true);
+  },
   openPath: (project, rel, side = "local") => {
     if (S.route.view === "files" && S.route.project === project && document.getElementById("viewer")) return openFile(side, rel);
     openPathLater(side, rel); go({ project, view: "files" });

@@ -445,7 +445,79 @@ def projects_summary():
             if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed:
                 others.append(agent_view(a, snap, {}))
     return {"projects": out, "unregistered": found, "config": CONFIG, "other_agents": others, "herdr_error": err,
-            "dry_run": ARGS.dry_run, "version": VERSION}
+            "dry_run": ARGS.dry_run, "version": VERSION, "moshi_mode": moshi_mode(), "asks": open_asks()}
+
+
+# ---------- questions on the phone: Moshi mode (../ask-human.py asks them; the app lists the open ones) ----------
+
+ASK_DIR = os.environ.get("ASK_HUMAN_DIR") or os.path.expanduser("~/.config/research-harness")   # env: tests
+
+
+def moshi_mode(value=None):
+    path = os.path.join(ASK_DIR, "ask.json")
+    if value is not None:
+        os.makedirs(ASK_DIR, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump({"moshi": bool(value)}, f)
+    try:
+        with open(path) as f:
+            return bool(json.load(f).get("moshi"))
+    except (OSError, ValueError):
+        return False
+
+
+def open_asks():
+    """Questions on the phone with no outcome yet whose waiter is still alive, oldest first."""
+    asks = {}
+    try:
+        with open(os.path.join(ASK_DIR, "asks.jsonl")) as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if r.get("state") == "asked":
+                    asks[r.get("id")] = r
+                else:
+                    asks.pop(r.get("id"), None)
+    except OSError:
+        return []
+    out = []
+    for r in asks.values():
+        try:
+            os.kill(int(r["pid"]), 0)
+        except (OSError, KeyError, TypeError, ValueError):
+            continue
+        out.append({k: r.get(k) for k in ("id", "question", "options", "pane", "label", "t", "pid")})
+    return out
+
+
+def answer_ask(b):
+    """Answer a phone question from the app: stop its waiter (and its moshi-hook ask), type the answer into the pane."""
+    rec = next((a for a in open_asks() if a["id"] == b.get("id")), None)
+    if not rec:
+        raise ApiError(404, "That question is no longer open (answered on the phone, or its session ended).")
+    ans = b.get("answer")
+    if ans not in rec["options"]:
+        raise ApiError(400, "Not one of its options.")
+    try:
+        os.killpg(int(rec["pid"]), signal.SIGTERM)
+    except OSError:
+        pass
+    text = ans == rec["options"][-1]                   # "I'll reply in text"
+    msg = (f"The human will answer in text (to: {rec['question']}). Wait for their message." if text
+           else f"Answer from the human (app): {ans} (to: {rec['question']})")
+    try:
+        herdr("agent", "prompt", rec["pane"], msg, timeout=30)
+        delivered = True
+    except HerdrError:
+        delivered = False
+    with open(os.path.join(ASK_DIR, "asks.jsonl"), "a") as f:
+        f.write(json.dumps({"id": rec["id"], "state": "text" if text else "answered", "answer": None if text else ans,
+                            "via": "app", "delivered": delivered, "t": time.time()}) + "\n")
+    if not delivered:
+        raise ApiError(502, f"Couldn't type the answer into {rec['pane']} (the session may have ended).")
+    return {"ok": True}
 
 
 def add_project(b):
@@ -1695,6 +1767,12 @@ class Handler(BaseHTTPRequestHandler):
             if not r["ok"]:
                 raise ApiError(502, f"push failed: {r['error']}")
             return r
+        if path == "/api/moshi-mode":
+            return {"moshi_mode": moshi_mode(bool(b.get("on")))}
+        if path == "/api/ask-answer":
+            if ARGS.dry_run:
+                raise ApiError(400, "dry run: nothing sent")
+            return answer_ask(b)
         if path == "/api/notify-sound":
             rg_notify.play(b.get("sound"))
             return {"ok": True}

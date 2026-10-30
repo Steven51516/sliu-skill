@@ -582,3 +582,9 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 .ntable td.snd:has(input:not(:checked)) select { opacity: .45; }
 .bootfail { position: fixed; left: 50%; top: 40%; transform: translateX(-50%); max-width: 520px; padding: 14px 18px; border-radius: 12px;
   background: var(--panel, #fff); border: 0.5px solid var(--line, #ddd); box-shadow: 0 8px 30px rgba(0,0,0,.12); font-size: 13px; z-index: 9999; }
+
+.ntmode { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-bottom: 0.5px solid var(--line); font-size: 13px; line-height: 1.45; }
+.ntmode input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--accent); flex: none; }
+#sb-moshi.moshi { color: var(--accent); }
+.askrow { align-items: flex-start; }
+.askopts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

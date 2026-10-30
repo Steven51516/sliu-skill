@@ -188,7 +188,8 @@ export function renderInbox() {
   const unread = [...S.unread.entries()].map(([pane, u]) => ({ pane, ...u }));
   const changed = sum.projects.filter((p) => p.changes);
   const loops = allAgents().filter((a) => loopDead(a));
-  const none = !blocked.length && !tickets.length && !unread.length && !loops.length;
+  const asks = sum.asks || [];
+  const none = !blocked.length && !tickets.length && !unread.length && !loops.length && !asks.length;
   host.innerHTML = `<div class="page" style="max-width:920px">
     <div class="ph"><div class="grow"><h1>Inbox</h1><div class="sub">Everything waiting on you, across projects</div></div>
       ${unread.length ? `<div class="actions"><button class="btn" id="ib-clear">${icon("check")} Mark all read</button></div>` : ""}</div>
@@ -198,6 +199,9 @@ export function renderInbox() {
     ${blocked.length ? `<div class="sec"><h2>Waiting for your answer</h2><span class="meta">agents stopped at a prompt</span></div><div class="card rows">${blocked.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2">${esc(a.title || "")}</div></div>
       <button class="btn sm primary">Answer</button></div>`).join("")}</div>` : ""}
+    ${asks.length ? `<div class="sec"><h2>Questions on your phone</h2><span class="meta">Moshi mode: answer on the phone, or here</span></div><div class="card rows">${asks.map((q) => `<div class="row askrow">
+      ${icon("phone")}<div class="grow"><div class="t1">${esc(q.question)}</div><div class="t2">${esc(q.label || "")} · asked ${esc(ago(q.t))}</div>
+      <div class="askopts">${q.options.map((o, i) => `<button class="btn sm ${i === 0 ? "primary" : ""}" data-ask="${esc(q.id)}" data-opt="${esc(o)}">${esc(o)}</button>`).join("")}</div></div></div>`).join("")}</div>` : ""}
     ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a driver missed its pass, or a pass died (network, sleep)</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2 err">${esc(loopNote(a))}</div></div>
       <button class="btn sm primary" data-restart="${esc(a.pane)}">Restart loop</button></div>`).join("")}</div>` : ""}
@@ -214,6 +218,10 @@ export function renderInbox() {
   host.querySelectorAll("[data-pane]").forEach((el) => el.onclick = () => hooks.openChat(el.dataset.pane));
   if ($("#ib-add")) $("#ib-add").onclick = () => hooks.addProject();
   host.querySelectorAll("[data-restart]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); restartLoop(b.dataset.restart); });
+  host.querySelectorAll("[data-ask]").forEach((b) => b.onclick = async () => {
+    try { await post("/api/ask-answer", { id: b.dataset.ask, answer: b.dataset.opt }); toast(`Answered: ${b.dataset.opt}`); hooks.refresh(); }
+    catch (e) { toast(e.message, "err", 6000); hooks.refresh(); }
+  });
   if ($("#ib-clear")) $("#ib-clear").onclick = () => { S.unread.clear(); hooks.badge(); renderInbox(); };
 }
 
@@ -328,7 +336,10 @@ async function renderNotify() {
   const save = async () => { try { Object.assign(st, (await post("/api/notify", st)).settings); } catch (e) { toast(e.message, "err"); } };
   const draw = () => {
     const box = (k, ch) => `<input type="checkbox" data-k="${k}" data-ch="${ch}" ${st.events[k].channels.includes(ch) ? "checked" : ""} ${ch === "push" && !d.push_ready ? "disabled" : ""}>`;
-    card.innerHTML = `<table class="ntable"><tr><th>When</th><th title="A macOS notification banner (needs the app open, the window may be hidden)">Mac banner</th>
+    card.innerHTML = `<label class="ntmode"><input type="checkbox" id="nt-moshi" ${S.summary?.moshi_mode ? "checked" : ""}>
+        <span><b>Moshi mode</b><span class="muted"> · agents put yes/no and multiple-choice questions on your phone as buttons and keep working;
+        your tap comes back to them as a message. Open questions stay in the chat.</span></span></label>
+      <table class="ntable"><tr><th>When</th><th title="A macOS notification banner (needs the app open, the window may be hidden)">Mac banner</th>
         <th title="A sound on the Mac (works with the app closed)">Mac sound</th><th title="A push to your phone through Moshi">Phone (Moshi)</th></tr>
       ${d.kinds.map((k) => `<tr class="${k.inbox ? "inbox" : ""}"><td><b>${esc(k.label)}</b>${k.inbox ? ` <span class="tag">Inbox</span>` : ""}<div class="muted" style="font-size:12px">${esc(k.meaning)}</div></td>
         <td>${box(k.kind, "banner")}</td>
@@ -349,6 +360,7 @@ async function renderNotify() {
     });
     card.querySelectorAll("[data-snd]").forEach((sel) => sel.onchange = () => { st.events[sel.dataset.snd].sound = sel.value; post("/api/notify-sound", { sound: sel.value }); save(); });
     card.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => post("/api/notify-sound", { sound: st.events[b.dataset.play].sound }));
+    $("#nt-moshi").onchange = (e) => hooks.setMoshiMode(e.target.checked);
     $("#nt-away").onchange = (e) => { st.push_away_only = e.target.checked; save(); };
     $("#nt-mins").onchange = (e) => { st.away_minutes = +e.target.value || 5; save(); };
     $("#nt-test").onclick = async () => { try { await post("/api/notify-test", {}); toast("Test push sent"); } catch (e) { toast(e.message, "err", 6000); } };

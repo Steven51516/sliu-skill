@@ -5,7 +5,7 @@ export function inboxCount() {
   if (!S.summary) return 0;
   const waiting = S.summary.projects.reduce((n, p) => n + (p.waiting || []).length, 0);
   const blockedOutside = (S.summary.other_agents || []).filter((a) => a.status === "blocked").length;
-  return waiting + blockedOutside + S.unread.size;
+  return waiting + blockedOutside + S.unread.size + (S.summary.asks || []).length;
 }
 
 // projects folded in the sidebar (their maps, Files and Search hidden); remembered across reloads
@@ -86,6 +86,9 @@ export function renderSidebar() {
   html += `</div><div class="side-foot">
     <button class="btn ghost sm icon ${r.view === "settings" ? "on" : ""}" id="sb-gear" title="Settings (⌘,)">${icon("gear")}</button>
     <button class="btn ghost sm icon" id="sb-bell" title="Notifications: what reaches you, and how">${icon("bell")}</button>
+    <button class="btn ghost sm icon ${S.summary?.moshi_mode ? "on moshi" : ""}" id="sb-moshi" title="${S.summary?.moshi_mode
+      ? "Moshi mode is on: agents put yes/no and multiple-choice questions on your phone. Click to turn it off."
+      : "Moshi mode is off. Click to have agents put yes/no and multiple-choice questions on your phone as buttons."}">${icon("phone")}</button>
     <span class="dot ${sum && !sum.herdr_error ? "idle" : "blocked"}" title="${esc(sum?.herdr_error || "herdr connected")}"></span>
     ${window.desk?.showHerdr ? `<a id="sb-herdr" title="Show herdr (⇧⌘H)" style="color:inherit">${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</a>`
       : `<span>${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</span>`}<span class="grow"></span>
@@ -103,6 +106,7 @@ export function renderSidebar() {
     if (name === S.route.project && S.route.view === "project") { e.preventDefault(); return setFold(name, !folded.has(name)); }   // a second click folds
     if (folded.has(name)) setFold(name, false);   // opening a project unfolds it
   });
+  $("#sb-moshi").onclick = () => hooks.setMoshiMode(!S.summary?.moshi_mode);
   $("#sb-bell").onclick = () => { S.scrollToNotify = true; if (S.route.view === "settings") $("#notify")?.scrollIntoView({ block: "start", behavior: "smooth" }); else go({ view: "settings" }); };
   $("#sb-gear").onclick = () => (S.route.view === "settings" ? hooks.leaveSettings() : go({ view: "settings" }));
   el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {

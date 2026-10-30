@@ -9,7 +9,8 @@ The roles run the same skills as a single session, with two swaps:
 - **"use implementer subagents"** (the driver): open a worker per ticket (below). A worker runs `research-work` in a
   session of its own, so it can open subagents itself (a subagent cannot), and the human can watch or answer it in its tab.
 - **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>`; a worker reports
-  `blocked` to the driver, which tells the desk. The desk puts it to the human.
+  `blocked` to the driver, which tells the desk. The desk puts it to the human, a question with fixed answers through
+  `ask-human --from "desk · <project>"` (STYLE.md), and relays the answer to the driver.
 
 Delegation inside any role follows `docs/agents/delegation.md` as usual. The human talks to the desk day to day, and to a
 map's driver for wayfinder work on that map (charting, re-charting, choosing the next questions), since the driver owns
