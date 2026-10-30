@@ -12,6 +12,8 @@ The goal is the map's destination reached, or a measured answer that it can't be
 
 The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed. Unlike a spec's tickets, the graph keeps growing: each answer clears fog, and the next questions become sharp.
 
+Start every subagent with a fresh context window.
+
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the map, tickets, research notes, and result files. Don't duplicate information already available via pointers.
 
 **Implementer subagents** should be run in the background where possible for maximum concurrency, at most 6 at once; spin them up as `docs/agents/delegation.md` says.
@@ -28,7 +30,7 @@ Each pass:
 
 3. Once an **implementer subagent** reports `done`, open the ticket and trust it, not the report. If its review passed (or `review` says it needs none, or lets it finish later), resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to an implementer; on a task already resolved, it reopens the task, and the runs that use it stop: runs your own implementer subagents launched count as yours, any other needs the user's yes.
 
-4. Use **implementer subagents** to work each frontier ticket that fits the map's Contract and is not on hold. Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Contract). `grilling` and `prototype` tickets go to the user instead (ask the user). At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
+4. Use a fresh **implementer subagent** for each frontier ticket that fits the map's Contract and is not on hold. Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Contract). `grilling` and `prototype` tickets go to the user instead (ask the user). At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
 
 5. If the frontier is empty and the destination not reached, draft the next tickets from the fog and the latest answers (call the Skill tool with "to-tickets"), approve those inside the Contract, and kick off more **implementer subagents** on them. When two tickets that share one premise have failed the same check, write that premise in one sentence and make the next ticket test it, before a third variant on it. If every ticket is dead and nothing credible is left, recommend closing or re-scoping the map.
 

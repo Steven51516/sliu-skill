@@ -9,7 +9,7 @@ Three-axis review of a ticket's answer:
 - **Spec**: does the answer apply the ticket's pre-registered rule as written, and claim no more than its numbers show?
 - **Code**: does the code that produced the result do what the ticket says, and nothing else that changes the numbers?
 
-The axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings. Run this skill in a session that did not do the work: the one that did delegates it, as `docs/agents/delegation.md` says.
+The axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings. Start every sub-agent with a fresh context window. Run this skill in a session that did not do the work: the one that did delegates it, as `docs/agents/delegation.md` says.
 
 ## When to review
 

@@ -26,7 +26,7 @@ Look at the target folder to understand its starting state. Read whatever exists
 - `docs/agents/`: does this skill's prior output already exist?
 - `maps/`: a sign that the local-markdown tracker is already in use; `tracks/`: the old layout, to migrate
 - `git remote -v` and `.git/config`: is this a GitHub or GitLab repo? Which one?
-- `GLOSSARY.md` and `docs/decisions.md` at the root
+- `GLOSSARY.md` and `docs/decisions.md` at the root, and the legacy `CONTEXT.md` / `CONTEXT-MAP.md`. If a legacy file exists, offer to `git mv` it to its `GLOSSARY` name and rewrite those names in `docs/agents/domain.md`.
 - Parent folders' `CLAUDE.md` (walk up from the target): does one already import a scope file (an org's server rules)? The available scopes are in [scopes/](../../../scopes/), plus any a parent imports
 - `codex --version`, `claude --version`: which agents can take a role
 
@@ -45,6 +45,8 @@ Lead each section with the recommended answer so the user can accept it in a wor
 > Explainer: The "issue tracker" is where maps and tickets live for this project. Skills like `wayfinder`, `to-tickets`, `research-work` and `research-drive` read from and write to it. They need to know whether to call `gh issue create`, write a markdown file under `maps/`, or follow some other workflow you describe. Pick the place you actually track work for this project.
 
 If a `git remote` points at GitHub, propose that. If a `git remote` points at GitLab (`gitlab.com` or a self-hosted host), propose GitLab. Otherwise (or if the user prefers), offer:
+
+A GitHub or GitLab tracker needs a reachable repo. When the user picks one and no `git remote` points at that host, get the repo URL from them and wire it up (`git init` if needed, `git remote add origin <url>`) before going further. Done when `gh repo view` / `glab repo view` prints the project from inside this directory; if it can't, stop and tell the user what's missing.
 
 - **GitHub**: maps and tickets live in the repo's GitHub Issues (uses the `gh` CLI)
 - **GitLab**: maps and tickets live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI)
