@@ -1698,6 +1698,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/notify-sound":
             rg_notify.play(b.get("sound"))
             return {"ok": True}
+        if path == "/api/client-error":                   # the page failed to start (web/js/boot.js)
+            print(f"[{dt.datetime.now():%H:%M}] page failed to start (try {b.get('try')}): {str(b.get('error'))[:300]}", file=sys.stderr, flush=True)
+            return {"ok": True}
         if path == "/api/seen":
             return mark_seen(b.get("project"))
         if path == "/api/config":

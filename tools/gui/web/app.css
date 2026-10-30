@@ -580,3 +580,5 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 .ntfoot { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 16px; font-size: 13px; }
 .ntable td.snd input, .ntable td.snd select, .ntable td.snd button { vertical-align: middle; }
 .ntable td.snd:has(input:not(:checked)) select { opacity: .45; }
+.bootfail { position: fixed; left: 50%; top: 40%; transform: translateX(-50%); max-width: 520px; padding: 14px 18px; border-radius: 12px;
+  background: var(--panel, #fff); border: 0.5px solid var(--line, #ddd); box-shadow: 0 8px 30px rgba(0,0,0,.12); font-size: 13px; z-index: 9999; }

@@ -252,6 +252,8 @@ document.addEventListener("drop", (e) => {
   await poll(true);
   window.addEventListener("hashchange", route);
   await route();
+  window.rdReady = true;                                // boot.js stops watching
+  try { sessionStorage.removeItem("rd.boot"); } catch (_) { /* no storage */ }
   setInterval(poll, POLL_MS);
   if (store("chatOpen")) openChat(null, { focus: false });
   window.addEventListener("beforeunload", () => store("chatOpen", S.chat.open));
