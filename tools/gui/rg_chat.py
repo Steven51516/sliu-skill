@@ -32,29 +32,95 @@ def transcript_path(session_id, agent="claude"):
     return None
 
 
+_tails = {}
+
+
+def parent_of(d):
+    return d.get("parentUuid") or d.get("logicalParentUuid")
+
+
 def read(path, after=None):
-    """Items after byte offset `after` (None: the tail), the new offset, and whether earlier items were cut."""
+    """Items after byte offset `after` (None: the tail), the new offset, whether earlier items were cut, and whether the
+    caller must replace what it shows (a rewind forked the conversation: the new branch starts from an older line)."""
     size = os.path.getsize(path)
     if after is not None and after > size:          # file replaced: start over
         after = None
+    if after is not None:
+        lines, end_off = new_lines(path, after, size)
+        tail = _tails.get(path)
+        for d in lines:
+            if d.get("uuid") and not d.get("isSidechain"):
+                p = parent_of(d)
+                if p and tail and p != tail:        # not a continuation of the last line: a rewind; show the live branch
+                    items, offset, cut = read_branch(path, size)
+                    return items, offset, cut, True
+                tail = d["uuid"]
+        _tails[path] = tail
+        items = []
+        for d in lines:
+            try:
+                items += entry_items(d) if "/.codex/" not in path else codex_items(d)
+            except (KeyError, TypeError, AttributeError):
+                continue
+        return items, end_off, False, False
+    return read_branch(path, size) + (False,)
+
+
+def new_lines(path, after, size):
     with open(path, "rb") as f:
-        start = after if after is not None else max(0, size - INITIAL_BYTES)
+        f.seek(after)
+        data = f.read(size - after)
+    end = data.rfind(b"\n")
+    if end < 0:
+        return [], after
+    out = []
+    for line in data[:end].split(b"\n"):
+        try:
+            out.append(json.loads(line))
+        except ValueError:
+            continue
+    return out, after + end + 1
+
+
+def read_branch(path, size):
+    """The transcript's tail, keeping only the live branch: the parent chain back from the newest line (lines a rewind
+    abandoned are left out). Codex rollouts have no branches."""
+    with open(path, "rb") as f:
+        start = max(0, size - INITIAL_BYTES)
         f.seek(start)
         data = f.read(size - start)
-    cut = after is None and start > 0
+    cut = start > 0
     if cut:                                         # drop the partial first line
         nl = data.find(b"\n")
         data, start = data[nl + 1:], start + nl + 1
     end = data.rfind(b"\n")
     if end < 0:
         return [], start, cut
-    items, parse = [], codex_items if "/.codex/" in path else entry_items
+    entries = []
     for line in data[:end].split(b"\n"):
         try:
-            items += parse(json.loads(line))
-        except (ValueError, KeyError, TypeError, AttributeError):
+            entries.append(json.loads(line))
+        except ValueError:
             continue
-    if after is None and len(items) > MAX_ITEMS:
+    codex = "/.codex/" in path
+    if not codex:
+        chained = [d for d in entries if d.get("uuid") and not d.get("isSidechain")]
+        if chained:
+            by_id = {d["uuid"]: d for d in chained}
+            live, cur = set(), chained[-1]
+            while cur and cur["uuid"] not in live:
+                live.add(cur["uuid"])
+                cur = by_id.get(parent_of(cur))
+            # the walk stops where the chain leaves the window, so every live line in the window is found
+            entries = [d for d in entries if not d.get("uuid") or d["uuid"] in live]
+            _tails[path] = chained[-1]["uuid"]
+    items = []
+    for d in entries:
+        try:
+            items += codex_items(d) if codex else entry_items(d)
+        except (KeyError, TypeError, AttributeError):
+            continue
+    if len(items) > MAX_ITEMS:
         items, cut = items[-MAX_ITEMS:], True
     return items, start + end + 1, cut
 

@@ -854,9 +854,9 @@ def chat(pane, after, session, want_screen=False):
         path = rg_chat.transcript_path(session) if e.code == 404 and session else None
         if not path:
             raise
-        items, offset, cut = rg_chat.read(path, after)
+        items, offset, cut, reset = rg_chat.read(path, after)
         return {"pane": pane, "agent": "claude", "status": "ended", "title": "this session has ended", "session": session,
-                "items": items, "offset": offset, "cut": cut, "transcript": path}
+                "items": items, "offset": offset, "cut": cut, "reset": reset, "transcript": path}
     sess = (a.get("agent_session") or {}).get("value")
     out = {"pane": pane, "agent": a.get("agent"), "status": a.get("agent_status"),
            "title": a.get("terminal_title_stripped"), "session": sess, "cwd": a.get("cwd")}
@@ -864,9 +864,9 @@ def chat(pane, after, session, want_screen=False):
     if path:
         if session != sess:
             after = None
-        items, offset, cut = rg_chat.read(path, after)
+        items, offset, cut, reset = rg_chat.read(path, after)
         name_role(items, a.get("cwd"))
-        out.update({"items": items, "offset": offset, "cut": cut, "transcript": path})
+        out.update({"items": items, "offset": offset, "cut": cut, "reset": reset, "transcript": path})
     else:
         out["items"], out["offset"] = [], 0
         out["fallback"] = screen(pane, "recent-unwrapped", 300)
@@ -898,6 +898,21 @@ def screen(pane, source, lines=None):
     return "\n".join(l.rstrip() for l in text.splitlines()).strip("\n")
 
 
+def input_box(text):
+    """What sits in Claude Code's input box (the last box between ─── rules, starting at ❯), and its line count."""
+    lines = text.splitlines()
+    rules = [i for i, l in enumerate(lines) if l.strip() and set(l.strip()) <= {"─"}]
+    if len(rules) < 2:
+        return "", 0
+    box = lines[rules[-2] + 1:rules[-1]]
+    if not box or not box[0].lstrip().startswith("❯"):
+        return "", 0
+    typed = "\n".join([box[0].split("❯", 1)[1]] + box[1:]).strip()
+    if re.fullmatch(r'Try ".*"', typed):          # the dimmed suggestion an empty box shows
+        typed = ""
+    return typed, len(box)
+
+
 def chat_send(b):
     pane, text = b.get("pane"), (b.get("text") or "").strip()
     if not text:
@@ -905,12 +920,18 @@ def chat_send(b):
     a, _ = live_agent(pane)
     if a.get("agent_status") == "blocked":
         raise ApiError(409, "the agent is waiting at a prompt: answer it first")
+    cleared = ""
+    if a.get("agent") == "claude":
+        cleared, n = input_box(screen(pane, "visible"))
+        if cleared:                                 # left over (a rewind restores the removed message there): it would
+            for _ in range(n):                      # be sent together with this one; Ctrl+U clears a line, ⌫ joins lines
+                herdr("agent", "send-keys", pane, "ctrl+u", "backspace", timeout=15)
     try:
         herdr("agent", "prompt", pane, text, timeout=30)
     except HerdrError as e:
         raise ApiError(409 if e.code == "agent_blocked" else 502, str(e))
     _snap["t"] = 0
-    return {"ok": True}
+    return {"ok": True, "cleared": cleared}
 
 
 def chat_keys(b):

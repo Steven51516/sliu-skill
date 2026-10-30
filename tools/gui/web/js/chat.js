@@ -61,7 +61,7 @@ async function poll() {
     if (menuOn()) params.screen = 1;
     const r = await get("/api/chat", params);
     if (pane !== C.pane || my !== C.seq || from !== C.offset) return;      // a newer poll owns the state
-    const reset = r.session !== C.session || C.offset == null;
+    const reset = r.session !== C.session || C.offset == null || r.reset;     // r.reset: a rewind forked the conversation
     if (reset) { C.items = []; C.tools = new Map(); }
     C.session = r.session; C.offset = r.offset; C.cut = reset ? r.cut : C.cut; C.err = null;
     const statusChanged = r.status !== C.status || (r.screen || null) !== (C.screen || null);
@@ -261,9 +261,10 @@ function renderLive() {
     live.querySelector(".opts .btn, #pc-text")?.focus({ preventScroll: true });
     live.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => {
       const k = b.dataset.key;
+      if (menuOn() && C.menu.cmd === "/rewind") markRewound(k, b.textContent);
       if (menuOn()) {                                     // Esc closes a menu at once; after Enter, give it a few seconds
         if (k === "esc") setTimeout(() => { C.menu = null; renderLive(); }, 900);
-        else if (k === "enter") C.menu.at = Math.min(C.menu.at, Date.now() - 172000);
+        else if (k === "enter" || /^\d$/.test(k)) C.menu.at = Math.min(C.menu.at, Date.now() - 172000);
       }
       keys(k.split(" "), pane);
     });
@@ -292,6 +293,22 @@ function renderLive() {
     send.innerHTML = working && !$("#composer").value.trim() ? icon("stop") : icon("send");
     send.title = working && !$("#composer").value.trim() ? "Stop (Esc)" : "Send";
   }
+}
+
+// A rewind writes nothing to the transcript until the next message (which then forks it, and the chat redraws the
+// live branch). Meanwhile, once "Restore conversation" is confirmed, the rewound messages are greyed out.
+function markRewound(key, label) {
+  const screen = C.screen || "";
+  const chosen = /Restore conversation/i.test(label) ? true
+    : key === "enter" ? /❯\s*1\.\s*Restore conversation/.test(screen) : false;
+  const m = screen.match(/restore to the point before you sent this message:\s*\n\s*│\s*(.+)/i);
+  if (!chosen || !m) return;
+  const first = m[1].trim();
+  const bubbles = [...document.querySelectorAll("#ch-body .msg.user")];
+  const from = bubbles.reverse().find((b) => b.textContent.trim().startsWith(first.slice(0, 60)));
+  if (!from) return;
+  for (let el = from; el; el = el.nextElementSibling) if (!el.classList.contains("working")) el.classList.add("rewound");
+  from.insertAdjacentHTML("beforebegin", `<div class="msg note rewound-note">Rewound: the messages below are no longer in Claude's context; they disappear here after your next message</div>`);
 }
 
 // after a /command, Claude may show a menu (rewind's checkpoints, /model, /config…) that never reaches the transcript:
@@ -400,7 +417,8 @@ function wireComposer() {
     t.value = ""; autosize(t); store("draft." + C.pane, "");
     if (C.status === "working") { C.queued.push(text); renderLive(); }
     try {
-      await post("/api/chat/send", { pane: C.pane, text });
+      const res = await post("/api/chat/send", { pane: C.pane, text });
+      if (res.cleared) toast(`Cleared what was waiting in Claude's input box first: “${res.cleared.slice(0, 120)}”`, "", 7000);
       const cmd = text.match(/^\/([\w:-]+)/);                // a Claude Code command (not a skill): watch its screen
       if (cmd && S.skills.some((s) => s.kind === "builtin" && s.name === cmd[1])) C.menu = { pane: C.pane, at: Date.now(), cmd: "/" + cmd[1] };
       markSent(C.pane);
