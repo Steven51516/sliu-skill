@@ -160,7 +160,7 @@ function createWindow() {
     titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 16 },
     vibrancy: "sidebar", visualEffectState: "followWindow", backgroundColor: "#00000000",
     webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, sandbox: true, spellcheck: true,
-      backgroundThrottling: false },                   // hidden or in the background it still polls every 4 s
+      backgroundThrottling: false, plugins: true },    // still polls when hidden; plugins: Chromium's PDF viewer
   });
   win.once("ready-to-show", () => win.show());
   win.webContents.once("did-finish-load", () => { ready = true; pending.splice(0).forEach(([c, a]) => send(c, a)); });

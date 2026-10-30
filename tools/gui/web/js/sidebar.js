@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead } from "./core.js";
 
 const STATE_ORDER = [["blocked", "Needs you"], ["working", "Working"], ["idle", "Idle"]];
 
@@ -44,6 +44,7 @@ export function renderSidebar() {
       const closed = S.data.maps.length - maps.length;
       if (closed) html += `<a class="nav sub" data-milestones="${esc(p.name)}"><span class="label muted">${closed} closed map${closed > 1 ? "s" : ""}</span></a>`;
       html += `<a class="nav sub ${r.view === "files" ? "on" : ""}" href="${href({ project: p.name, view: "files" })}">${icon("folder")}<span class="label">Files</span></a>`;
+      html += `<a class="nav sub ${r.view === "search" ? "on" : ""}" href="${href({ project: p.name, view: "search" })}">${icon("search")}<span class="label">Search conversations</span></a>`;
     }
   }
   if (sum && sum.unregistered.length) {
@@ -57,7 +58,7 @@ export function renderSidebar() {
   if (!agents.length) html += `<div class="empty" style="padding:4px 8px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent"}${cur ? " in this project" : ""}.</div>`;
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
-      <div class="l2 ${guardNote(a) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
+      <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
       ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
   if (cur) {
     // the team as a tree: desk, then each driver with the workers it opened, then everything else
@@ -80,7 +81,7 @@ export function renderSidebar() {
     html += group.map((a) => row(a)).join("");
   }
   html += `</div><div class="side-foot">
-    <a class="btn ghost sm icon" href="#/settings" title="Settings (⌘,)">${icon("gear")}</a>
+    <button class="btn ghost sm icon ${r.view === "settings" ? "on" : ""}" id="sb-gear" title="Settings (⌘,)">${icon("gear")}</button>
     <span class="dot ${sum && !sum.herdr_error ? "idle" : "blocked"}" title="${esc(sum?.herdr_error || "herdr connected")}"></span>
     ${window.desk?.showHerdr ? `<a id="sb-herdr" title="Show herdr (⇧⌘H)" style="color:inherit">${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</a>`
       : `<span>${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</span>`}<span class="grow"></span>
@@ -91,6 +92,7 @@ export function renderSidebar() {
   $("#sb-search").onclick = () => hooks.palette();
   $("#sb-new").onclick = $("#sb-new2").onclick = () => hooks.newSession(cur);
   $("#sb-add").onclick = () => hooks.addProject();
+  $("#sb-gear").onclick = () => (S.route.view === "settings" ? hooks.leaveSettings() : go({ view: "settings" }));
   el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {
     const show = () => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (S.route.view === "project" && S.route.project === a.dataset.milestones) return show();

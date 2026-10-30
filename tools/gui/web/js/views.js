@@ -1,5 +1,5 @@
 // Pages: project overview, inbox, GPUs, settings, project files; and the title bar.
-import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur } from "./core.js";
+import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur, loopNote, loopDead, store } from "./core.js";
 import { renderFiles, vscode } from "./files.js";
 import { renderMap, curMap } from "./map.js";
 
@@ -38,10 +38,11 @@ export function renderOverview() {
   host.innerHTML = `<div class="page">
     <div class="ph"><div class="grow"><h1>${esc(d.name)}</h1><div class="sub mono">${esc(d.path.replace(/^\/Users\/[^/]+/, "~"))}${d.server ? ` · ${esc(d.server)}:${esc(d.server_root)}` : ""}</div></div>
       <div class="actions">
-        ${desk ? `<button class="btn primary" id="ov-desk">${icon("chat")} Talk to the desk</button>` : `<button class="btn primary" id="ov-team">${icon("users")} Start team</button>`}
-        ${desk && open.some((m) => ["open", "claimed"].includes(m.status) && !m.driven) ? `<button class="btn" id="ov-team">${icon("users")} Start drivers</button>` : ""}
-        <button class="btn" id="ov-new">${icon("plus")} New session</button>
-        <button class="btn" id="ov-idea">${icon("spark")} New map from an idea</button>
+        ${d.team ? (desk ? `<button class="btn primary" id="ov-desk">${icon("chat")} Talk to the desk</button>` : `<button class="btn primary" id="ov-team">${icon("users")} Start team</button>`)
+          : `<button class="btn primary" id="ov-new">${icon("plus")} New session</button>${d.agents.length ? `<button class="btn" id="ov-ask">${icon("chat")} Ask Claude</button>` : ""}`}
+        ${d.team && desk && open.some((m) => ["open", "claimed"].includes(m.status) && !m.driven) ? `<button class="btn" id="ov-team">${icon("users")} Start drivers</button>` : ""}
+        ${d.team ? `<button class="btn" id="ov-new">${icon("plus")} New session</button>` : ""}
+        ${d.maps.length || d.team ? `<button class="btn" id="ov-idea">${icon("spark")} New map from an idea</button>` : ""}
         <button class="btn icon" id="ov-more" title="More">${icon("more")}</button></div></div>
     <div class="statline">
       ${statChip(d.waiting.length, "need you", "alert")}${statChip(running.length, "running", "work")}${statChip(ready.length, "ready", "open")}
@@ -54,9 +55,9 @@ export function renderOverview() {
       <div class="sec"><h2>Maps</h2><span class="meta">${open.length} open · ${closed.length} closed</span></div>
       <div class="grid">${open.map(mapCard).join("") || `<div class="card empty">No open map. Chart one with “New map from an idea”.</div>`}</div>
     </div><div>
-      <div class="sec"><h2>Team</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
+      <div class="sec"><h2>${d.team ? "Team" : "Sessions"}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
       <div class="card rows">${teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
-      ${d.server ? `<div class="sec"><h2>GPUs · ${esc(d.server)}</h2><span class="grow"></span><a href="#/gpus" class="meta">all hosts</a></div><div class="card pad" id="ov-gpus">${gpuCache[d.server] || `<div class="spin"></div>`}</div>` : ""}
+      <div class="sec"><h2>GPUs</h2><span class="grow"></span><a href="#/gpus" class="meta">every node</a></div><div class="card pad" id="ov-gpus">${gpuCache.all || `<div class="spin"></div>`}</div>
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
       <div class="card pad"><div class="timeline">${closed.map((m) => `<div class="tl" data-map="${esc(m.folder)}"><div class="h"><span class="mid">${esc(m.id)}</span>${esc(m.title)}</div>
         <div class="d">${esc(m.updated || "")}</div><div class="o">${esc(plain(m.outcome) || "(no outcome recorded)")}</div></div>`).join("") || `<div class="muted">None yet.</div>`}</div></div>
@@ -69,10 +70,14 @@ export function renderOverview() {
   if ($("#ov-team")) $("#ov-team").onclick = team;
   if ($("#ov-team2")) $("#ov-team2").onclick = team;
   $("#ov-new").onclick = () => hooks.newSession(d.name);
-  $("#ov-idea").onclick = () => hooks.newSession(d.name, "wayfinder");
+  if ($("#ov-idea")) $("#ov-idea").onclick = () => hooks.newSession(d.name, "wayfinder");
+  if ($("#ov-ask")) $("#ov-ask").onclick = () => hooks.askProject(d.name);
+  host.querySelectorAll("[data-restart]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); restartLoop(b.dataset.restart); });
   if ($("#ov-seen")) $("#ov-seen").onclick = () => post("/api/seen", { project: d.name }).then(() => hooks.refresh());
   $("#ov-more").onclick = (e) => popMenu(e.currentTarget, [
     ...(desk ? [{ label: "Ask the desk for a digest", icon: "doc", run: () => hooks.openChat(desk.pane, { text: "digest" }) }, "-"] : []),
+    ...(!d.team && d.maps.length ? [{ label: "Start a team (desk and drivers)", icon: "users", run: () => hooks.startTeam(d.name) }, "-"] : []),
+    { label: "Search conversations", icon: "search", run: () => go({ project: d.name, view: "search" }) },
     { label: "Shell in this project", icon: "term", run: () => hooks.openTerminal({ kind: "shell", project: d.name }) },
     ...(d.server ? [{ label: `SSH to ${d.server}`, icon: "server", run: () => hooks.openTerminal({ kind: "ssh", project: d.name, server: d.server, label: `ssh ${d.server}` }) }] : []),
     "-",
@@ -83,7 +88,7 @@ export function renderOverview() {
     { label: "Mark everything as seen", icon: "check", run: () => post("/api/seen", { project: d.name }).then(() => hooks.refresh()) },
   ], { right: true });
   if (!ch.since) post("/api/seen", { project: d.name }).catch(() => {});   // first visit: start tracking from now
-  if (d.server) loadMiniGpus(d.server);
+  loadMiniGpus();
 }
 
 function changesBlock(ch, tickets) {
@@ -106,6 +111,13 @@ function changesBlock(ch, tickets) {
 const plain = (s) => String(s || "").replace(/`([^`]*)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1")
   .replace(/(^|[\s(])_+(?=\S)/g, "$1").replace(/(?<=\S)_+(?=[\s).,;:]|$)/g, "");
 
+export async function restartLoop(pane) {
+  const a = allAgents().find((x) => x.pane === pane);
+  if (!a?.loop?.prompt) return toast("No loop command recorded for this session", "err");
+  try { await post("/api/chat/send", { pane, text: a.loop.prompt }); toast(`Sent ${a.loop.prompt}`); hooks.refresh(); }
+  catch (e) { toast(e.message, "err"); }
+}
+
 const statChip = (n, l, cls) => `<span class="schip ${n && n !== "0" && !String(n).startsWith("0/") ? cls : ""}"><b>${esc(n)}</b> ${esc(l)}</span>`;
 
 function waitingRow(w) {
@@ -118,7 +130,8 @@ function waitingRow(w) {
 
 function agentRow(a, sub = false) {
   return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
-    <div class="t2">${esc(a.status === "blocked" ? "waiting for your answer" : [codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
+    <div class="t2 ${loopDead(a) ? "err" : ""}">${esc(a.status === "blocked" ? "waiting for your answer" : [loopNote(a), codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>
+    ${loopDead(a) && a.status !== "working" ? `<button class="btn sm primary" data-restart="${esc(a.pane)}" title="Send ${esc(a.loop.prompt)}">Restart loop</button>` : ""}${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
     <button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button></div>`;
 }
 function teamRows(agents) {
@@ -164,19 +177,6 @@ function wire(root) {
   root.querySelectorAll("[data-driver]").forEach((el) => el.onclick = (e) => { e.stopPropagation(); hooks.startTeam(S.route.project, el.dataset.driver); });
 }
 
-const gpuCache = {};
-async function loadMiniGpus(host) {
-  try {
-    const g = await get("/api/gpus", { host });
-    const el = $("#ov-gpus");
-    if (!el) return;
-    const mine = g.gpus.filter((x) => x.mine).length;
-    el.innerHTML = gpuCache[host] = `<div style="display:flex;gap:4px;align-items:flex-end;height:46px">${g.gpus.map((x) => `<div title="GPU ${x.index}: ${x.util}% util, ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB${x.procs.length ? " · " + esc(x.procs.map((p) => p.user).join(", ")) : ""}"
-        style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;background:var(--active);border-radius:4px;overflow:hidden;${x.mine ? "outline:2px solid var(--accent)" : ""}">
-        <div style="height:${Math.max(3, x.util)}%;background:var(--c-work)"></div></div>`).join("")}</div>
-      <div class="muted" style="font-size:11.5px;margin-top:6px">${g.gpus.filter((x) => x.util < 5 && !x.procs.length).length} free of ${g.gpus.length}${mine ? ` · ${mine} running yours` : ""} · ${esc(g.gpus[0]?.name || "")}</div>`;
-  } catch (e) { if ($("#ov-gpus")) $("#ov-gpus").innerHTML = `<div class="err" style="font-size:12px">${esc(e.message)}</div>`; }
-}
 
 // ---------- inbox ----------
 
@@ -187,7 +187,8 @@ export function renderInbox() {
   const tickets = sum.projects.flatMap((p) => (p.waiting || []).filter((w) => w.kind !== "agent").map((w) => ({ ...w, project: p.name })));
   const unread = [...S.unread.entries()].map(([pane, u]) => ({ pane, ...u }));
   const changed = sum.projects.filter((p) => p.changes);
-  const none = !blocked.length && !tickets.length && !unread.length;
+  const loops = allAgents().filter((a) => loopDead(a));
+  const none = !blocked.length && !tickets.length && !unread.length && !loops.length;
   host.innerHTML = `<div class="page" style="max-width:920px">
     <div class="ph"><div class="grow"><h1>Inbox</h1><div class="sub">Everything waiting on you, across projects</div></div>
       ${unread.length ? `<div class="actions"><button class="btn" id="ib-clear">${icon("check")} Mark all read</button></div>` : ""}</div>
@@ -197,6 +198,9 @@ export function renderInbox() {
     ${blocked.length ? `<div class="sec"><h2>Waiting for your answer</h2><span class="meta">agents stopped at a prompt</span></div><div class="card rows">${blocked.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2">${esc(a.title || "")}</div></div>
       <button class="btn sm primary">Answer</button></div>`).join("")}</div>` : ""}
+    ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a driver missed its pass, or a pass died (network, sleep)</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
+      ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2 err">${esc(loopNote(a))}</div></div>
+      <button class="btn sm primary" data-restart="${esc(a.pane)}">Restart loop</button></div>`).join("")}</div>` : ""}
     ${unread.length ? `<div class="sec"><h2>Finished turns</h2><span class="meta">replies to what you sent</span></div><div class="card rows">${unread.map((u) => `<div class="row click" data-pane="${esc(u.pane)}">
       ${icon("chat")}<div class="grow"><div class="t1">${esc(u.label)}${u.project ? ` · <span class="muted">${esc(u.project)}</span>` : ""}</div><div class="t2">${esc(u.text || "finished its turn")}</div></div>
       <span class="meta muted">${esc(ago(u.at / 1000))}</span></div>`).join("")}</div>` : ""}
@@ -209,39 +213,108 @@ export function renderInbox() {
   host.querySelectorAll("[data-map]").forEach((el) => el.onclick = () => goMap(el.dataset.project, el.dataset.map, el.dataset.ticket || null));
   host.querySelectorAll("[data-pane]").forEach((el) => el.onclick = () => hooks.openChat(el.dataset.pane));
   if ($("#ib-add")) $("#ib-add").onclick = () => hooks.addProject();
+  host.querySelectorAll("[data-restart]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); restartLoop(b.dataset.restart); });
   if ($("#ib-clear")) $("#ib-clear").onclick = () => { S.unread.clear(); hooks.badge(); renderInbox(); };
 }
 
 // ---------- GPUs ----------
 
 let gpuTimer = null;
+// every node of each pool (projects file [gpu_pools]); your jobs first, since on a shared cluster they can land anywhere
+async function loadGpus(fresh) {
+  const { pools } = await get("/api/gpu-hosts");
+  const hosts = Object.values(pools).flat();
+  const res = await Promise.all(hosts.map((h) => get("/api/gpus", { host: h, ...(fresh ? { fresh: 1 } : {}) }).then((g) => [h, g]).catch((e) => [h, { error: e.message }])));
+  return { pools, by: Object.fromEntries(res) };
+}
+const isFree = (x) => x.util < 5 && !x.procs.length;
+
 export async function renderGpus(fresh = false, quiet = false) {
   const host = $("#view");
-  if (!quiet) host.innerHTML = `<div class="page"><div class="ph"><div class="grow"><h1>GPUs</h1><div class="sub">From <code>nvidia-smi</code> on each project's server, refreshed every 20 s while this page is open</div></div>
-    <div class="actions"><button class="btn" id="gp-ref">${icon("refresh")} Refresh</button></div></div><div id="gp-list" style="display:flex;flex-direction:column;gap:12px"><div class="spin"></div></div></div>`;
+  if (!quiet) host.innerHTML = `<div class="page"><div class="ph"><div class="grow"><h1>GPUs</h1><div class="sub">Every node of each pool, from <code>nvidia-smi</code>; refreshed every 20 s while this page is open. Edit the node lists in Settings (<code>[gpu_pools]</code>).</div></div>
+    <div class="actions"><button class="btn" id="gp-ref">${icon("refresh")} Refresh</button></div></div><div id="gp-body"><div class="spin"></div></div></div>`;
   $("#gp-ref").onclick = () => renderGpus(true, true);
   clearInterval(gpuTimer);
-  gpuTimer = setInterval(() => { if (S.route.view !== "gpus" || !$("#gp-list")) return clearInterval(gpuTimer); renderGpus(false, true); }, 20000);
-  let hosts;
-  try { hosts = (await get("/api/gpu-hosts")).hosts; } catch (e) { $("#gp-list").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
-  if (!hosts.length) { $("#gp-list").innerHTML = `<div class="card empty">No servers yet: set a project's <code>server</code> in Settings, or add <code>gpu_hosts</code>.</div>`; return; }
-  if (!quiet || !$("#gp-list .gpuhost")) $("#gp-list").innerHTML = hosts.map((h) => `<div class="card gpuhost" id="gh-${esc(h)}"><div class="hh">${icon("server")}<b>${esc(h)}</b><span class="spin"></span></div></div>`).join("");
-  hosts.forEach(async (h) => {
-    const el = document.getElementById("gh-" + h);
+  gpuTimer = setInterval(() => { if (S.route.view !== "gpus" || !$("#gp-body")) return clearInterval(gpuTimer); renderGpus(false, true); }, 20000);
+  let data;
+  try { data = await loadGpus(fresh); } catch (e) { $("#gp-body").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  if (!$("#gp-body")) return;
+  const mine = [];
+  Object.entries(data.by).forEach(([h, g]) => (g.gpus || []).forEach((x) => { if (x.mine) mine.push({ h, x, me: g.me }); }));
+  const cell = (h, x) => `<div class="gcell ${x.mine ? "mine" : isFree(x) ? "free" : "busy"}" title="${esc(h)} GPU ${x.index} · ${x.util}% · ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB · ${x.temp}°C${x.procs.length ? "\n" + x.procs.map((p) => `${p.user} pid ${p.pid} ${p.mem} MiB`).join("\n") : "\nidle"}">
+      <div class="gfill" style="height:${Math.max(4, x.util)}%"></div><div class="gmem" style="width:${(100 * x.mem / Math.max(1, x.total)).toFixed(0)}%"></div><span>${x.index}</span></div>`;
+  $("#gp-body").innerHTML = `
+    <div class="sec" style="margin-top:0"><h2>Your jobs</h2><span class="meta">${mine.length ? `${mine.length} GPU${mine.length > 1 ? "s" : ""}` : "none running"}</span></div>
+    ${mine.length ? `<div class="card rows">${mine.map(({ h, x, me }) => `<div class="row"><b class="mono">${esc(h)}</b><span class="mono muted">GPU ${x.index}</span>
+      <div class="grow"><div class="bar" style="max-width:260px"><span style="width:${x.util}%;background:var(--c-work)"></span></div></div>
+      <span class="muted" style="font-size:12px">${x.util}% · ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB · pid ${esc(x.procs.filter((p) => p.user === me).map((p) => p.pid).join(", "))}</span></div>`).join("")}</div>` : ""}
+    ${Object.entries(data.pools).map(([pool, hosts]) => {
+      const all = hosts.flatMap((h) => data.by[h]?.gpus || []);
+      return `<div class="sec"><h2>${esc(pool)}</h2><span class="meta">${all.filter(isFree).length} of ${all.length} free · ${all.filter((x) => x.mine).length} yours</span></div>
+      <div class="card rows">${hosts.map((h) => { const g = data.by[h] || {};
+        if (g.error) return `<div class="row"><b class="mono" style="width:96px">${esc(h)}</b><span class="err" style="font-size:12px">${esc(g.error)}</span></div>`;
+        const gs = g.gpus || [];
+        return `<div class="row"><b class="mono" style="width:96px">${esc(h)}</b><div class="gcells">${gs.map((x) => cell(h, x)).join("")}</div>
+          <span class="muted" style="font-size:12px;white-space:nowrap">${gs.filter(isFree).length}/${gs.length} free · ${esc(gs[0]?.name?.replace(/NVIDIA |GeForce /g, "") || "")}</span></div>`; }).join("")}</div>`;
+    }).join("")}
+    <div class="legend-inline"><span><i class="gcell mine"></i> yours</span><span><i class="gcell busy"></i> someone's job</span><span><i class="gcell free"></i> free</span><span class="muted">bar height: utilisation · line: memory</span></div>`;
+}
+
+const gpuCache = {};
+async function loadMiniGpus() {
+  try {
+    const data = await loadGpus(false);
+    const el = $("#ov-gpus");
     if (!el) return;
-    try {
-      const g = await get("/api/gpus", { host: h, ...(fresh ? { fresh: 1 } : {}) });
-      const free = g.gpus.filter((x) => x.util < 5 && !x.procs.length).length;
-      el.innerHTML = `<div class="hh">${icon("server")}<b>${esc(h)}</b><span class="muted">${esc(g.gpus[0]?.name || "")} · ${free} of ${g.gpus.length} free · ${esc(ago(g.at))}</span></div>
-        <div class="gpus">${g.gpus.map((x) => `<div class="gpu ${x.mine ? "mine" : ""}"><div class="gh"><span>GPU ${x.index}</span><span>${x.util}%</span></div>
-          <div class="meter"><span style="width:${x.util}%"></span></div><div class="meter mem"><span style="width:${(100 * x.mem / Math.max(1, x.total)).toFixed(0)}%"></span></div>
-          <div class="gl"><span>${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB</span><span>${x.temp}°C</span></div>
-          <div class="gl" title="${esc(x.procs.map((p) => `${p.user} pid ${p.pid} ${p.mem} MiB`).join("\n"))}"><span>${x.procs.length ? esc([...new Set(x.procs.map((p) => p.user))].join(", ")) : "idle"}</span></div></div>`).join("")}</div>`;
-    } catch (e) {
-      if (quiet && el.querySelector(".gpus")) el.querySelector(".hh .muted").textContent += " · last refresh failed: " + e.message;
-      else el.innerHTML = `<div class="hh">${icon("server")}<b>${esc(h)}</b></div><div class="err">${esc(e.message)}</div>`;
-    }
-  });
+    const mine = Object.values(data.by).flatMap((g) => (g.gpus || []).filter((x) => x.mine)).length;
+    el.innerHTML = gpuCache.all = `<div class="rows">${Object.entries(data.pools).map(([pool, hosts]) => {
+      const all = hosts.flatMap((h) => data.by[h]?.gpus || []);
+      return `<div class="row" style="padding:6px 0"><b style="width:80px">${esc(pool)}</b><div class="grow"><div class="bar"><span style="width:${100 * (all.length - all.filter(isFree).length) / Math.max(1, all.length)}%;background:var(--c-work)"></span></div></div>
+        <span class="muted" style="font-size:12px;white-space:nowrap">${all.filter(isFree).length}/${all.length} free · ${all.filter((x) => x.mine).length} yours</span></div>`; }).join("")}</div>
+      <div class="muted" style="font-size:11.5px;margin-top:4px">${mine ? `${mine} GPU${mine > 1 ? "s" : ""} running your jobs` : "No GPU is running your jobs"}</div>`;
+  } catch (e) { if ($("#ov-gpus")) $("#ov-gpus").innerHTML = `<div class="err" style="font-size:12px">${esc(e.message)}</div>`; }
+}
+
+// ---------- search across a project's conversations ----------
+
+export function renderSearch() {
+  const host = $("#view"), project = S.route.project;
+  host.innerHTML = `<div class="page" style="max-width:980px"><div class="ph"><div class="grow"><h1>Search conversations</h1>
+      <div class="sub">Every desk, driver, worker and Codex conversation in ${esc(project)}, newest first</div></div></div>
+    <input id="sq" class="searchbox" placeholder="Words to find, e.g. AFDB v2 filter" value="${esc(store("search." + project) || "")}" autocomplete="off" spellcheck="false">
+    <div id="sres" style="margin-top:14px"></div></div>`;
+  const inp = $("#sq");
+  let timer = null, seq = 0;
+  const run = async () => {
+    const q = inp.value.trim();
+    store("search." + project, q);
+    if (q.length < 2) { $("#sres").innerHTML = `<div class="empty">Type at least two characters.</div>`; return; }
+    const my = ++seq;
+    $("#sres").innerHTML = `<div class="spin"></div>`;
+    let r;
+    try { r = await get("/api/search", { project, q }); } catch (e) { $("#sres").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+    if (my !== seq) return;
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const mark = (s) => terms.reduce((h, t) => h.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), (m) => `<mark>${m}</mark>`), esc(s));
+    const groups = new Map();
+    r.hits.forEach((h) => { if (!groups.has(h.session)) groups.set(h.session, []); groups.get(h.session).push(h); });
+    $("#sres").innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:8px">${r.hits.length} matches in ${groups.size} conversation${groups.size === 1 ? "" : "s"} · ${r.ms} ms</div>`
+      + [...groups.values()].map((hs) => `<div class="card" style="margin-bottom:10px"><div class="shead">${icon(hs[0].codex ? "code" : "chat")}<b>${esc(hs[0].title || "Untitled conversation")}</b>
+          ${hs[0].live_pane ? `<span class="pill s-working">live · ${esc(hs[0].live_label || "")}</span>` : ""}<span class="grow"></span><span class="muted">${esc(ago(hs[0].ts))}</span></div>
+        <div class="rows">${hs.slice(0, 6).map((h) => `<div class="row click" data-s="${esc(h.session)}" data-u="${esc(h.uuid)}">
+          <span class="pill plain" style="min-width:64px;justify-content:center">${esc(h.role === "from" ? "message" : h.role === "user" ? "you" : "agent")}</span>
+          <div class="grow"><div class="t2" style="color:var(--ink-2);-webkit-line-clamp:3">${mark(h.snippet)}</div></div><span class="muted" style="font-size:11px">${esc(ago(h.ts))}</span></div>`).join("")}
+          ${hs.length > 6 ? `<div class="empty" style="padding:6px 14px">${hs.length - 6} more in this conversation</div>` : ""}</div></div>`).join("")
+      || `<div class="empty big">Nothing found.</div>`;
+    $("#sres").querySelectorAll("[data-s]").forEach((el) => el.onclick = () => {
+      const h = r.hits.find((x) => x.session === el.dataset.s && x.uuid === el.dataset.u);
+      hooks.openArchive(h.session, h.uuid, { title: h.title, project, live_pane: h.live_pane });
+    });
+  };
+  inp.oninput = () => { clearTimeout(timer); timer = setTimeout(run, 350); };
+  inp.onkeydown = (e) => { if (e.key === "Enter") { clearTimeout(timer); run(); } };
+  setTimeout(() => inp.focus(), 20);
+  if (inp.value) run();
 }
 
 // ---------- settings ----------
@@ -253,7 +326,8 @@ export async function renderSettings() {
   try { cfg = await get("/api/config"); } catch (e) { host.innerHTML = `<div class="page"><div class="err">${esc(e.message)}</div></div>`; return; }
   const sum = S.summary || {};
   const pr = S.prefs;
-  host.innerHTML = `<div class="page" style="max-width:980px"><div class="ph"><div class="grow"><h1>Settings</h1><div class="sub">Research Desk ${esc(sum.version || "")}${window.desk ? " · app" : " · browser"}</div></div></div>
+  host.innerHTML = `<div class="page" style="max-width:980px"><div class="ph"><div class="grow"><h1>Settings</h1><div class="sub">Research Desk ${esc(sum.version || "")}${window.desk ? " · app" : " · browser"}</div></div>
+      <div class="actions"><button class="btn" id="st-close" title="Back (Esc)">${icon("x")} Close</button></div></div>
     <div class="sec"><h2>Notifications</h2></div><div class="card pad" style="display:flex;flex-direction:column;gap:8px">
       <label><input type="checkbox" id="pf-prompt" ${pr.notifyPrompt ? "checked" : ""}> When an agent stops at a prompt and needs your answer</label>
       <label><input type="checkbox" id="pf-done" ${pr.notifyDone ? "checked" : ""}> When an agent finishes a turn you started from here (only if you aren't looking at it)</label>
@@ -276,6 +350,7 @@ export async function renderSettings() {
   }
   pref("#pf-prompt", "notifyPrompt"); pref("#pf-done", "notifyDone"); pref("#pf-progress", "notifyProgress"); pref("#pf-verbose", "verbose");
   $("#st-add").onclick = () => hooks.addProject();
+  $("#st-close").onclick = () => hooks.leaveSettings();
   $("#st-save").onclick = async () => {
     try { await post("/api/config", { text: $("#st-cfg").value }); $("#st-msg").textContent = "Saved."; hooks.refresh(); }
     catch (e) { $("#st-msg").innerHTML = `<span class="err">${esc(e.message)}</span>`; }
@@ -292,6 +367,7 @@ export function renderView(full = true) {
   if (r.view === "settings") return full ? renderSettings() : null;
   if (!S.data || S.data.name !== r.project) { $("#view").innerHTML = S.err ? `<div class="page"><div class="err">${esc(S.err)}</div></div>` : `<div class="empty big"><div class="spin"></div></div>`; return; }
   if (r.view === "project") return renderOverview();
+  if (r.view === "search") return full ? renderSearch() : null;
   if (r.view === "files") { if (full || !$("#trees")) { $("#view").innerHTML = `<div class="page full"><div class="tabbody" id="pfiles"></div></div>`; renderFiles($("#pfiles"), null); } return; }
   if (r.view === "map") return renderMap(full);
 }

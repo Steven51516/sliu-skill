@@ -15,6 +15,7 @@ function items() {
     act("Shell in this project", proj, () => hooks.openTerminal({ kind: "shell", project: proj }), "terminal");
     if (S.data?.server) act(`SSH to ${S.data.server}`, S.data.server_root, () => hooks.openTerminal({ kind: "ssh", project: proj, server: S.data.server, label: `ssh ${S.data.server}` }), "terminal");
     act("Files", proj, () => go({ project: proj, view: "files" }), "go");
+    act("Search conversations", proj, () => go({ project: proj, view: "search" }), "go");
   }
   act("Next thing that needs you", "⇧⌘A", () => hooks.nextAttention());
   act("Inbox", "everything waiting on you", () => go({ view: "inbox" }), "go");

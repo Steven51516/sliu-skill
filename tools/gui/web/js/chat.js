@@ -3,7 +3,7 @@
 import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent } from "./core.js";
 
 const C = S.chat;
-Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0 });
+Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0, turnFiles: new Set() });
 
 export function openChat(pane, opt = {}) {
   const a = pane && agentByPane(pane);
@@ -40,9 +40,33 @@ export function deskPane(project) {
   return a ? a.pane : null;
 }
 
+// Not every project runs a team: questions go to its desk if there is one, else to its most recently active
+// session, else to a new session started with the text
+export function askProject(project, text = "") {
+  const desk = deskPane(project);
+  if (desk) return openChat(desk, { text });
+  const mine = allAgents().filter((a) => a.project === project);
+  const recent = mine.sort((a, b) => (Date.parse(b.turn_end || 0) || 0) - (Date.parse(a.turn_end || 0) || 0))[0];
+  if (recent) return openChat(recent.pane, { text });
+  hooks.newSession(project, "custom", { text });
+}
+export const askLabel = (project) => (deskPane(project) ? "Ask the desk" : "Ask Claude");
+
+// a saved conversation around one message (a search hit), read-only
+export function openArchive(session, uuid, opt = {}) {
+  C.open = true;
+  $("#chat").hidden = false;
+  $("#chat-resize").hidden = false;
+  switchTo("session:" + session);
+  Object.assign(C, { around: uuid, label: opt.title || "Saved conversation", project: opt.project || S.route.project, livePane: opt.live_pane || null });
+  render();
+  poll();
+}
+
 function switchTo(pane) {
   clearTimeout(C.timer);
-  Object.assign(C, { pane, items: [], tools: new Map(), offset: null, session: null, status: null, queued: [], screen: null, fallback: null, cut: false, err: null });
+  Object.assign(C, { pane, items: [], tools: new Map(), offset: null, session: null, status: null, queued: [], screen: null, fallback: null, cut: false, err: null,
+    around: null, livePane: null, turnFiles: new Set() });
   const a = agentByPane(pane);
   C.project = a ? a.project : null;              // links and @ mentions follow the agent's project, not the page's
   C.label = a ? agentLabel(a) : null;
@@ -57,7 +81,8 @@ async function poll() {
   const pane = C.pane, my = ++C.seq, from = C.offset;
   try {
     const params = { pane };
-    if (C.offset != null) Object.assign(params, { after: C.offset, session: C.session || "" });
+    if (pane.startsWith("session:")) params.around = C.around || "";
+    else if (C.offset != null) Object.assign(params, { after: C.offset, session: C.session || "" });
     if (menuOn()) params.screen = 1;
     const r = await get("/api/chat", params);
     if (pane !== C.pane || my !== C.seq || from !== C.offset) return;      // a newer poll owns the state
@@ -66,7 +91,13 @@ async function poll() {
     C.session = r.session; C.offset = r.offset; C.cut = reset ? r.cut : C.cut; C.err = null;
     const statusChanged = r.status !== C.status || (r.screen || null) !== (C.screen || null);
     C.status = r.status; C.title = r.title; C.screen = r.screen || null; C.fallback = r.fallback || null;
-    if (reset) { ingest(r.items); render(); }
+    if (r.status === "archive") {                    // a saved conversation: drawn once, opened at the hit
+      C.items = []; C.tools = new Map(); C.turnFiles = new Set(); ingest(r.items); C.status = "archive"; C.focus = r.focus; render();
+      const hit = [...$("#ch-body").querySelectorAll("[data-uid]")].find((e) => C.around && e.dataset.uid.startsWith(C.around));
+      if (hit) { hit.classList.add("hit"); hit.scrollIntoView({ block: "center" }); }
+      return;
+    }
+    if (reset) { C.turnFiles = new Set(); ingest(r.items); render(); }
     else {
       const fresh = ingest(r.items);
       if (fresh.length) appendItems(fresh);
@@ -79,6 +110,7 @@ async function poll() {
     renderLive();
   }
   const fast = C.status === "working" || C.status === "blocked" || C.queued.length || menuOn();
+  if (C.status === "archive") return;
   C.timer = setTimeout(poll, C.status === "ended" ? 15000 : fast ? 1000 : 2500);
 }
 
@@ -109,21 +141,23 @@ function render() {
   const a = agentByPane(C.pane);
   el.innerHTML = `<div class="chat-head">
       <div class="picker" id="ch-pick" title="Switch agent">${a ? avatar(a) : `<span class="avatar">?</span>`}
-        <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : C.label ? C.label + " (ended)" : "No agent")}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
+        <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : (C.pane || "").startsWith("session:") ? (C.label || "Saved conversation") + " · saved" : C.label ? C.label + " (ended)" : "No agent")}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
         <span class="muted" style="font-size:10px">▾</span></div>
       <span class="grow"></span>
       <button class="btn ghost sm icon" id="ch-verbose" title="${S.prefs.verbose ? "Fold tool calls" : "Show every tool call"}">${icon(S.prefs.verbose ? "eye" : "code")}</button>
       <button class="btn ghost sm icon" id="ch-term" title="Open its terminal here">${icon("term")}</button>
       <button class="btn ghost sm icon" id="ch-more" title="More">${icon("more")}</button>
+      ${C.livePane && agentByPane(C.livePane) ? `<button class="btn sm" id="ch-live-open" title="This session is still running">Open live</button>` : ""}
       <button class="btn ghost sm icon" id="ch-close" title="Close (⌘J)">${icon("x")}</button></div>
     <div class="chat-body" id="ch-body"></div>
     <div id="ch-live"></div>
     <div class="composer"><div class="box">
-      <textarea id="composer" rows="1" placeholder="${a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : C.status === "ended" ? "This session has ended (its tab closed); its conversation stays readable here" : "Pick an agent first"}" ${a ? "" : "disabled"}></textarea>
+      <textarea id="composer" rows="1" placeholder="${a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : C.status === "ended" ? "This session has ended (its tab closed); its conversation stays readable here" : C.status === "archive" || (C.pane || "").startsWith("session:") ? "A saved conversation, read-only" : "Pick an agent first"}" ${a ? "" : "disabled"}></textarea>
       <div class="bar2"><span class="hint" id="ch-hint">⏎ send · ⇧⏎ new line</span><span class="grow"></span>
         <button class="send" id="ch-send" title="Send">${icon("send")}</button></div></div></div>`;
   $("#ch-pick").onclick = (e) => pickAgent(e.currentTarget);
   $("#ch-close").onclick = closeChat;
+  if ($("#ch-live-open")) $("#ch-live-open").onclick = () => openChat(C.livePane);
   $("#ch-term").onclick = () => C.pane && hooks.openTerminal({ kind: "attach", pane: C.pane, label: agentLabel(a) });
   $("#ch-verbose").onclick = () => { S.prefs.verbose = !S.prefs.verbose; savePrefs(); render(); };
   $("#ch-more").onclick = (e) => popMenu(e.currentTarget, [
@@ -158,6 +192,22 @@ function projectTargets() {
     ? { id: id.slice(4), title, path: `maps/${mf}/map.md` } : { id, title, path: `maps/${mf}/tickets/${tf}/ticket.md` });
 }
 
+function filesCard(files) {
+  // the files this turn wrote or edited: inside the project they open in the viewer, else their path is copied
+  const proj = chatProject();
+  const card = document.createElement("div");
+  card.className = "msg files";
+  card.innerHTML = `<div class="who">${icon("doc")} Changed in this turn</div>` + files.map((f) => {
+    const rel = proj && f.startsWith(proj.path + "/") ? f.slice(proj.path.length + 1) : null;
+    return `<a class="fchip mono" data-rel="${esc(rel || "")}" data-abs="${esc(f)}" title="${esc(f)}">${esc(rel || f.replace(/^\/Users\/[^/]+/, "~"))}</a>`;
+  }).join("");
+  card.querySelectorAll(".fchip").forEach((a) => a.onclick = () => {
+    if (a.dataset.rel && proj) hooks.openPath(proj.name, a.dataset.rel);
+    else navigator.clipboard.writeText(a.dataset.abs).then(() => toast("Path copied (outside the project)"));
+  });
+  return card;
+}
+
 function nearBottom(el) { return el.scrollHeight - el.scrollTop - el.clientHeight < 120; }
 
 function appendItems(items, initial = false) {
@@ -177,10 +227,12 @@ function appendItems(items, initial = false) {
       }
       group.appendChild(toolEl(it));
       foldGroup(group);
+      (it.files || []).forEach((f) => C.turnFiles.add(f));
       continue;
     }
     const d = document.createElement("div");
     d.className = "msg " + it.k;
+    if (it.id) d.dataset.uid = String(it.id);
     if (it.k === "user") d.innerHTML = `<div class="bubble">${esc(it.text)}</div>`;
     else if (it.k === "cmd") d.innerHTML = `<code>${esc(it.text)}</code>`;
     else if (it.k === "note") d.textContent = it.text;
@@ -194,6 +246,7 @@ function appendItems(items, initial = false) {
     }
     else if (it.k === "turn") {
       if (!body.lastElementChild || body.lastElementChild.classList.contains("turn")) continue;   // no empty turns
+      if (C.turnFiles.size) { body.appendChild(filesCard([...C.turnFiles])); C.turnFiles = new Set(); }
       const t = it.ts ? new Date(it.ts) : null, s = Math.round((it.ms || 0) / 1000);
       d.innerHTML = `<span>${t ? t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}${s ? ` · ${s < 60 ? s + " s" : Math.floor(s / 60) + " min " + (s % 60) + " s"}` : ""}</span>`;
     }

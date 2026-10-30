@@ -9,6 +9,7 @@ import json
 import os
 import re
 
+WRITERS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}   # tools whose file_path is a file this turn changed
 INITIAL_BYTES = 6 << 20      # first read: the transcript's last 6 MB
 MAX_ITEMS = 400              # first read: the last 400 items
 RESULT_CHARS = 4000
@@ -227,8 +228,10 @@ def entry_items(d):
         elif c.get("type") == "tool_use":
             inp = c.get("input")
             raw = json.dumps(inp, indent=1, ensure_ascii=False) if inp is not None else ""
+            files = [inp.get(k) for k in ("file_path", "notebook_path") if isinstance(inp, dict) and isinstance(inp.get(k), str)] \
+                if c.get("name") in WRITERS else []
             items.append({"k": "tool", "id": c.get("id"), "ts": ts, "name": c.get("name"),
-                          "summary": tool_summary(c.get("name"), inp), "input": raw[:INPUT_CHARS]})
+                          "summary": tool_summary(c.get("name"), inp), "input": raw[:INPUT_CHARS], "files": files})
     return items
 
 
@@ -296,7 +299,8 @@ def last_safeguard(path):
         return None
     st = _guards.get(path)
     if not st or size < st["size"]:
-        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False, "turn_end": None}
+        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False, "turn_end": None,
+                              "wake": None, "fired": None}
     if size > st["size"]:
         with open(path, "rb") as f:
             f.seek(st["size"])
@@ -311,6 +315,20 @@ def last_safeguard(path):
                         continue
                     if ev:
                         st["last"], st["resolved"] = ev, False
+                elif b'"ScheduleWakeup"' in line or b"scheduled_task_fire" in line:
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    if d.get("type") == "system" and d.get("subtype") == "scheduled_task_fire":
+                        st["fired"] = d.get("timestamp")
+                    elif d.get("type") == "assistant" and not d.get("isSidechain"):
+                        for c in (d.get("message") or {}).get("content") or []:
+                            if c.get("type") == "tool_use" and c.get("name") == "ScheduleWakeup":
+                                inp = c.get("input") or {}
+                                st["wake"] = {"at": d.get("timestamp"), "stop": bool(inp.get("stop")),
+                                              "delay": inp.get("delaySeconds") or 0, "prompt": inp.get("prompt") or "",
+                                              "reason": inp.get("reason") or ""}
                 elif b"turn_duration" in line:
                     try:
                         d = json.loads(line)
@@ -334,3 +352,125 @@ def last_turn_end(path):
     last_safeguard(path)
     st = _guards.get(path)
     return st["turn_end"] if st else None
+
+
+def loop_state(path, now=None):
+    """A self-paced /loop's health from its ScheduleWakeup calls: when the next pass is due, and whether it has gone
+    quiet. "missed": due a while ago and never fired; "stopped": a pass fired but scheduled no next one (its turn
+    died, e.g. the network dropped); "ended": the loop was stopped on purpose."""
+    import datetime as _dt
+    last_safeguard(path)
+    st = _guards.get(path)
+    w = st and st["wake"]
+    if not w or not w["at"]:
+        return None
+    ts = lambda s: _dt.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp()
+    now = now or _dt.datetime.now(_dt.timezone.utc).timestamp()
+    at = ts(w["at"])
+    out = {"prompt": w["prompt"], "reason": w["reason"], "set_at": w["at"]}
+    if w["stop"]:
+        return dict(out, state="ended")
+    due = at + float(w["delay"])
+    out["due"] = _dt.datetime.fromtimestamp(due, _dt.timezone.utc).isoformat().replace("+00:00", "Z")
+    fired = ts(st["fired"]) if st["fired"] else 0
+    if fired >= at:                                   # the wakeup fired; its pass should have set the next one
+        out["fired"] = st["fired"]
+        return dict(out, state="stopped" if now - fired > 900 else "running")
+    return dict(out, state="missed" if now > due + 300 else "scheduled")
+
+
+def read_around(path, uuid, span=80):
+    """Items of a whole transcript around one line (a search hit), in file order, rewound branches included."""
+    with open(path, "rb") as f:
+        data = f.read()
+    items = []
+    for line in data.split(b"\n"):
+        if not line.strip() or b'"type":"api-request' in line[:40]:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        try:
+            items += codex_items(d) if "/.codex/" in path else entry_items(d)
+        except (KeyError, TypeError, AttributeError):
+            continue
+    i = next((n for n, it in enumerate(items) if str(it.get("id") or "").startswith(uuid)), len(items) - 1)
+    return items[max(0, i - span):i + span], i - max(0, i - span)
+
+
+def title_of(path):
+    """A session's title (Claude Code's ai-title/custom-title lines), if it has one."""
+    title = None
+    try:
+        with open(path, "rb") as f:
+            for line in f:
+                if b'"ai-title"' in line[:30] or b'"custom-title"' in line[:30]:
+                    try:
+                        d = json.loads(line)
+                        title = d.get("customTitle") or d.get("aiTitle") or d.get("title") or title
+                    except ValueError:
+                        pass
+    except OSError:
+        pass
+    return title
+
+
+# ---------- a text index for search: only the messages of each transcript, kept up to date by appended bytes ----------
+
+INDEX_DIR = os.path.expanduser("~/Library/Caches/research-gui/index")
+
+
+def index_path(path):
+    import hashlib
+    return os.path.join(INDEX_DIR, hashlib.sha1(path.encode()).hexdigest()[:20] + ".jsonl")
+
+
+def update_index(path):
+    """Append the messages written to `path` since the last update to its index file; returns the index path. The
+    index holds one line per message: {"u": uuid, "t": time, "k": kind, "w": who, "x": text}."""
+    os.makedirs(INDEX_DIR, exist_ok=True)
+    ix = index_path(path)
+    meta = ix + ".pos"
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        return None
+    try:
+        pos = int(open(meta).read() or 0)
+    except (OSError, ValueError):
+        pos = 0
+    if pos > size:                                   # the transcript was replaced: rebuild
+        pos = 0
+        open(ix, "w").close()
+    if pos == size and os.path.exists(ix):
+        return ix
+    codex = "/.codex/" in path
+    out = []
+    with open(path, "rb") as f:
+        f.seek(pos)
+        data = f.read(size - pos)
+    end = data.rfind(b"\n")
+    if end < 0:
+        return ix
+    for line in data[:end].split(b"\n"):
+        if not line or b'"type":"api-request' in line[:40]:
+            continue
+        head = line[:600]
+        if codex and b'"response_item"' not in head:
+            continue
+        try:
+            d = json.loads(line)
+            items = codex_items(d) if codex else entry_items(d)
+        except (ValueError, KeyError, TypeError, AttributeError):
+            continue
+        for it in items:
+            if it["k"] in ("user", "assistant", "from") and it.get("text"):
+                out.append(json.dumps({"u": str(it.get("id") or "").split(":")[0], "t": it.get("ts"), "k": it["k"],
+                                       "w": it.get("who"), "x": it["text"]}, ensure_ascii=False))
+    with open(ix, "a") as f:
+        if out:
+            f.write("\n".join(out) + "\n")
+    with open(meta, "w") as f:
+        f.write(str(pos + end + 1))
+    return ix

@@ -207,7 +207,9 @@ def agent_view(a, snap, ros):
             "agent": a.get("agent"), "status": a.get("agent_status"), "title": a.get("terminal_title_stripped"),
             "tab_label": label, "role": role, "map": r.get("map", ""), "session": r.get("session", ""),
             "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value")), "safeguard": guard_of(a),
-            "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None}
+            "session_id": (a.get("agent_session") or {}).get("value"),
+            "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None,
+            "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None}
 
 
 def transcript_of(a):
@@ -405,7 +407,8 @@ def project_state(p, with_agents=True):
     waiting += [{"kind": "agent", "pane": a["pane"], "role": a["role"], "label": a["tab_label"],
                  "text": f"{a['role'] or a['agent']} ({a['tab_label'] or a['pane']}) is waiting at a prompt"}
                 for a in agents if a["status"] == "blocked"]
-    return {"name": p["name"], "path": p["path"], "server": p.get("server"), "server_root": p.get("server_root"),
+    team = os.path.exists(os.path.join(p["path"], "scratch", "agents", "roster.md")) or any(a["role"] in ("desk", "driver") for a in agents)
+    return {"name": p["name"], "path": p["path"], "server": p.get("server"), "server_root": p.get("server_root"), "team": team,
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
             "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
             "keychain": keychain_has(), "dry_run": ARGS.dry_run}
@@ -739,13 +742,22 @@ GPU_CMD = ("nvidia-smi --query-gpu=index,uuid,name,utilization.gpu,memory.used,m
            "--format=csv,noheader 2>/dev/null); do ps -o pid=,user= -p $p 2>/dev/null; done; echo RG-ME; id -un")
 
 
-def gpu_hosts():
+def gpu_pools():
+    """Pool name -> hosts to watch: [gpu_pools] in the projects file (shared clusters: every node, since your jobs can
+    land anywhere), plus gpu_hosts and each project's server under "Other" if not already listed."""
     cfg = load_config()
-    hosts = cfg.get("gpu_hosts") or []
-    for p in cfg["projects"].values():
-        if p.get("server") and p["server"] not in hosts:
-            hosts.append(p["server"])
-    return hosts
+    pools = {k: list(v) for k, v in (cfg.get("gpu_pools") or {}).items() if isinstance(v, list)}
+    listed = {h for hs in pools.values() for h in hs}
+    extra = [h for h in (cfg.get("gpu_hosts") or []) + [p.get("server") for p in cfg["projects"].values()]
+             if h and h not in listed]
+    if extra:
+        pools.setdefault("Other", [])
+        pools["Other"] += [h for h in dict.fromkeys(extra)]
+    return pools
+
+
+def gpu_hosts():
+    return [h for hs in gpu_pools().values() for h in hs]
 
 
 def gpus(host, fresh):
@@ -813,6 +825,132 @@ def tmux_peek(host, session, lines=200):
     return {"host": host, "session": session, "alive": not gone, "text": text.rstrip()[-60000:]}
 
 
+# ---------- search across a project's conversations ----------
+
+_codex_cwd = {}
+
+
+def project_transcripts(p):
+    """Every conversation of the project: Claude Code sessions started in its folder (or below it), sessions its
+    roster names that started elsewhere (live ones), and Codex rollouts whose working folder is inside it."""
+    base = os.path.expanduser("~/.claude/projects")
+    enc = re.sub(r"[^A-Za-z0-9-]", "-", p["path"])
+    files = set()
+    for d in glob.glob(os.path.join(base, enc + "*")):
+        if os.path.basename(d) == enc or os.path.basename(d).startswith(enc + "-"):
+            files.update(glob.glob(os.path.join(d, "*.jsonl")))
+    agents, _ = project_agents(p)
+    for a in agents:
+        path = rg_chat.transcript_path(a.get("session_id"), a.get("agent")) if a.get("session_id") else None
+        if path:
+            files.add(path)
+    cutoff = time.time() - 90 * 86400
+    for f in glob.glob(os.path.expanduser("~/.codex/sessions/*/*/*/rollout-*.jsonl")):
+        if os.path.getmtime(f) < cutoff:
+            continue
+        if f not in _codex_cwd:
+            try:
+                with open(f) as fh:
+                    _codex_cwd[f] = (json.loads(fh.readline()).get("payload") or {}).get("cwd") or ""
+            except (OSError, ValueError):
+                _codex_cwd[f] = ""
+        if _codex_cwd[f] and in_folder(_codex_cwd[f], p["path"]):
+            files.add(f)
+    return sorted(files, key=lambda f: -os.path.getmtime(f))
+
+
+def snippet(text, term, width=150):
+    i = text.lower().find(term)
+    a = max(0, i - width // 2)
+    return ("…" if a else "") + text[a:a + width].replace("\n", " ") + ("…" if a + width < len(text) else "")
+
+
+def search(p, q):
+    terms = [t for t in q.lower().split() if t][:6]
+    if not terms or len(q) > 200:
+        raise ApiError(400, "type a few words to search for")
+    pats = [re.compile(re.escape(t.encode()), re.I) for t in terms]
+    t0, files = time.time(), project_transcripts(p)
+    live = {a["session_id"]: a for a in project_agents(p)[0] if a.get("session_id")}
+    hits, matched = [], set()
+    for f in files:                                  # message text only (rg_chat's index), updated by appended bytes
+        if time.time() - t0 > 20:
+            break
+        ix = rg_chat.update_index(f)
+        if not ix:
+            continue
+        codex, per = "/.codex/" in f, 0
+        with open(ix, "rb") as fh:
+            for line in fh:
+                if not all(rx.search(line) for rx in pats):
+                    continue
+                try:
+                    m = json.loads(line)
+                except ValueError:
+                    continue
+                if not all(t in m["x"].lower() for t in terms):
+                    continue
+                matched.add(f)
+                hits.append({"file": f, "session": os.path.basename(f)[:-6].split("-", 6)[-1] if codex else os.path.basename(f)[:-6],
+                             "uuid": m["u"], "ts": m["t"], "role": m["k"], "who": m["w"],
+                             "snippet": snippet(m["x"], terms[0]), "codex": codex})
+                per += 1
+                if per >= 15:
+                    break
+    hits.sort(key=lambda h: h["ts"] or "", reverse=True)
+    hits = hits[:150]
+    titles = {}
+    for h in hits:
+        if h["file"] not in titles:
+            titles[h["file"]] = rg_chat.title_of(h["file"]) if not h["codex"] else "Codex session"
+        h["title"] = titles[h["file"]]
+        a = live.get(h["session"])
+        h["live_pane"] = a["pane"] if a else None
+        h["live_label"] = (a.get("role") or a.get("agent")) if a else None
+    for h in hits:
+        h.pop("file")
+    return {"hits": hits, "files": len(files), "matched_files": len(matched),
+            "ms": int((time.time() - t0) * 1000)}
+
+
+def archive(session, around):
+    """One saved conversation around a message (a search hit), read-only."""
+    if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", session or ""):
+        raise ApiError(400, "bad session id")
+    path = rg_chat.transcript_path(session) or rg_chat.transcript_path(session, "codex")
+    if not path:
+        raise ApiError(404, "no saved conversation with that id")
+    items, focus = rg_chat.read_around(path, around or "")
+    return {"pane": "session:" + session, "agent": "codex" if "/.codex/" in path else "claude", "status": "archive",
+            "title": rg_chat.title_of(path) or "saved conversation", "session": session, "items": items, "offset": None,
+            "focus": focus, "cut": True}
+
+
+# ---------- raw file bytes (PDFs and images open in the viewer) ----------
+
+RAW_TYPES = {".pdf": "application/pdf", **IMAGE_EXT}
+RAW_CAP = 60 << 20
+
+
+def raw_file(p, side, rel):
+    ext = os.path.splitext(rel)[1].lower()
+    if ext not in RAW_TYPES:
+        raise ApiError(400, "only PDFs and images are served raw")
+    if side == "local":
+        path = inside(p, rel)
+        if os.path.getsize(path) > RAW_CAP:
+            raise ApiError(413, "file too large to preview")
+        with open(path, "rb") as f:
+            return f.read(), RAW_TYPES[ext]
+    f = remote_path(p, rel)
+    size = ssh(p["server"], f"stat -L -c %s -- {f} 2>/dev/null || echo 0").decode().strip()
+    if not size.isdigit() or int(size) == 0:
+        raise ApiError(404, f"no file {rel} on {p['server']}")
+    if int(size) > RAW_CAP:
+        raise ApiError(413, "file too large to preview")
+    return cached((p["server"], "raw", p["server_root"], rel), False, lambda: ssh(p["server"], f"cat -- {f}", timeout=120)), RAW_TYPES[ext]
+
+
 # ---------- skills (for the composer's / menu) ----------
 
 # Claude Code's own commands. Many open a menu on the terminal screen rather than writing to the conversation; the chat
@@ -846,7 +984,9 @@ def skills():
 
 # ---------- chat ----------
 
-def chat(pane, after, session, want_screen=False):
+def chat(pane, after, session, want_screen=False, around=None):
+    if (pane or "").startswith("session:"):
+        return archive(pane.split(":", 1)[1], around)
     try:
         a, snap = live_agent(pane)
     except ApiError as e:
@@ -1304,6 +1444,22 @@ class Handler(BaseHTTPRequestHandler):
             return self.static(url.path)
         if url.path == "/api/token":
             return self.send(200, {"token": TOKEN})
+        if url.path == "/api/raw":
+            if q.get("token") != TOKEN:
+                return self.send(403, {"error": "missing or stale token"})
+            try:
+                data, ctype = raw_file(project(q.get("project")), q.get("side"), clean_rel(q.get("path")))
+            except ApiError as e:
+                return self.send(e.code, {"error": str(e)})
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Connection", "close")
+            self.close_connection = True
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if url.path != "/api/ping" and self.headers.get("X-RG-Token") != TOKEN:
             return self.send(403, {"error": "missing or stale token: reload the page"})
         self.api(lambda: self.get_api(url.path, q))
@@ -1379,7 +1535,10 @@ class Handler(BaseHTTPRequestHandler):
             return job
         if path == "/api/chat":
             after = q.get("after")
-            return chat(q.get("pane"), int(after) if after and after.isdigit() else None, q.get("session"), q.get("screen") == "1")
+            return chat(q.get("pane"), int(after) if after and after.isdigit() else None, q.get("session"), q.get("screen") == "1",
+                        q.get("around"))
+        if path == "/api/search":
+            return search(project(q.get("project")), q.get("q") or "")
         if path == "/api/skills":
             return skills()
         if path == "/api/gpus":
@@ -1387,7 +1546,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/tmux":
             return tmux_peek(q.get("host"), q.get("session"))
         if path == "/api/gpu-hosts":
-            return {"hosts": gpu_hosts()}
+            return {"hosts": gpu_hosts(), "pools": gpu_pools()}
         if path == "/api/config":
             return config_text()
         raise ApiError(404, "unknown endpoint")
@@ -1492,6 +1651,14 @@ def main():
                  f"A research-gui suspended with Ctrl+Z still holds it: in that shell run `fg` then Ctrl+C, or `kill %1`;\n"
                  f"from anywhere: `kill {holder.split('pid ')[1].rstrip(')') if holder else '<pid>'}`. Or use --port.")
     signal.signal(signal.SIGTERM, lambda *_: os._exit(0))   # the app quitting: drop open terminals with us
+    def warm():                                      # build search indexes once, quietly
+        for p in load_config()["projects"].values():
+            try:
+                for f in project_transcripts(p):
+                    rg_chat.update_index(f)
+            except Exception:
+                pass
+    threading.Thread(target=warm, daemon=True).start()
     print(f"research-gui at {url}{'  (dry run: Start buttons send nothing)' if ARGS.dry_run else ''}"
           f"  [{dt.datetime.now():%H:%M}]", flush=True)
     if not (ARGS.no_open or ARGS.serve):

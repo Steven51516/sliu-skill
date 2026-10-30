@@ -9,7 +9,7 @@ app.dock && app.dock.hide();
 app.whenReady().then(async () => {
   if (spec.dark) nativeTheme.themeSource = "dark";
   const win = new BrowserWindow({ width: spec.width || 1440, height: spec.height || 900, show: false,
-    webPreferences: { offscreen: true, preload: spec.preload ? require("path").join(__dirname, "preload.js") : undefined, contextIsolation: true } });
+    webPreferences: { offscreen: true, plugins: true, preload: spec.preload ? require("path").join(__dirname, "preload.js") : undefined, contextIsolation: true } });
   win.webContents.on("console-message", (_e, level, msg) => { if (level >= 2) console.log("[page]", msg); });
   await win.loadURL(`http://127.0.0.1:${spec.port}/${spec.steps[0]?.hash || ""}`);
   for (const s of spec.steps) {

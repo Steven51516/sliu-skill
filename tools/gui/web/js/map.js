@@ -61,7 +61,7 @@ function renderHead(m) {
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
       ${m.driver ? `<button class="btn primary" id="mh-driverchat" title="The driver owns this map: plan, re-chart and add questions with it">${icon("chat")} Talk to driver</button>` : ""}
       <button class="btn" id="mh-ticket">${icon("plus")} Add ticket</button>
-      <button class="btn" id="mh-ask">${icon("chat")} Ask the desk</button>
+      <button class="btn" id="mh-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
       <button class="btn icon" id="mh-more" title="More">${icon("more")}</button></div></div>
     <div class="tabs">${[["dag", "Graph"], ["doc", "Map"], ["files", "Files"]].map(([k, l]) => `<a class="${tab === k ? "on" : ""}" data-tab="${k}">${l}</a>`).join("")}</div>`;
   el.querySelectorAll("[data-tab]").forEach((a) => a.onclick = () => go({ ...S.route, tab: a.dataset.tab }));
@@ -76,18 +76,14 @@ function renderHead(m) {
     { label: "Run one research-drive pass", icon: "bolt", run: () => hooks.newSession(S.route.project, "drive", { map: localMapDir(m) }) },
     "-",
     m.status === "paused" ? { label: "Resume (tell the desk)", icon: "play", run: () => askDesk(`resume ${m.id}`) }
-      : { label: "Pause (tell the desk)", icon: "stop", run: () => askDesk(`pause ${m.id}: `) },
+      : { label: hooks.deskPane(S.route.project) ? "Pause (tell the desk)" : "Pause…", icon: "stop", run: () => askDesk(`pause ${m.id}: `) },
     "-",
     { label: "Open map.md in VS Code", icon: "ext", run: () => vscode("local", m.path, false) },
     ...(S.data.server ? [{ label: `Terminal at its code on ${S.data.server}`, icon: "server", run: () => hooks.openTerminal({ kind: "ssh", project: S.route.project, path: serverMapDir(m), label: `ssh ${S.data.server}:${m.id}` }) }] : []),
   ], { right: true });
 }
 
-export function askDesk(text) {
-  const desk = hooks.deskPane(S.route.project);
-  if (!desk) return toast("No desk is running in this project: Start team first (or ask any session from the chat)", "err", 5000);
-  hooks.openChat(desk, { text });
-}
+export function askDesk(text) { hooks.askProject(S.route.project, text); }
 
 async function addTicket(m) {
   if (m.driver) return hooks.openChat(m.driver, { text: "New question for this map: " });   // the driver owns the map
@@ -261,9 +257,9 @@ function renderTicket(m) {
     ${t.blocked_by.length ? `<div class="muted" style="font-size:12px;margin:-2px 0 8px">Blocked by ${t.blocked_by.map((b) => `<a data-goto="${esc(b)}" class="mono">${esc(b)}</a>`).join(", ")}</div>` : ""}
     <div class="actions">
       ${open && t.type !== "grilling" && !wk && !m.driven ? `<button class="btn sm primary" id="tp-work">${icon("play")} Work on it</button>` : ""}
-      ${t.waiting ? `<button class="btn sm primary" id="tp-answer">${icon("chat")} Answer with the desk</button>` : ""}
+      ${t.waiting ? `<button class="btn sm primary" id="tp-answer">${icon("chat")} ${hooks.deskPane(S.route.project) ? "Answer with the desk" : "Answer"}</button>` : ""}
       ${t.status === "resolved" ? `<button class="btn sm" id="tp-review">${icon("check")} Review</button>` : ""}
-      <button class="btn sm" id="tp-ask">${icon("chat")} Ask the desk</button>
+      <button class="btn sm" id="tp-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
       <button class="btn sm" id="tp-files">${icon("folder")} Files</button>
       <button class="btn sm icon" id="tp-more" title="More">${icon("more")}</button></div></div>
     ${wk ? `<div class="panel-body" style="padding-bottom:0"><div class="card rows"><div class="row">
@@ -289,10 +285,9 @@ function renderTicket(m) {
   $("#tp-ask").onclick = () => askDesk(`About ${t.id} (${t.path}): `);
   $("#tp-files").onclick = () => { filesState.focus = "tickets/" + t.folder; filesState.scope = "map"; go({ ...S.route, tab: "files" }); };
   $("#tp-more").onclick = (e) => popMenu(e.currentTarget, [
-    { header: "Tell the desk (you edit before sending)" },
-    t.status === "held" ? { label: "Release", icon: "play", run: () => askDesk(`release ${t.id}`) } : { label: "Hold", icon: "stop", run: () => askDesk(`hold ${t.id}: `) },
-    { label: "Reopen…", icon: "refresh", run: () => askDesk(`reopen ${t.id}: `) },
-    "-",
+    ...(hooks.deskPane(S.route.project) ? [{ header: "Tell the desk (you edit before sending)" },
+      t.status === "held" ? { label: "Release", icon: "play", run: () => askDesk(`release ${t.id}`) } : { label: "Hold", icon: "stop", run: () => askDesk(`hold ${t.id}: `) },
+      { label: "Reopen…", icon: "refresh", run: () => askDesk(`reopen ${t.id}: `) }, "-"] : []),
     { label: "Work on it in a new session", icon: "play", run: () => hooks.newSession(S.route.project, "work", { ticket: dir }) },
     { label: "Review in a new session", icon: "check", run: () => hooks.newSession(S.route.project, "review", { ticket: dir }) },
     "-",

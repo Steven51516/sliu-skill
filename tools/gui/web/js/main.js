@@ -2,7 +2,7 @@
 import { S, $, get, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
-import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane } from "./chat.js";
+import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive } from "./chat.js";
 import { initDock, toggleDock, typeIntoTerminal } from "./term.js";
 import { startTeam, newSession, addProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
@@ -10,10 +10,10 @@ import { resetFiles, openPathLater, openFile } from "./files.js";
 import { resetMap } from "./map.js";
 
 const POLL_MS = 4000;
-let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, lastAttention = "", prevGuard = new Map(), guardPrimed = false;
+let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, lastAttention = "", prevGuard = new Map(), guardPrimed = false, prevLoop = new Map();
 
 Object.assign(hooks, {
-  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob,
+  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob, askProject, askLabel, openArchive,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
   nextAttention,
   openPath: (project, rel, side = "local") => {
@@ -121,6 +121,13 @@ function attention(sum) {
     if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)}: Opus safeguards`, a.safeguard.text, a.pane);
   });
   guardPrimed = true;
+  allAgents().forEach((a) => {                           // a driver's /loop going quiet (missed a pass, or a pass died)
+    const st = a.loop?.state, was = prevLoop.get(a.pane);
+    prevLoop.set(a.pane, st);
+    if (!["missed", "stopped"].includes(st) || st === was || was === undefined) return;
+    note("blocked", `${agentLabel(a)}${a.project ? " · " + a.project : ""}: its loop ${st === "missed" ? "missed a pass" : "stopped"}`);
+    if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)}: loop ${st === "missed" ? "missed a pass" : "stopped"}`, "Open the overview to restart it", a.pane);
+  });
   progress(sum);
   badge();
 }
@@ -170,6 +177,7 @@ function badge() {
     const items = [
       ...allAgents().filter((a) => a.status === "blocked").map((a) => ({ label: `● ${agentLabel(a)}${a.project ? " · " + a.project : ""} needs your answer`, cmd: "openChat", arg: a.pane })),
       ...[...S.unread.entries()].map(([pane, u]) => ({ label: `✓ ${u.label}${u.project ? " · " + u.project : ""} finished`, cmd: "openChat", arg: pane })),
+      ...allAgents().filter((a) => ["missed", "stopped"].includes(a.loop?.state)).map((a) => ({ label: `↻ ${agentLabel(a)}${a.project ? " · " + a.project : ""}: loop ${a.loop.state}`, cmd: "openChat", arg: a.pane })),
       ...(S.summary?.projects || []).flatMap((p) => (p.waiting || []).filter((w) => w.kind === "ticket").map((w) => ({ label: `◆ ${p.name} · ${w.id}: ${w.text}`, cmd: "goTicket", arg: [p.name, w.map_folder, w.folder] }))),
     ];
     const sig = JSON.stringify(items);
@@ -191,6 +199,12 @@ function nextAttention() {
   items[attnIndex++ % items.length]();
 }
 
+let beforeSettings = null;
+window.addEventListener("hashchange", (e) => { if (S.route.view !== "settings" && !location.hash.startsWith("#/settings")) beforeSettings = null;
+  else if (!beforeSettings && e.oldURL && !e.oldURL.includes("#/settings")) beforeSettings = e.oldURL.split("#")[1] || ""; });
+function leaveSettings() { location.hash = beforeSettings ? "#" + beforeSettings : (store("project") ? `#/p/${encodeURIComponent(store("project"))}` : "#/inbox"); }
+hooks.leaveSettings = leaveSettings;
+
 // ---------- keyboard ----------
 
 const COMMANDS = {
@@ -203,7 +217,11 @@ function project(i) { const p = S.summary?.projects[i]; if (p) go({ project: p.n
 document.addEventListener("keydown", (e) => {
   const mod = e.metaKey || e.ctrlKey;
   if (e.key === "Enter" && e.target.matches?.(".agent-row, .trow")) { e.preventDefault(); e.target.click(); return; }
-  if (e.key === "Escape") { if (!$("#overlay").hidden) { closeDialog(); e.preventDefault(); } closeMenus(); return; }
+  if (e.key === "Escape") {
+    if (!$("#overlay").hidden) { closeDialog(); e.preventDefault(); }
+    else if (S.route.view === "settings" && !e.target.closest?.("textarea, input")) leaveSettings();
+    closeMenus(); return;
+  }
   if (e.ctrlKey && e.key === "Tab") {                       // next session in the chat
     e.preventDefault();
     const list = allAgents().filter((a) => !S.route.project || a.project === S.route.project);

@@ -1,5 +1,5 @@
 // Read-only file trees (records on the Mac, code on the server) and the file viewer.
-import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks } from "./core.js";
+import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token } from "./core.js";
 
 const F = { trees: {}, viewer: null, scope: "map", focus: null };
 export const filesState = F;
@@ -147,6 +147,13 @@ export async function showDoc(el, side, path, opt = {}) {
   };
   wire();
   const req = (el._req = (el._req || 0) + 1);
+  if (/\.pdf$/i.test(name)) {                       // PDFs open in the built-in viewer, from the raw bytes
+    const q = new URLSearchParams({ project: S.route.project, side, path, token: await token() });
+    if (el._req !== req) return;
+    el.innerHTML = head + `<iframe class="pdf" src="/api/raw?${q}" title="${esc(name)}"></iframe>`;
+    wire();
+    return;
+  }
   let f;
   try { f = await get("/api/file", { project: S.route.project, side, path, ...(opt.fresh ? { fresh: 1 } : {}), ...(opt.mode ? { mode: opt.mode } : {}) }); }
   catch (e) { if (!opt.quiet && el._req === req) el.querySelector(".vbody").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }

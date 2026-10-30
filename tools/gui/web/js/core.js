@@ -82,6 +82,15 @@ export const guardNote = (a) => {
   if (!g || Date.now() - Date.parse(g.ts) > 2 * 3600 * 1000) return "";
   return g.kind === "fallback" ? "⚠ Opus safeguards: an older model is answering" : "⚠ Opus safeguards stopped a reply";
 };
+// a driver's /loop: when its next pass is due, or that it has gone quiet (missed a pass, or a pass died)
+const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+export const loopNote = (a) => {
+  const l = a?.loop;
+  if (!l) return "";
+  return { scheduled: `next pass ${hhmm(l.due)}`, running: "pass running", missed: `⚠ loop missed its ${hhmm(l.due)} pass`,
+    stopped: `⚠ loop stopped after its ${hhmm(l.fired)} pass`, ended: "loop ended" }[l.state] || "";
+};
+export const loopDead = (a) => ["missed", "stopped"].includes(a?.loop?.state);
 export const codexNote = (a) => a?.codex?.length ? `Codex running · ${fmtDur(Math.max(...a.codex.map((r) => r.seconds)))}` : "";
 
 // ---------- routing: #/inbox  #/gpus  #/settings  #/p/<project>[/files | /map/<folder>[/<tab>[/<ticket>]]] ----------
@@ -91,6 +100,7 @@ export function parseRoute() {
   if (parts[0] !== "p") return { view: parts[0] || "inbox" };
   const r = { view: "project", project: parts[1] };
   if (parts[2] === "files") r.view = "files";
+  if (parts[2] === "search") r.view = "search";
   if (parts[2] === "map") Object.assign(r, { view: "map", map: parts[3], tab: parts[4] || "dag", ticket: parts[5] || null });
   return r;
 }
@@ -98,6 +108,7 @@ export function href(r) {
   if (!r.project) return "#/" + (r.view || "inbox");
   const parts = ["p", r.project];
   if (r.view === "files") parts.push("files");
+  if (r.view === "search") parts.push("search");
   if (r.map) parts.push("map", r.map, r.tab || "dag", ...(r.ticket ? [r.ticket] : []));
   return "#/" + parts.map(encodeURIComponent).join("/");
 }
