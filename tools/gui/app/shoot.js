@@ -10,7 +10,10 @@ app.whenReady().then(async () => {
   if (spec.dark) nativeTheme.themeSource = "dark";
   const win = new BrowserWindow({ width: spec.width || 1440, height: spec.height || 900, show: false,
     webPreferences: { offscreen: true, plugins: true, preload: spec.preload ? require("path").join(__dirname, "preload.js") : undefined, contextIsolation: true } });
-  win.webContents.on("console-message", (_e, level, msg) => { if (level >= 2) console.log("[page]", msg); });
+  win.webContents.on("console-message", (e, level, msg) => {    // newer Electron passes one event object
+    const lv = e && e.level !== undefined ? e.level : level, m = e && e.message !== undefined ? e.message : msg;
+    if (lv === "error" || lv === "warning" || lv >= 2) console.log("[page]", m, e && e.sourceId ? `(${e.sourceId}:${e.lineNumber})` : "");
+  });
   await win.loadURL(`http://127.0.0.1:${spec.port}/${spec.steps[0]?.hash || ""}`);
   for (const s of spec.steps) {
     if (s.hash) await win.webContents.executeJavaScript(`location.hash = ${JSON.stringify(s.hash)}`);

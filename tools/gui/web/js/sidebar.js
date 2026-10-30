@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store } from "./core.js";
 
 export function inboxCount() {
   if (!S.summary) return 0;
@@ -7,6 +7,10 @@ export function inboxCount() {
   const blockedOutside = (S.summary.other_agents || []).filter((a) => a.status === "blocked").length;
   return waiting + blockedOutside + S.unread.size;
 }
+
+// projects folded in the sidebar (their maps, Files and Search hidden); remembered across reloads
+const folded = new Set(store("folded") || []);
+function setFold(name, fold) { fold ? folded.add(name) : folded.delete(name); store("folded", [...folded]); renderSidebar(); }
 
 export function renderSidebar() {
   const sum = S.summary, r = S.route;
@@ -25,14 +29,14 @@ export function renderSidebar() {
     const working = (p.agents || []).filter((a) => a.status === "working").length;
     const blocked = (p.agents || []).filter((a) => a.status === "blocked").length;
     const waiting = (p.waiting || []).length;
-    const open = p.name === cur;
-    html += `<a class="nav ${open && r.view === "project" ? "on" : ""}" href="${href({ project: p.name })}" title="${esc(p.error || "")}">
-      ${icon(open ? "home" : "folder")}<span class="label">${esc(p.name)}</span>
+    const open = p.name === cur, unfolded = open && !folded.has(p.name);
+    html += `<a class="nav ${open && r.view === "project" ? "on" : ""}" href="${href({ project: p.name })}" data-proj="${esc(p.name)}" title="${esc(p.error || "")}">
+      <span class="pcaret" data-fold="${esc(p.name)}" title="${unfolded ? "Fold" : "Unfold"}">${unfolded ? "▾" : "▸"}</span>${icon(open ? "home" : "folder")}<span class="label">${esc(p.name)}</span>
       ${p.ok === false ? `<span class="count alert">!</span>` : ""}
       ${waiting ? `<span class="count alert" title="waiting on you">${waiting}</span>` : working ? `<span class="count" title="${working} agent${working > 1 ? "s" : ""} working"><span style="color:var(--c-work)">●</span> ${working}</span>` : ""}
       ${!waiting && !working && (p.agents || []).length ? `<span class="dot idle" title="${p.agents.length} agents idle"></span>` : ""}
       ${blocked && !waiting ? `<span class="dot blocked"></span>` : ""}</a>`;
-    if (open && S.data && S.data.name === p.name) {
+    if (unfolded && S.data && S.data.name === p.name) {
       const maps = S.data.maps.filter((m) => m.status !== "closed");
       for (const m of maps) {
         const st = m.driven ? "working" : m.status;
@@ -90,6 +94,12 @@ export function renderSidebar() {
   $("#sb-new").onclick = () => hooks.newSession(cur);
   if ($("#sb-new2")) $("#sb-new2").onclick = () => hooks.newSession(cur);
   $("#sb-add").onclick = () => hooks.addProject();
+  el.querySelectorAll("[data-proj]").forEach((a) => a.onclick = (e) => {
+    const name = a.dataset.proj;
+    if (e.target.closest("[data-fold]") && name === S.route.project) { e.preventDefault(); return setFold(name, !folded.has(name)); }
+    if (name === S.route.project && S.route.view === "project") { e.preventDefault(); return setFold(name, !folded.has(name)); }   // a second click folds
+    if (folded.has(name)) setFold(name, false);   // opening a project unfolds it
+  });
   $("#sb-gear").onclick = () => (S.route.view === "settings" ? hooks.leaveSettings() : go({ view: "settings" }));
   el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {
     const show = () => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth", block: "start" });
