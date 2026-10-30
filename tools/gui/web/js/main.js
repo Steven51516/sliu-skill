@@ -135,7 +135,7 @@ function badge() {
     const items = [
       ...allAgents().filter((a) => a.status === "blocked").map((a) => ({ label: `● ${agentLabel(a)}${a.project ? " · " + a.project : ""} needs your answer`, cmd: "openChat", arg: a.pane })),
       ...[...S.unread.entries()].map(([pane, u]) => ({ label: `✓ ${u.label}${u.project ? " · " + u.project : ""} finished`, cmd: "openChat", arg: pane })),
-      ...allAgents().filter((a) => ["missed", "stopped"].includes(a.loop?.state)).map((a) => ({ label: `↻ ${agentLabel(a)}${a.project ? " · " + a.project : ""}: loop ${a.loop.state}`, cmd: "openChat", arg: a.pane })),
+      ...allAgents().filter((a) => a.loop?.state === "missed").map((a) => ({ label: `↻ ${agentLabel(a)}${a.project ? " · " + a.project : ""}: loop ${a.loop.state}`, cmd: "openChat", arg: a.pane })),
       ...(S.summary?.projects || []).flatMap((p) => (p.waiting || []).filter((w) => w.kind === "ticket").map((w) => ({ label: `◆ ${p.name} · ${w.id}: ${w.text}`, cmd: "goTicket", arg: [p.name, w.map_folder, w.folder] }))),
     ];
     const sig = JSON.stringify(items);

@@ -87,10 +87,10 @@ const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digi
 export const loopNote = (a) => {
   const l = a?.loop;
   if (!l) return "";
-  return { scheduled: `next pass ${hhmm(l.due)}`, running: "pass running", missed: `⚠ loop missed its ${hhmm(l.due)} pass`,
-    stopped: `⚠ loop stopped after its ${hhmm(l.fired)} pass`, ended: "loop ended" }[l.state] || "";
+  return { scheduled: `next pass ${l.fallback ? "~" : ""}${hhmm(l.due)}`, running: "pass running",
+    missed: l.fired && !l.fallback ? `⚠ loop pass from ${hhmm(l.fired)} still running` : `⚠ loop missed its ${hhmm(l.due)} pass`, ended: "loop ended" }[l.state] || "";
 };
-export const loopDead = (a) => ["missed", "stopped"].includes(a?.loop?.state);
+export const loopDead = (a) => a?.loop?.state === "missed";
 export const codexNote = (a) => a?.codex?.length ? `Codex running · ${fmtDur(Math.max(...a.codex.map((r) => r.seconds)))}` : "";
 
 // ---------- routing: #/inbox  #/gpus  #/settings  #/p/<project>[/files | /map/<folder>[/<tab>[/<ticket>]]] ----------

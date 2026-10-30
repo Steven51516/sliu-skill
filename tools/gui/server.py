@@ -1398,8 +1398,8 @@ def diff_events(prev, now):
             kind = next((k for k in kinds if cfg[k]["channels"]), kinds[0])   # one event per reply, the most specific
             emit(kind, f"{who} replied{tail}", a.get("title") or "", **where)
         ls, lb = (a.get("loop") or {}).get("state"), (b.get("loop") or {}).get("state")
-        if ls in ("missed", "stopped") and ls != lb:
-            emit("loop", f"{who}: its loop {'missed a pass' if ls == 'missed' else 'stopped'}{tail}", "Restart it from the app", **where)
+        if ls == "missed" and ls != lb:
+            emit("loop", f"{who}: its loop missed a pass{tail}", "Restart it from the app", **where)
         g, gb = a.get("safeguard"), b.get("safeguard")
         if g and (not gb or g.get("ts") != gb.get("ts")):
             emit("safeguard", f"{who}: Opus safeguards{tail}", g.get("text", ""), **where)

@@ -354,10 +354,14 @@ def last_turn_end(path):
     return st["turn_end"] if st else None
 
 
+FALLBACK = 25 * 60     # seconds from the end of a pass that scheduled nothing to Claude Code's own wakeup (seen 20-27 min)
+
+
 def loop_state(path, now=None):
     """A self-paced /loop's health from its ScheduleWakeup calls: when the next pass is due, and whether it has gone
-    quiet. "missed": due a while ago and never fired; "stopped": a pass fired but scheduled no next one (its turn
-    died, e.g. the network dropped); "ended": the loop was stopped on purpose."""
+    quiet. The loop lasts until ScheduleWakeup(stop) ("ended"). A pass that schedules nothing is woken anyway, about
+    20-30 min after it ends (Claude Code's fallback; seen 20-27 min), so that is "scheduled" too, with an estimated
+    time. "missed": due a while ago and nothing fired; a pass still going after 2 h counts as missed too."""
     import datetime as _dt
     last_safeguard(path)
     st = _guards.get(path)
@@ -373,10 +377,15 @@ def loop_state(path, now=None):
     due = at + float(w["delay"])
     out["due"] = _dt.datetime.fromtimestamp(due, _dt.timezone.utc).isoformat().replace("+00:00", "Z")
     fired = ts(st["fired"]) if st["fired"] else 0
-    if fired >= at:                                   # the wakeup fired; its pass should have set the next one
+    slack = 300
+    if fired >= at:                                   # the wakeup fired, and its pass has set no next one (yet)
         out["fired"] = st["fired"]
-        return dict(out, state="stopped" if now - fired > 900 else "running")
-    return dict(out, state="missed" if now > due + 300 else "scheduled")
+        end = ts(st["turn_end"]) if st["turn_end"] else 0
+        if end < fired:                               # the pass is still going
+            return dict(out, state="running" if now - fired < 7200 else "missed")
+        due, slack = end + FALLBACK, 1200             # Claude Code wakes it anyway
+        out.update(due=_dt.datetime.fromtimestamp(due, _dt.timezone.utc).isoformat().replace("+00:00", "Z"), fallback=True)
+    return dict(out, state="missed" if now > due + slack else "scheduled")
 
 
 def read_around(path, uuid, span=80):
