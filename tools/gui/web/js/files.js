@@ -39,7 +39,8 @@ export function renderFiles(host, m) {
     const tr = F.trees[key];
     tr.key = r.key;
     drawTree(tr);
-    loadDir(tr, r.root, false);
+    if (tr.side === "local") Object.keys(tr.nodes).filter((p) => tr.nodes[p].open || p === tr.root).forEach((p) => loadDir(tr, p, true));
+    else loadDir(tr, r.root, false);
   });
   if (F.focus && m && F.scope === "map") {
     const f = F.focus;
@@ -84,7 +85,7 @@ function drawTree(tr) {
     if (n.error) rows.push(`<div class="terr" style="padding-left:${28 + depth * 14}px">${esc(n.error)}</div>`);
     (n.entries || []).forEach((e) => {
       const p = path ? `${path}/${e.name}` : e.name, sub = tr.nodes[p], on = F.viewer && F.viewer.side === tr.side && F.viewer.path === p;
-      rows.push(`<div class="trow ${on ? "on" : ""}" style="padding-left:${10 + depth * 14}px" data-p="${esc(p)}" data-dir="${e.dir ? 1 : ""}">
+      rows.push(`<div tabindex="0" class="trow ${on ? "on" : ""}" style="padding-left:${10 + depth * 14}px" data-p="${esc(p)}" data-dir="${e.dir ? 1 : ""}">
         <span class="caret">${e.dir ? (sub && sub.open ? "▾" : "▸") : ""}</span>${icon(e.dir ? "folder" : "file", "fi" + (e.dir ? " dir" : ""))}<span class="nm">${esc(e.name)}</span>
         <span class="sz">${e.dir ? "" : fmtSize(e.size)}</span><button class="btn ghost sm icon vs" title="Open in VS Code">${icon("ext")}</button></div>`);
       if (e.dir && sub && sub.open) walk(p, depth + 1);
@@ -92,7 +93,8 @@ function drawTree(tr) {
   };
   walk(tr.root, 0);
   el.innerHTML = `<h3>${esc(tr.label)}<span class="path" title="${esc(tr.sub)}">${esc(tr.sub)}</span>
-    ${tr.side === "server" ? `<button class="btn ghost sm icon" data-refresh="1" title="Fetch again from the server">${icon("refresh")}</button>
+    <button class="btn ghost sm icon" data-refresh="1" title="${tr.side === "server" ? "Fetch again from the server" : "Reload"}">${icon("refresh")}</button>
+    ${tr.side === "server" ? `
       <button class="btn ghost sm icon" data-ssh="1" title="Open a terminal here">${icon("term")}</button>` : ""}</h3>` + rows.join("");
   el.querySelectorAll(".trow").forEach((r) => r.onclick = (e) => {
     const p = r.dataset.p, isDir = !!r.dataset.dir;
@@ -156,7 +158,7 @@ export async function showDoc(el, side, path, opt = {}) {
   else if (f.kind === "too-big") body.innerHTML = `<div class="muted">Image too large to show (${fmtSize(f.size)}).</div>`;
   else if (f.kind === "markdown") {
     const dir = path.split("/").slice(0, -1).join("/");
-    md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter, skipKeys: opt.skipKeys, onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
+    md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter, skipKeys: opt.skipKeys, dropTitle: opt.dropTitle, onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
   } else if (f.kind === "csv") renderCsv(body, f.text, name.endsWith(".tsv") ? "\t" : ",");
   else {
     let text = f.text;

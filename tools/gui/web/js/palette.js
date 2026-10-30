@@ -16,6 +16,7 @@ function items() {
     if (S.data?.server) act(`SSH to ${S.data.server}`, S.data.server_root, () => hooks.openTerminal({ kind: "ssh", project: proj, server: S.data.server, label: `ssh ${S.data.server}` }), "terminal");
     act("Files", proj, () => go({ project: proj, view: "files" }), "go");
   }
+  act("Next thing that needs you", "⇧⌘A", () => hooks.nextAttention());
   act("Inbox", "everything waiting on you", () => go({ view: "inbox" }), "go");
   act("GPUs", "nvidia-smi on the servers", () => go({ view: "gpus" }), "go");
   act("Settings", "projects, servers, notifications", () => go({ view: "settings" }), "go");
@@ -24,6 +25,9 @@ function items() {
   act("Keyboard shortcuts", "⌘/", () => hooks.shortcuts());
   (S.summary?.projects || []).forEach((p) => out.push({ k: "project", a: p.name, b: `${(p.waiting || []).length} waiting · ${(p.agents || []).length} agents`, run: () => go({ project: p.name }) }));
   allAgents().forEach((a) => out.push({ k: "session", a: agentLabel(a), b: `${a.project || "outside projects"} · ${a.status}${a.title ? " · " + a.title : ""}`, run: () => hooks.openChat(a.pane) }));
+  (S.summary?.projects || []).filter((p) => p.name !== S.data?.name).forEach((p) =>   // other projects' tickets too
+    Object.entries(p.states || {}).forEach(([id, [st, title, mf, tf]]) => out.push({ k: id.startsWith("map:") ? "map" : "ticket",
+      a: `${id.replace("map:", "")} ${title}`, b: `${p.name} · ${st}`, run: () => goMap(p.name, mf, tf || null) })));
   if (S.data) S.data.maps.forEach((m) => {
     out.push({ k: "map", a: `${m.id} ${m.title}`, b: m.status, run: () => goMap(S.data.name, m.folder) });
     m.tickets.forEach((t) => out.push({ k: "ticket", a: `${t.id} ${t.title}`, b: `${t.status} · ${t.type || ""}`, run: () => goMap(S.data.name, m.folder, t.folder) }));

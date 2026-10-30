@@ -43,16 +43,12 @@ export function renderOverview() {
         <button class="btn" id="ov-new">${icon("plus")} New session</button>
         <button class="btn" id="ov-idea">${icon("spark")} New map from an idea</button>
         <button class="btn icon" id="ov-more" title="More">${icon("more")}</button></div></div>
-    <div class="stats">
-      ${stat(d.waiting.length, "need you", d.waiting.length ? "alert" : "")}${stat(running.length, "tickets running", running.length ? "work" : "")}
-      ${stat(ready.length, "ready to start", ready.length ? "open" : "")}${stat(open.length, "open maps")}${stat(`${working}/${d.agents.length}`, "agents working", working ? "work" : "")}</div>
+    <div class="statline">
+      ${statChip(d.waiting.length, "need you", "alert")}${statChip(running.length, "running", "work")}${statChip(ready.length, "ready", "open")}
+      ${statChip(open.length, "open maps", "")}${statChip(`${working}/${d.agents.length}`, "agents working", working ? "work" : "")}</div>
     <div class="cols" style="margin-top:6px"><div>
       ${d.waiting.length ? `<div class="sec"><h2>Needs you</h2></div><div class="card rows">${d.waiting.map(waitingRow).join("")}</div>` : ""}
-      ${ch.since && ch.items.length ? `<div class="sec"><h2>Since you last looked</h2><span class="meta">${esc(ago(ch.since))}</span><span class="grow"></span>
-          <button class="btn sm" id="ov-seen">${icon("check")} Mark as seen</button></div>
-        <div class="card" style="padding:4px 0">${ch.items.slice(0, 30).map((c) => `<div class="change"><a data-map="${esc(c.map_folder)}" data-ticket="${esc(c.folder || "")}" class="mono">${esc(c.id)}</a>
-          <span class="grow" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.title)}</span>
-          ${c.from ? pill(c.from) : `<span class="pill plain">new</span>`}<span class="arrow">→</span>${pill(c.to)}</div>`).join("")}</div>` : ""}
+      ${ch.since && ch.items.length ? changesBlock(ch, tickets) : ""}
       ${running.length ? `<div class="sec"><h2>Running</h2></div><div class="card rows">${running.map((t) => `<div class="row click" data-map="${esc(t.map.folder)}" data-ticket="${esc(t.folder)}">
           <span class="mono muted">${esc(t.id)}</span><div class="grow"><div class="t1">${esc(t.title)}</div>${t.jobs.length ? `<div class="t2 mono">${esc(t.jobs.slice(-2).join(" · "))}</div>` : ""}</div>${pill(t.status)}</div>`).join("")}</div>` : ""}
       <div class="sec"><h2>Maps</h2><span class="meta">${open.length} open · ${closed.length} closed</span></div>
@@ -63,7 +59,7 @@ export function renderOverview() {
       ${d.server ? `<div class="sec"><h2>GPUs · ${esc(d.server)}</h2><span class="grow"></span><a href="#/gpus" class="meta">all hosts</a></div><div class="card pad" id="ov-gpus">${gpuCache[d.server] || `<div class="spin"></div>`}</div>` : ""}
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
       <div class="card pad"><div class="timeline">${closed.map((m) => `<div class="tl" data-map="${esc(m.folder)}"><div class="h"><span class="mid">${esc(m.id)}</span>${esc(m.title)}</div>
-        <div class="d">${esc(m.updated || "")}</div><div class="o">${esc(m.outcome || "(no outcome recorded)")}</div></div>`).join("") || `<div class="muted">None yet.</div>`}</div></div>
+        <div class="d">${esc(m.updated || "")}</div><div class="o">${esc(plain(m.outcome) || "(no outcome recorded)")}</div></div>`).join("") || `<div class="muted">None yet.</div>`}</div></div>
       ${d.problems.length ? `<div class="sec"><h2>Tracker warnings</h2></div><div class="card pad"><details><summary>${d.problems.length} from <code>research-status --check</code></summary>
         <ul style="padding-left:18px;font-size:12px">${d.problems.map((p) => `<li class="mono">${esc(p)}</li>`).join("")}</ul></details></div>` : ""}
     </div></div></div>`;
@@ -90,13 +86,33 @@ export function renderOverview() {
   if (d.server) loadMiniGpus(d.server);
 }
 
-const stat = (n, l, cls = "") => `<div class="card stat ${cls}"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`;
+function changesBlock(ch, tickets) {
+  const byId = new Map(tickets.map((t) => [t.id, t]));
+  const results = ch.items.filter((c) => !c.is_map && c.to === "resolved");
+  const rest = ch.items.filter((c) => !results.includes(c));
+  const row = (c) => `<div class="change"><a data-map="${esc(c.map_folder)}" data-ticket="${esc(c.folder || "")}" class="mono">${esc(c.id)}</a>
+    <span class="grow" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.title)}</span>
+    ${c.from ? pill(c.from) : `<span class="pill plain">new</span>`}<span class="arrow">→</span>${pill(c.to)}</div>`;
+  return `<div class="sec"><h2>${results.length ? "New results" : "Since you last looked"}</h2><span class="meta">since ${esc(ago(ch.since))}</span><span class="grow"></span>
+      <button class="btn sm" id="ov-seen">${icon("check")} Mark as seen</button></div>
+    ${results.length ? `<div class="card rows">${results.map((c) => { const t = byId.get(c.id) || {};
+      return `<div class="row click" data-map="${esc(c.map_folder)}" data-ticket="${esc(c.folder || "")}"><span class="mono muted">${esc(c.id)}</span>
+        <div class="grow"><div class="t1">${esc(c.title)}</div><div class="t2">${esc(t.verdict || "resolved — open it for the answer")}</div></div>${pill("resolved")}</div>`; }).join("")}</div>` : ""}
+    ${rest.length ? `<details class="card" style="padding:4px 0;margin-top:${results.length ? 8 : 0}px" ${results.length ? "" : "open"}>
+      <summary class="muted" style="padding:6px 14px;font-size:12.5px">${rest.length} other change${rest.length > 1 ? "s" : ""}</summary>${rest.slice(0, 40).map(row).join("")}</details>` : ""}`;
+}
+
+// map destinations and outcomes are markdown; cards show them as plain text
+const plain = (s) => String(s || "").replace(/`([^`]*)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1")
+  .replace(/(^|[\s(])_+(?=\S)/g, "$1").replace(/(?<=\S)_+(?=[\s).,;:]|$)/g, "");
+
+const statChip = (n, l, cls) => `<span class="schip ${n && n !== "0" && !String(n).startsWith("0/") ? cls : ""}"><b>${esc(n)}</b> ${esc(l)}</span>`;
 
 function waitingRow(w) {
   if (w.kind === "agent") return `<div class="row click" data-pane="${esc(w.pane)}">${pill("blocked", "prompt")}<div class="grow"><div class="t1">${esc(w.text)}</div></div>
     <button class="btn sm primary" data-pane="${esc(w.pane)}">Answer</button></div>`;
   if (w.kind === "ticket") return `<div class="row click" data-map="${esc(w.map_folder)}" data-ticket="${esc(w.folder)}">${pill("waiting", "decision")}
-    <div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.id)}</div></div><button class="btn sm">Open</button></div>`;
+    <div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.id)}</div></div><button class="btn sm" data-open="1">Open</button></div>`;
   return `<div class="row click" data-map="${esc(w.map_folder)}">${pill("waiting", "map")}<div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.map)}</div></div></div>`;
 }
 
@@ -130,14 +146,15 @@ function mapCard(m) {
     <div class="top"><span class="mid">${esc(m.id)}</span><span class="title">${esc(m.title)}</span></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">${pill(m.driven ? "working" : m.status, m.driven ? "driver live" : m.status)}
       ${waiting ? pill("waiting", `${waiting} need you`) : ""}${ready ? pill("open", `${ready} ready`) : ""}</div>
-    <div class="dest">${esc(m.destination)}</div>
+    <div class="dest">${esc(plain(m.destination))}</div>
     <div class="foot"><div class="bar">${bar}</div><span>${m.counts.resolved || 0}/${m.tickets.length}</span>
       ${live && !m.driven ? `<button class="btn sm" data-driver="${esc(m.folder)}">${icon("play")} Driver</button>` : ""}</div></div>`;
 }
 
 function wire(root) {
   root.querySelectorAll("[data-map]").forEach((el) => el.onclick = (e) => {
-    if (e.target.closest("button") && !e.target.closest("button").dataset.map) return;
+    const b = e.target.closest("button");
+    if (b && !b.dataset.map && !b.dataset.open) return;
     e.preventDefault();
     goMap(S.route.project || el.dataset.project, el.dataset.map, el.dataset.ticket || null);
   });
@@ -197,17 +214,21 @@ export function renderInbox() {
 
 // ---------- GPUs ----------
 
-export async function renderGpus(fresh = false) {
+let gpuTimer = null;
+export async function renderGpus(fresh = false, quiet = false) {
   const host = $("#view");
-  if (!fresh) host.innerHTML = `<div class="page"><div class="ph"><div class="grow"><h1>GPUs</h1><div class="sub">Live from <code>nvidia-smi</code> on each project's server (cached 20 s)</div></div>
+  if (!quiet) host.innerHTML = `<div class="page"><div class="ph"><div class="grow"><h1>GPUs</h1><div class="sub">From <code>nvidia-smi</code> on each project's server, refreshed every 20 s while this page is open</div></div>
     <div class="actions"><button class="btn" id="gp-ref">${icon("refresh")} Refresh</button></div></div><div id="gp-list" style="display:flex;flex-direction:column;gap:12px"><div class="spin"></div></div></div>`;
-  $("#gp-ref").onclick = () => renderGpus(true);
+  $("#gp-ref").onclick = () => renderGpus(true, true);
+  clearInterval(gpuTimer);
+  gpuTimer = setInterval(() => { if (S.route.view !== "gpus" || !$("#gp-list")) return clearInterval(gpuTimer); renderGpus(false, true); }, 20000);
   let hosts;
   try { hosts = (await get("/api/gpu-hosts")).hosts; } catch (e) { $("#gp-list").innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
   if (!hosts.length) { $("#gp-list").innerHTML = `<div class="card empty">No servers yet: set a project's <code>server</code> in Settings, or add <code>gpu_hosts</code>.</div>`; return; }
-  $("#gp-list").innerHTML = hosts.map((h) => `<div class="card gpuhost" id="gh-${esc(h)}"><div class="hh">${icon("server")}<b>${esc(h)}</b><span class="spin"></span></div></div>`).join("");
+  if (!quiet || !$("#gp-list .gpuhost")) $("#gp-list").innerHTML = hosts.map((h) => `<div class="card gpuhost" id="gh-${esc(h)}"><div class="hh">${icon("server")}<b>${esc(h)}</b><span class="spin"></span></div></div>`).join("");
   hosts.forEach(async (h) => {
     const el = document.getElementById("gh-" + h);
+    if (!el) return;
     try {
       const g = await get("/api/gpus", { host: h, ...(fresh ? { fresh: 1 } : {}) });
       const free = g.gpus.filter((x) => x.util < 5 && !x.procs.length).length;
@@ -216,7 +237,10 @@ export async function renderGpus(fresh = false) {
           <div class="meter"><span style="width:${x.util}%"></span></div><div class="meter mem"><span style="width:${(100 * x.mem / Math.max(1, x.total)).toFixed(0)}%"></span></div>
           <div class="gl"><span>${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB</span><span>${x.temp}°C</span></div>
           <div class="gl" title="${esc(x.procs.map((p) => `${p.user} pid ${p.pid} ${p.mem} MiB`).join("\n"))}"><span>${x.procs.length ? esc([...new Set(x.procs.map((p) => p.user))].join(", ")) : "idle"}</span></div></div>`).join("")}</div>`;
-    } catch (e) { el.innerHTML = `<div class="hh">${icon("server")}<b>${esc(h)}</b></div><div class="err">${esc(e.message)}</div>`; }
+    } catch (e) {
+      if (quiet && el.querySelector(".gpus")) el.querySelector(".hh .muted").textContent += " · last refresh failed: " + e.message;
+      else el.innerHTML = `<div class="hh">${icon("server")}<b>${esc(h)}</b></div><div class="err">${esc(e.message)}</div>`;
+    }
   });
 }
 

@@ -1,13 +1,13 @@
 // Chat with any live agent: its Claude Code transcript rendered, prompts answered from the exact screen, messages sent
 // through herdr. Polls fast while the agent works or waits, slowly while it is idle.
-import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote } from "./core.js";
+import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent } from "./core.js";
 
 const C = S.chat;
 Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0 });
 
 export function openChat(pane, opt = {}) {
   const a = pane && agentByPane(pane);
-  if (!pane || !a) pane = defaultPane();
+  if (!pane || (!a && !(pane === C.pane && C.status === "ended"))) pane = defaultPane();   // an ended chat stays readable
   C.open = true;
   $("#chat").hidden = false;
   $("#chat-resize").hidden = false;
@@ -44,6 +44,8 @@ function switchTo(pane) {
   clearTimeout(C.timer);
   Object.assign(C, { pane, items: [], tools: new Map(), offset: null, session: null, status: null, queued: [], screen: null, fallback: null, cut: false, err: null });
   const a = agentByPane(pane);
+  C.project = a ? a.project : null;              // links and @ mentions follow the agent's project, not the page's
+  C.label = a ? agentLabel(a) : null;
   if (a && a.project) store("chat." + a.project, pane);
   render();
   if (pane) poll();
@@ -75,7 +77,7 @@ async function poll() {
     renderLive();
   }
   const fast = C.status === "working" || C.status === "blocked" || C.queued.length;
-  C.timer = setTimeout(poll, fast ? 1000 : 2500);
+  C.timer = setTimeout(poll, C.status === "ended" ? 15000 : fast ? 1000 : 2500);
 }
 
 function ingest(items) {
@@ -105,7 +107,7 @@ function render() {
   const a = agentByPane(C.pane);
   el.innerHTML = `<div class="chat-head">
       <div class="picker" id="ch-pick" title="Switch agent">${a ? avatar(a) : `<span class="avatar">?</span>`}
-        <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : "No agent")}</div><div class="l2" id="ch-sub"></div></div>
+        <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : C.label ? C.label + " (ended)" : "No agent")}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
         <span class="muted" style="font-size:10px">▾</span></div>
       <span class="grow"></span>
       <button class="btn ghost sm icon" id="ch-verbose" title="${S.prefs.verbose ? "Fold tool calls" : "Show every tool call"}">${icon(S.prefs.verbose ? "eye" : "code")}</button>
@@ -115,7 +117,7 @@ function render() {
     <div class="chat-body" id="ch-body"></div>
     <div id="ch-live"></div>
     <div class="composer"><div class="box">
-      <textarea id="composer" rows="1" placeholder="${a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : "Pick an agent first"}" ${a ? "" : "disabled"}></textarea>
+      <textarea id="composer" rows="1" placeholder="${a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : C.status === "ended" ? "This session has ended (its tab closed); its conversation stays readable here" : "Pick an agent first"}" ${a ? "" : "disabled"}></textarea>
       <div class="bar2"><span class="hint" id="ch-hint">⏎ send · ⇧⏎ new line</span><span class="grow"></span>
         <button class="send" id="ch-send" title="Send">${icon("send")}</button></div></div></div>`;
   $("#ch-pick").onclick = (e) => pickAgent(e.currentTarget);
@@ -140,6 +142,18 @@ function render() {
   }
   renderLive();
   body.scrollTop = body.scrollHeight;
+}
+
+function chatProject() {
+  const p = S.summary?.projects.find((x) => x.name === C.project);
+  return p && p.path ? { name: p.name, path: p.path } : null;
+}
+function projectTargets() {
+  // maps and tickets of the chat agent's project (the page may show another project)
+  if (S.data && S.data.name === C.project) return S.data.maps.flatMap((m) => [{ id: m.id, title: m.title, path: m.path }, ...m.tickets.map((k) => ({ id: k.id, title: k.title, path: k.path }))]);
+  const p = S.summary?.projects.find((x) => x.name === C.project);
+  return Object.entries(p?.states || {}).map(([id, [, title, mf, tf]]) => id.startsWith("map:")
+    ? { id: id.slice(4), title, path: `maps/${mf}/map.md` } : { id, title, path: `maps/${mf}/tickets/${tf}/ticket.md` });
 }
 
 function nearBottom(el) { return el.scrollHeight - el.scrollTop - el.clientHeight < 120; }
@@ -181,8 +195,8 @@ function appendItems(items, initial = false) {
       const t = it.ts ? new Date(it.ts) : null, s = Math.round((it.ms || 0) / 1000);
       d.innerHTML = `<span>${t ? t.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}${s ? ` · ${s < 60 ? s + " s" : Math.floor(s / 60) + " min " + (s % 60) + " s"}` : ""}</span>`;
     }
-    else if (it.k === "from") { d.innerHTML = `<div class="who">↘ from ${esc(it.role ? `${it.role} (${it.who})` : it.who)}</div><div></div>`; md(d.lastChild, it.text, { paths: true }); }
-    else if (it.k === "assistant") md(d, it.text, { paths: true });
+    else if (it.k === "from") { d.innerHTML = `<div class="who">↘ from ${esc(it.role ? `${it.role} (${it.who})` : it.who)}</div><div></div>`; md(d.lastChild, it.text, { paths: true, project: chatProject() }); }
+    else if (it.k === "assistant") md(d, it.text, { paths: true, project: chatProject() });
     body.appendChild(d);
   }
   if (stick) body.scrollTop = body.scrollHeight;
@@ -234,20 +248,30 @@ function renderLive() {
   else if (codex) body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>Waiting on Codex (${esc(codex.replace("Codex running · ", ""))}); it reports back when the job ends</div>`);
   if (stick) body.scrollTop = body.scrollHeight;
   // a prompt the agent waits at
-  const was = live.dataset.screen;
-  live.innerHTML = C.status === "blocked" && C.screen ? promptCard(C.screen) : "";
-  live.dataset.screen = C.screen || "";
-  const pre = live.querySelector("pre");
-  if (pre) pre.scrollTop = pre.scrollHeight;           // the question sits at the bottom of the screen
-  if (C.screen && was !== C.screen) live.querySelector(".opts .btn, #pc-text")?.focus({ preventScroll: true });
-  live.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => keys(b.dataset.key.split(" ")));
-  const pt = live.querySelector("#pc-term");
-  if (pt) pt.onclick = () => hooks.openTerminal({ kind: "attach", pane: C.pane, label: agentLabel(agentByPane(C.pane)) });
-  const tx = live.querySelector("#pc-text");
-  if (tx) {
-    const sendText = async (enter) => { if (!tx.value) return; await post("/api/chat/text", { pane: C.pane, text: tx.value }).catch((e) => toast(e.message, "err")); if (enter) await keys(["enter"]); tx.value = ""; };
-    tx.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); sendText(true); } };
-    live.querySelector("#pc-type").onclick = () => sendText(true);
+  const want = C.status === "blocked" && C.screen ? C.pane + "\n" + C.screen : "";
+  if (want !== (live.dataset.screen || "")) {          // rebuild only when the question changed: keeps a typed answer
+    const pane = C.pane;
+    live.innerHTML = want ? promptCard(C.screen) : "";
+    live.dataset.screen = want;
+    const pre = live.querySelector("pre");
+    if (pre) pre.scrollTop = pre.scrollHeight;         // the question sits at the bottom of the screen
+    live.querySelector(".opts .btn, #pc-text")?.focus({ preventScroll: true });
+    live.querySelectorAll("[data-key]").forEach((b) => b.onclick = () => keys(b.dataset.key.split(" "), pane));
+    const pt = live.querySelector("#pc-term");
+    if (pt) pt.onclick = () => hooks.openTerminal({ kind: "attach", pane, label: agentLabel(agentByPane(pane)) });
+    const tx = live.querySelector("#pc-text");
+    if (tx) {
+      let busy = false;
+      const sendText = async () => {
+        if (!tx.value || busy) return;
+        busy = true;
+        try { await post("/api/chat/text", { pane, text: tx.value, enter: true }); tx.value = ""; markSent(pane); setTimeout(poll, 350); }
+        catch (e) { toast(e.message, "err"); }                 // the answer stays in the box
+        busy = false;
+      };
+      tx.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); sendText(); } };
+      live.querySelector("#pc-type").onclick = sendText;
+    }
   }
   const send = $("#ch-send");
   if (send) {
@@ -276,8 +300,8 @@ function promptCard(screen) {
       <button class="btn sm" id="pc-type">Send</button></div></div>`;
 }
 
-async function keys(k) {
-  try { await post("/api/chat/keys", { pane: C.pane, keys: k }); setTimeout(poll, 350); }
+async function keys(k, pane = C.pane) {
+  try { await post("/api/chat/keys", { pane, keys: k }); if (k.some((x) => /^\d$|enter/.test(x))) markSent(pane); setTimeout(poll, 350); }
   catch (e) { toast(e.message, "err"); }
 }
 
@@ -317,7 +341,7 @@ function wireComposer() {
     if (slash) choices = S.skills.filter((s) => s.name.toLowerCase().includes(slash[1].toLowerCase()))
       .sort((a, b) => a.name.indexOf(slash[1]) - b.name.indexOf(slash[1])).slice(0, 40)
       .map((s) => ({ a: "/" + s.name, b: s.hint || s.description, ins: "/" + s.name + " ", re: /^\/[\w:-]*$/ }));
-    else if (at && S.data) choices = S.data.maps.flatMap((m) => [{ id: m.id, title: m.title, path: m.path }, ...m.tickets.map((k) => ({ id: k.id, title: k.title, path: k.path }))])
+    else if (at) choices = projectTargets()
       .filter((x) => (x.id + " " + x.title).toLowerCase().includes(at[1].toLowerCase())).slice(0, 30)
       .map((x) => ({ a: x.id, b: x.title, ins: `${x.id} (${x.path}) `, re: /@[\w.-]*$/ }));
     if (!choices.length) return closeMenu();
@@ -349,7 +373,6 @@ function wireComposer() {
     }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
     if (e.key === "Escape" && C.status === "working" && !t.value) { e.preventDefault(); keys(["esc"]); }
-    if (e.key === "ArrowUp" && !t.value && C.queued.length) { e.preventDefault(); setComposer(C.queued.pop()); }
   };
   send.onclick = () => (C.status === "working" && !t.value.trim() ? keys(["esc"]) : submit());
   async function submit() {
@@ -360,7 +383,7 @@ function wireComposer() {
     if (C.status === "working") { C.queued.push(text); renderLive(); }
     try {
       await post("/api/chat/send", { pane: C.pane, text });
-      S.sent.add(C.pane);
+      markSent(C.pane);
       if (!window.desk && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
       setTimeout(poll, 400);
     } catch (e) {
@@ -385,6 +408,6 @@ export function initChatResize() {
 // keep the header (agent label/status) fresh when the global poll sees changes
 export function refreshChatHead() {
   if (!C.open) return;
-  if (C.pane && !agentByPane(C.pane)) { C.status = "gone"; C.title = "this agent has exited"; }
+  if (C.pane && !agentByPane(C.pane) && C.status !== "ended") { poll(); return; }   // gone: the next poll reads it as ended
   renderLive();
 }

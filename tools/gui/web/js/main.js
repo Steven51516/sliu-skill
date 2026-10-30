@@ -1,12 +1,12 @@
 // Entry point: routing, the 4-second poll, attention (notifications, dock badge, title), keyboard, module wiring.
-import { S, $, get, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast } from "./core.js";
+import { S, $, get, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
 import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane } from "./chat.js";
 import { initDock, toggleDock, typeIntoTerminal } from "./term.js";
 import { startTeam, newSession, addProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
-import { resetFiles, openPathLater } from "./files.js";
+import { resetFiles, openPathLater, openFile } from "./files.js";
 import { resetMap } from "./map.js";
 
 const POLL_MS = 4000;
@@ -15,7 +15,11 @@ let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, la
 Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
-  openPath: (project, rel, side = "local") => { openPathLater(side, rel); go({ project, view: "files" }); },
+  nextAttention,
+  openPath: (project, rel, side = "local") => {
+    if (S.route.view === "files" && S.route.project === project && document.getElementById("viewer")) return openFile(side, rel);
+    openPathLater(side, rel); go({ project, view: "files" });
+  },
 });
 
 async function route() {
@@ -40,12 +44,18 @@ async function loadProject() {
   try {
     const d = await get("/api/project", { name });
     if (name !== S.route.project) return false;
-    const sig = JSON.stringify(d);
+    const sig = JSON.stringify(d), wasErr = !!S.err;
     S.err = null;
-    if (sig === lastSig) return false;
+    if (sig === lastSig && S.data && !wasErr) return false;
     S.data = d; lastSig = sig;
     return true;
-  } catch (e) { S.err = e.message; S.data = null; return true; }
+  } catch (e) {
+    if (name !== S.route.project) return false;
+    S.err = e.message;                       // keep showing the last good data; a toast says the backend failed
+    if (!S.data || S.data.name !== name) { S.data = null; lastSig = ""; }
+    toastOnce("Couldn't refresh " + name + ": " + e.message);
+    return true;
+  }
 }
 
 let again = false;
@@ -85,7 +95,12 @@ function attention(sum) {
       note("blocked", `${agentLabel(a)}${a.project ? " · " + a.project : ""} needs your answer`);
       if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)} needs your answer`, a.project ? `${a.project} · ${a.title || ""}` : a.title || "", a.pane);
     }
-    if (S.sent.has(a.pane) && before === "working" && ["idle", "done"].includes(a.status)) {
+    // a turn the human started from the app has ended: its transcript recorded a turn end after the message went out
+    // (no need to catch "working" between polls); agents without a transcript fall back to the status change
+    const sentAt = S.sent.get(a.pane);
+    const ended = sentAt && (a.turn_end ? Date.parse(a.turn_end) > sentAt
+      : before === "working" && ["idle", "done"].includes(a.status));
+    if (ended) {
       S.sent.delete(a.pane);
       note("idle", `${agentLabel(a)} finished its turn`);
       if (!looking(a.pane)) {
@@ -95,6 +110,8 @@ function attention(sum) {
     }
   });
   for (const pane of [...S.unread.keys()]) if (!now.has(pane)) S.unread.delete(pane);
+  for (const [pane, at] of [...S.sent]) if (!now.has(pane) && Date.now() - at > 3600e3) S.sent.delete(pane);
+  saveAttention();
   prevStatus = now;
   allAgents().forEach((a) => {                           // a new Opus-safeguard flag on any agent
     const at = a.safeguard?.ts, seen = prevGuard.get(a.pane);
@@ -161,17 +178,31 @@ function badge() {
   void inboxCount;
 }
 
+// the next thing that needs you, in turn: an agent at a prompt, an unread reply, then a decision ticket
+let attnIndex = 0;
+function nextAttention() {
+  const items = [
+    ...allAgents().filter((a) => a.status === "blocked").map((a) => () => openChat(a.pane)),
+    ...[...S.unread.keys()].map((pane) => () => openChat(pane)),
+    ...(S.summary?.projects || []).flatMap((p) => (p.waiting || []).filter((w) => w.kind !== "agent")
+      .map((w) => () => go({ project: p.name, view: "map", map: w.map_folder, tab: "dag", ticket: w.folder || null }))),
+  ];
+  if (!items.length) return toast("Nothing needs you right now");
+  items[attnIndex++ % items.length]();
+}
+
 // ---------- keyboard ----------
 
 const COMMANDS = {
   palette: () => palette(), chat: () => toggleChat(), dock: () => toggleDock(), newSession: () => newSession(S.route.project),
   inbox: () => go({ view: "inbox" }), settings: () => go({ view: "settings" }), shortcuts: () => shortcuts(),
-  gpus: () => go({ view: "gpus" }), refresh: () => poll(true),
+  gpus: () => go({ view: "gpus" }), refresh: () => poll(true), next: () => nextAttention(),
 };
 function project(i) { const p = S.summary?.projects[i]; if (p) go({ project: p.name }); }
 
 document.addEventListener("keydown", (e) => {
   const mod = e.metaKey || e.ctrlKey;
+  if (e.key === "Enter" && e.target.matches?.(".agent-row, .trow")) { e.preventDefault(); e.target.click(); return; }
   if (e.key === "Escape") { if (!$("#overlay").hidden) { closeDialog(); e.preventDefault(); } closeMenus(); return; }
   if (e.ctrlKey && e.key === "Tab") {                       // next session in the chat
     e.preventDefault();
@@ -186,6 +217,7 @@ document.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   const map = { k: "palette", j: "chat", n: "newSession", i: "inbox", ",": "settings", "/": "shortcuts", g: "gpus" };
   if (e.ctrlKey && e.key === "`") { e.preventDefault(); return toggleDock(); }
+  if (e.metaKey && e.shiftKey && k === "a") { e.preventDefault(); return nextAttention(); }
   if (map[k] && e.metaKey) { e.preventDefault(); COMMANDS[map[k]](); }
   else if (e.metaKey && /^[1-9]$/.test(k)) { e.preventDefault(); project(+k - 1); }
 });

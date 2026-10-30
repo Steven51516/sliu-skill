@@ -13,6 +13,8 @@ const URL = `http://127.0.0.1:${PORT}/`;
 const LOG_DIR = path.join(os.homedir(), "Library", "Logs", "Research Desk");
 const STATE = () => path.join(app.getPath("userData"), "window.json");
 let win = null, backend = null, owned = false, restarts = 0, quitting = false, tray = null, attention = [];
+let ready = false;
+const pending = [];                                      // menu commands sent before a new window's page has loaded
 
 function serverPath() {
   const cands = [process.env.RD_SERVER, path.join(os.homedir(), "research-harness", "tools", "gui", "server.py"), path.join(__dirname, "..", "server.py")];
@@ -152,14 +154,20 @@ function loadBounds() { try { return JSON.parse(fs.readFileSync(STATE(), "utf8")
 function saveBounds() { try { if (win && !win.isMinimized()) fs.writeFileSync(STATE(), JSON.stringify(win.getBounds())); } catch (_) { /* ignore */ } }
 
 function createWindow() {
+  ready = false;
   win = new BrowserWindow({
     ...loadBounds(), minWidth: 980, minHeight: 620, show: false, title: "Research Desk",
     titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 16 },
     vibrancy: "sidebar", visualEffectState: "followWindow", backgroundColor: "#00000000",
-    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, sandbox: true, spellcheck: true },
+    webPreferences: { preload: path.join(__dirname, "preload.js"), contextIsolation: true, sandbox: true, spellcheck: true,
+      backgroundThrottling: false },                   // hidden or in the background it still polls every 4 s
   });
   win.once("ready-to-show", () => win.show());
-  win.on("close", saveBounds);
+  win.webContents.once("did-finish-load", () => { ready = true; pending.splice(0).forEach(([c, a]) => send(c, a)); });
+  win.on("close", (e) => {
+    saveBounds();
+    if (!quitting) { e.preventDefault(); win.hide(); }   // closing hides: attention keeps polling; Quit (⌘Q) exits
+  });
   win.on("closed", () => { win = null; });
   // the window only ever shows the app page; web links open in the browser, nothing else opens at all
   const external = (url) => /^https?:\/\//i.test(url) && !/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/i.test(url);
@@ -180,9 +188,9 @@ function errorWindow(msg) {
     <h2 style="margin-top:0">Research Desk could not start</h2><p>${msg.replace(/</g, "&lt;")}</p></body>`));
 }
 
-const send = (cmd, arg) => win && win.webContents.send("cmd", cmd, arg);
+const send = (cmd, arg) => { if (!win || !ready) return pending.push([cmd, arg]); win.webContents.send("cmd", cmd, arg); };
 function menu() {
-  const item = (label, accelerator, cmd, arg) => ({ label, accelerator, click: () => { if (!win) createWindow(); send(cmd, arg); } });
+  const item = (label, accelerator, cmd, arg) => ({ label, accelerator, click: () => { show(); send(cmd, arg); } });
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: app.name, submenu: [{ role: "about" }, { type: "separator" }, item("Settings…", "Cmd+,", "settings"), { type: "separator" },
       { role: "hide" }, { role: "hideOthers" }, { role: "unhide" }, { type: "separator" }, { role: "quit" }] },
@@ -190,7 +198,7 @@ function menu() {
     { role: "editMenu" },
     { label: "View", submenu: [item("Command Palette…", "Cmd+K", "palette"), item("Toggle Chat", "Cmd+J", "chat"), item("Toggle Terminals", "Ctrl+`", "dock"),
       { type: "separator" }, { label: "Show herdr", accelerator: "Cmd+Shift+H", click: () => { try { showHerdr(); } catch (_) { /* no terminal */ } } },
-      item("Inbox", "Cmd+I", "inbox"), item("GPUs", "Cmd+G", "gpus"), item("Keyboard Shortcuts", "Cmd+/", "shortcuts"),
+      item("Next Thing That Needs You", "Cmd+Shift+A", "next"), item("Inbox", "Cmd+I", "inbox"), item("GPUs", "Cmd+G", "gpus"), item("Keyboard Shortcuts", "Cmd+/", "shortcuts"),
       { type: "separator" }, item("Refresh Data", "Cmd+Shift+R", "refresh"), { role: "reload" }, { role: "toggleDevTools" },
       { type: "separator" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { type: "separator" }, { role: "togglefullscreen" }] },
     { label: "Go", submenu: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => item(`Project ${i}`, `Cmd+${i}`, "project", i - 1)) },
@@ -201,7 +209,7 @@ function menu() {
 }
 
 ipcMain.on("badge", (_e, n) => app.dock && app.dock.setBadge(n ? String(n) : ""));
-ipcMain.on("attention", (_e, items) => { attention = Array.isArray(items) ? items.slice(0, 12) : []; updateTray(); });
+ipcMain.on("attention", (_e, items) => { attention = Array.isArray(items) ? items : []; updateTray(); });
 ipcMain.handle("login-item", (_e, on) => {
   if (typeof on === "boolean") app.setLoginItemSettings({ openAtLogin: on });
   return app.getLoginItemSettings().openAtLogin;
@@ -216,7 +224,8 @@ function updateTray() {
   }
   tray.setTitle(attention.length ? ` ${attention.length}` : "");
   tray.setContextMenu(Menu.buildFromTemplate([
-    ...(attention.length ? attention.map((a) => ({ label: a.label.slice(0, 70), click: () => { show(); send(a.cmd, a.arg); } })) : [{ label: "Nothing waits on you", enabled: false }]),
+    ...(attention.length ? attention.slice(0, 12).map((a) => ({ label: a.label.slice(0, 70), click: () => { show(); send(a.cmd, a.arg); } })) : [{ label: "Nothing waits on you", enabled: false }]),
+    ...(attention.length > 12 ? [{ label: `${attention.length - 12} more in the Inbox…`, click: () => { show(); send("inbox"); } }] : []),
     { type: "separator" }, { label: "Open Research Desk", click: show }, { label: "Inbox", click: () => { show(); send("inbox"); } },
     { label: "Show herdr", click: () => { try { showHerdr(); } catch (_) { /* no terminal */ } } },
     { type: "separator" }, { label: "Quit", click: () => app.quit() },
@@ -227,7 +236,7 @@ ipcMain.on("focus", () => { if (win) { if (win.isMinimized()) win.restore(); win
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
-  app.on("second-instance", () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
+  app.on("second-instance", () => show());
   app.whenReady().then(async () => {
     app.setAboutPanelOptions({ applicationName: "Research Desk", applicationVersion: app.getVersion(), credits: "A desk over the research harness, with herdr as the runtime." });
     menu();
@@ -240,6 +249,6 @@ else {
       if (misses === 2) ensureBackend().then(() => { misses = 0; if (win) win.reload(); }).catch(() => {});
     }, 10000);
   });
-  app.on("activate", () => { if (!win && BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  app.on("activate", () => show());
   app.on("before-quit", () => { quitting = true; saveBounds(); if (owned && backend) backend.kill("SIGTERM"); });
 }

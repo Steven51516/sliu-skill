@@ -31,7 +31,7 @@ export function renderSidebar() {
     html += `<a class="nav ${open && r.view === "project" ? "on" : ""}" href="${href({ project: p.name })}" title="${esc(p.error || "")}">
       ${icon(open ? "home" : "folder")}<span class="label">${esc(p.name)}</span>
       ${p.ok === false ? `<span class="count alert">!</span>` : ""}
-      ${waiting ? `<span class="count alert" title="waiting on you">${waiting}</span>` : working ? `<span class="count work" title="agents working">${working}</span>` : ""}
+      ${waiting ? `<span class="count alert" title="waiting on you">${waiting}</span>` : working ? `<span class="count" title="${working} agent${working > 1 ? "s" : ""} working"><span style="color:var(--c-work)">●</span> ${working}</span>` : ""}
       ${!waiting && !working && (p.agents || []).length ? `<span class="dot idle" title="${p.agents.length} agents idle"></span>` : ""}
       ${blocked && !waiting ? `<span class="dot blocked"></span>` : ""}</a>`;
     if (open && S.data && S.data.name === p.name) {
@@ -42,7 +42,7 @@ export function renderSidebar() {
           <span class="dot ${safeCls(st)}"></span><span class="mid">${esc(m.id)}</span><span class="label">${esc(m.title)}</span></a>`;
       }
       const closed = S.data.maps.length - maps.length;
-      if (closed) html += `<a class="nav sub" href="${href({ project: p.name })}#milestones"><span class="label muted">${closed} closed map${closed > 1 ? "s" : ""}</span></a>`;
+      if (closed) html += `<a class="nav sub" data-milestones="${esc(p.name)}"><span class="label muted">${closed} closed map${closed > 1 ? "s" : ""}</span></a>`;
       html += `<a class="nav sub ${r.view === "files" ? "on" : ""}" href="${href({ project: p.name, view: "files" })}">${icon("folder")}<span class="label">Files</span></a>`;
     }
   }
@@ -55,7 +55,7 @@ export function renderSidebar() {
   html += `<div class="side-sec"><span class="grow">${cur ? "Sessions" : "All sessions"}</span>
     <button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button></div>`;
   if (!agents.length) html += `<div class="empty" style="padding:4px 8px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent"}${cur ? " in this project" : ""}.</div>`;
-  const row = (a, sub = false) => `<div class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
+  const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${guardNote(a) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
       ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
@@ -91,6 +91,11 @@ export function renderSidebar() {
   $("#sb-search").onclick = () => hooks.palette();
   $("#sb-new").onclick = $("#sb-new2").onclick = () => hooks.newSession(cur);
   $("#sb-add").onclick = () => hooks.addProject();
+  el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {
+    const show = () => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (S.route.view === "project" && S.route.project === a.dataset.milestones) return show();
+    go({ project: a.dataset.milestones }); setTimeout(show, 600);
+  });
   if ($("#sb-herdr")) $("#sb-herdr").onclick = () => window.desk.showHerdr();
   el.querySelectorAll("[data-add]").forEach((a) => a.onclick = () => hooks.addProject({ name: a.dataset.add, path: a.dataset.path }));
   el.querySelectorAll(".agent-row").forEach((row) => row.onclick = () => hooks.openChat(row.dataset.pane));

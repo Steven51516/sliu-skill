@@ -76,7 +76,10 @@ export async function newSession(project, preset = null, fill = {}) {
   if (!project) return toast("Open a project first");
   const data = S.data && S.data.name === project ? S.data : await get("/api/project", { name: project }).catch(() => null);
   const maps = data ? data.maps.filter((m) => m.status !== "closed") : [];
-  const tickets = data ? data.maps.flatMap((m) => m.tickets.filter((t) => !["resolved", "parked", "superseded"].includes(t.status)).map((t) => ({ ...t, map: m }))) : [];
+  const done = (t) => ["resolved", "parked", "superseded"].includes(t.status);
+  const wanted = fill.ticket || "";
+  const tickets = data ? data.maps.flatMap((m) => m.tickets.filter((t) => (preset === "review" ? t.status === "resolved" : !done(t))
+    || t.path.replace(/\/ticket\.md$/, "") === wanted).map((t) => ({ ...t, map: m }))) : [];
   let kind = "claude", pre = PRESETS.find((p) => p.id === (preset || "plain"));
   const d = dialog(`<div class="dh">New session · ${esc(project)}</div><div class="db">
       <div class="choice" id="ns-kind">
@@ -170,8 +173,8 @@ export function addProject(pre = {}) {
 
 export function shortcuts() {
   const k = [["⌘K", "Search, jump, run an action"], ["⌘J", "Show or hide the chat"], ["⌃`", "Show or hide terminals"], ["⌘N", "New session"],
-    ["⌘1 … ⌘9", "Switch project"], ["⌃Tab", "Next session in the chat"], ["⌘I", "Inbox"], ["⇧⌘H", "Show herdr (app)"], ["⌘,", "Settings"], ["⌘/", "This sheet"],
-    ["Esc", "Close a dialog · interrupt the agent (empty composer)"], ["↑ (empty composer)", "Edit the last queued message"]];
+    ["⌘1 … ⌘9", "Switch project"], ["⌃Tab", "Next session in the chat"], ["⌘I", "Inbox"], ["⇧⌘A", "Next thing that needs you"], ["Tab, ⏎", "Move between and open sessions and files"], ["⇧⌘H", "Show herdr (app)"], ["⌘,", "Settings"], ["⌘/", "This sheet"],
+    ["Esc", "Close a dialog · interrupt the agent (empty composer)"]];
   const d = dialog(`<div class="dh">Keyboard</div><div class="db"><div class="shortcuts">${k.map(([a, b]) => `<kbd>${esc(a)}</kbd><span>${esc(b)}</span>`).join("")}</div></div>
     <div class="df"><button class="btn" id="dlg-cancel">Close</button></div>`, { width: 460 });
   $("#dlg-cancel", d).onclick = closeDialog;

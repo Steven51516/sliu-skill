@@ -6,8 +6,8 @@ export const S = {
   route: {},
   skills: [],
   chat: { open: false, pane: null },
-  sent: new Set(),        // panes the human prompted from the app (notify when their turn ends)
-  unread: new Map(),      // pane -> {project, label, at}: finished turns not looked at yet
+  sent: new Map(loadMap("sent")),     // pane -> when the human last prompted it from the app (notify when that turn ends)
+  unread: new Map(loadMap("unread")), // pane -> {project, label, at}: finished turns not looked at yet
   notes: [],              // recent attention events for the inbox
   prefs: loadPrefs(),
 };
@@ -18,6 +18,13 @@ export const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const isApp = !!window.desk;
 if (isApp) document.documentElement.classList.add("app");
+
+function loadMap(key) { try { return JSON.parse(localStorage.getItem("rd." + key) || "[]"); } catch (_) { return []; } }
+export function saveAttention() {
+  try { localStorage.setItem("rd.sent", JSON.stringify([...S.sent])); localStorage.setItem("rd.unread", JSON.stringify([...S.unread])); }
+  catch (_) { /* private mode */ }
+}
+export function markSent(pane) { S.sent.set(pane, Date.now()); saveAttention(); }
 
 function loadPrefs() {
   const d = { verbose: false, notifyDone: true, notifyPrompt: true, notifyProgress: true };
@@ -111,6 +118,7 @@ export const agentByPane = (pane) => allAgents().find((a) => a.pane === pane);
 export function agentLabel(a) {
   if (!a) return "agent";
   if (a.role === "worker" && a.ticket) return `Worker · ${a.ticket}`;
+  if (a.role === "driver" && a.drives) return `Driver · ${a.drives}`;
   const role = a.role ? a.role[0].toUpperCase() + a.role.slice(1) : (a.agent || "agent");
   const tab = a.tab_label && !/^\d+$/.test(a.tab_label) && !a.tab_label.toLowerCase().includes(a.role || "\0") ? ` · ${a.tab_label}` : "";
   return role + tab;
@@ -130,25 +138,30 @@ export function md(el, text, opt = {}) {
   if (m && opt.frontMatter !== false) {
     text = text.slice(m[0].length);
     const skip = new Set(opt.skipKeys || []);
-    if (opt.frontMatter !== "hide") fm = `<div class="fm">${m[1].split("\n").filter((l) => /^[\w-]+:/.test(l) && !skip.has(l.split(":")[0])).map((l) => {
-      const i = l.indexOf(":"), v = l.slice(i + 1).trim().replace(/^"(.*)"$/, "$1");
-      return `<span class="k">${esc(l.slice(0, i))}</span><span class="v">${esc(v)}</span>`;
-    }).join("")}</div>`;
+    if (opt.frontMatter !== "hide") {
+      const rows = m[1].split("\n").filter((l) => /^[\w-]+:/.test(l) && !skip.has(l.split(":")[0])).map((l) => {
+        const i = l.indexOf(":"), v = l.slice(i + 1).trim().replace(/^"(.*)"$/, "$1");
+        return v && v !== "null" && v !== "[]" ? `<span class="k">${esc(l.slice(0, i))}</span><span class="v">${esc(v)}</span>` : "";
+      }).join("");
+      fm = !rows ? "" : opt.frontMatter === "details" ? `<details class="fmd"><summary>Details</summary><div class="fm">${rows}</div></details>` : `<div class="fm">${rows}</div>`;
+    }
   }
   // GFM strikes through ~single~ tildes; notes use ~ for "about", so only ~~ strikes (code left alone)
   text = text.split(/(```[\s\S]*?```|`[^`\n]*`)/).map((seg, i) => i % 2 ? seg : seg.replace(/(^|[^~\\])~(?=[^~]|$)/g, "$1\\~")).join("");
   el.classList.add("md");
   el.innerHTML = fm + DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: !!opt.breaks }), { SANITIZE_NAMED_PROPS: true });
+  if (opt.dropTitle) el.querySelector(":scope > h1:first-of-type")?.remove();   // the panel header already shows it
   el.querySelectorAll("pre code").forEach((c) => { if (c.textContent.length < 150000) hljs.highlightElement(c); });
-  if (opt.paths && S.data) {                    // project paths in `code` open in the file viewer
-    const root = S.data.path + "/";
+  const proj = opt.project || (S.data && { name: S.data.name, path: S.data.path });
+  if (opt.paths && proj) {                      // project paths in `code` open in the file viewer
+    const root = proj.path + "/";
     el.querySelectorAll(":not(pre) > code").forEach((c) => {
       const t = c.textContent.trim();
       const rel = t.startsWith(root) ? t.slice(root.length) : /^(maps|tracks|docs|resources|scratch|common|lit)\//.test(t) ? t : null;
       if (!rel || /\s/.test(rel)) return;
       c.classList.add("pathlink");
       c.title = "Open in the file viewer";
-      c.onclick = () => hooks.openPath(S.data.name, rel.replace(/\/$/, ""));
+      c.onclick = () => hooks.openPath(proj.name, rel.replace(/\/$/, ""));
     });
   }
   el.querySelectorAll("a[href]").forEach((a) => {
@@ -159,7 +172,7 @@ export function md(el, text, opt = {}) {
       if (h.startsWith("#") || /^[a-z]+:/i.test(h)) return;
       if (opt.onLink) return opt.onLink(h);
       const rel = h.split("#")[0];
-      if (S.data && rel) hooks.openPath(S.data.name, rel.startsWith(S.data.path + "/") ? rel.slice(S.data.path.length + 1) : rel.replace(/^\.\//, ""));
+      if (proj && rel) hooks.openPath(proj.name, rel.startsWith(proj.path + "/") ? rel.slice(proj.path.length + 1) : rel.replace(/^\.\//, ""));
     };
   });
   return el;

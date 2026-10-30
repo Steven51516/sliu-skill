@@ -16,9 +16,14 @@ export function renderMap(full) {
   if (!full && $("#map-root") && $("#map-root").dataset.map === m.folder && $("#map-root").dataset.tab === tab) {
     renderHead(m);
     if (tab === "dag") { drawDag(m, true); renderTicket(m); }
+    if (tab === "doc" && $("#map-root").dataset.mtime !== String(m.mtime)) {     // the map changed on disk: reread it
+      $("#map-root").dataset.mtime = m.mtime;
+      const doc = $("#mapdoc"), top = doc.scrollTop;
+      showDoc(doc, "local", m.path, { quiet: true, onLink: (p, side) => linkTo(p, side) }).then(() => { doc.scrollTop = top; });
+    }
     return;
   }
-  host.innerHTML = `<div class="page full" id="map-root" data-map="${esc(m.folder)}" data-tab="${esc(tab)}"><div class="mhead" id="mhead"></div><div class="tabbody" id="tabbody"></div></div>`;
+  host.innerHTML = `<div class="page full" id="map-root" data-map="${esc(m.folder)}" data-tab="${esc(tab)}" data-mtime="${esc(m.mtime)}"><div class="mhead" id="mhead"></div><div class="tabbody" id="tabbody"></div></div>`;
   renderHead(m);
   const body = $("#tabbody");
   if (tab === "dag") {
@@ -54,6 +59,7 @@ function renderHead(m) {
         `<button class="btn sm" data-wpane="${esc(w.pane)}" title="${esc(w.ticket_title || "")} · ${esc(AGENT_WORD[w.status] || w.status)}"><span class="dot ${safeCls(w.status)}"></span>${esc(w.ticket)}</button>`).join("")}</div>` : ""}</div>
     <div class="actions">
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
+      ${m.driver ? `<button class="btn primary" id="mh-driverchat" title="The driver owns this map: plan, re-chart and add questions with it">${icon("chat")} Talk to driver</button>` : ""}
       <button class="btn" id="mh-ticket">${icon("plus")} Add ticket</button>
       <button class="btn" id="mh-ask">${icon("chat")} Ask the desk</button>
       <button class="btn icon" id="mh-more" title="More">${icon("more")}</button></div></div>
@@ -62,9 +68,11 @@ function renderHead(m) {
   el.querySelectorAll("[data-wpane]").forEach((b) => b.onclick = () => hooks.openChat(b.dataset.wpane));
   if ($("#mh-driver")) $("#mh-driver").onclick = () => hooks.startTeam(S.route.project, m.folder);
   $("#mh-ticket").onclick = () => addTicket(m);
+  if ($("#mh-driverchat")) $("#mh-driverchat").onclick = () => hooks.openChat(m.driver);
   $("#mh-ask").onclick = () => askDesk(`About map ${m.id} (${m.path}): `);
   $("#mh-more").onclick = (e) => popMenu(e.currentTarget, [
-    { label: "Re-chart this map", icon: "map", run: () => hooks.newSession(S.route.project, "rechart", { map: localMapDir(m) }) },
+    { label: "Re-chart this map", icon: "map", run: () => m.driver ? hooks.openChat(m.driver, { text: "Re-chart this map: " })
+      : hooks.newSession(S.route.project, "rechart", { map: localMapDir(m) }) },
     { label: "Run one research-drive pass", icon: "bolt", run: () => hooks.newSession(S.route.project, "drive", { map: localMapDir(m) }) },
     "-",
     m.status === "paused" ? { label: "Resume (tell the desk)", icon: "play", run: () => askDesk(`resume ${m.id}`) }
@@ -82,6 +90,7 @@ export function askDesk(text) {
 }
 
 async function addTicket(m) {
+  if (m.driver) return hooks.openChat(m.driver, { text: "New question for this map: " });   // the driver owns the map
   const desk = hooks.deskPane(S.route.project);
   if (desk) return hooks.openChat(desk, { text: `new (map ${m.id}): ` });
   hooks.newSession(S.route.project, "tickets", { map: localMapDir(m) });
@@ -138,8 +147,11 @@ function drawDag(m, keepView) {
   if (!wrap) return;
   const g = model(m);
   const gw = g.graph().width || 400, gh = g.graph().height || 300;
+  const selId0 = (m.tickets.find((t) => t.folder === S.route.ticket) || {}).id;
+  const selId = selId0 && g.hasNode(selId0) ? selId0 : null;            // a hidden (parked) ticket has no node
+  const near = new Set(selId ? [selId, ...g.predecessors(selId) || [], ...g.successors(selId) || []] : []);
   const edges = g.edges().map((e) => {
-    const pts = g.edge(e).points, cls = g.edge(e).cls;
+    const pts = g.edge(e).points, cls = g.edge(e).cls + (selId && (e.v === selId || e.w === selId) ? " near" : "");
     let d = `M${pts[0].x},${pts[0].y}`;
     for (let i = 1; i < pts.length - 1; i++) {
       const last = i === pts.length - 2, nx = last ? pts[i + 1].x : (pts[i].x + pts[i + 1].x) / 2, ny = last ? pts[i + 1].y : (pts[i].y + pts[i + 1].y) / 2;
@@ -150,14 +162,17 @@ function drawDag(m, keepView) {
   }).join("");
   const nodes = g.nodes().map((id) => {
     const n = g.node(id);
-    const cls = n.kind === "ticket" ? [safeCls(n.t.status), n.t.waiting ? "waiting" : "", n.t.folder === S.route.ticket ? "sel" : ""].join(" ") : n.kind;
+    const cls = (n.kind === "ticket" ? [safeCls(n.t.status), n.t.waiting ? "waiting" : "", n.t.folder === S.route.ticket ? "sel" : ""].join(" ") : n.kind)
+      + (selId && near.has(id) ? " near" : "");
     return `<g class="node ${cls}" data-id="${esc(id)}" transform="translate(${n.x - n.width / 2},${n.y - n.height / 2})">
       <foreignObject width="${n.width}" height="${n.height}">${nodeHtml(n, m)}</foreignObject></g>`;
   }).join("");
   const nClosed = m.tickets.filter((t) => ["parked", "superseded"].includes(t.status)).length;
+  wrap.classList.toggle("focus", !!selId);
   wrap.innerHTML = `<svg id="dagsvg"><defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="var(--line-2)"/></marker></defs><g id="vp">${edges}${nodes}</g></svg>
-    <div class="floatbar" style="top:12px;left:12px"><button class="btn ghost sm" id="fit">Fit</button>
+    <div class="floatbar" style="top:12px;left:12px"><button class="btn ghost sm icon" id="zout" title="Zoom out">−</button>
+      <button class="btn ghost sm icon" id="zin" title="Zoom in">+</button><button class="btn ghost sm" id="fit" title="Show the whole map">Fit</button>
       ${nClosed ? `<label><input type="checkbox" id="showclosed" ${M.showClosed ? "checked" : ""}> parked / superseded (${nClosed})</label>` : ""}
       <span class="muted">${m.tickets.length} tickets · ${m.fog.length} in fog</span></div>
     <div class="floatbar legend"><span><i style="background:var(--c-open)"></i>open</span><span><i style="background:var(--c-work)"></i>running</span>
@@ -165,13 +180,25 @@ function drawDag(m, keepView) {
       <span><i style="border:2px solid var(--c-alert)"></i>needs you</span><span><i style="border:1px dashed var(--muted)"></i>fog</span></div>`;
   const svg = $("#dagsvg"), vp = $("#vp");
   const apply = () => vp.setAttribute("transform", `translate(${M.view.x},${M.view.y}) scale(${M.view.k})`);
-  const fit = () => {
-    const W = wrap.clientWidth, H = wrap.clientHeight, k = Math.max(0.6, Math.min(1.1, W / gw, (H - 90) / gh));
+  const fit = (whole = false) => {
+    // first view: the whole map if it stays readable, else readable from the top-left; Fit: the whole map, however small
+    const W = wrap.clientWidth, H = wrap.clientHeight, all = Math.min(1.1, W / gw, (H - 90) / gh);
+    const k = whole ? Math.max(0.15, all) : Math.max(0.6, all);
     M.view = { k, x: Math.max(10, (W - gw * k) / 2), y: Math.max(48, (H - gh * k) / 2) };
     apply();
   };
   if (keepView && M.view) apply(); else fit();
-  $("#fit").onclick = fit;
+  $("#fit").onclick = () => fit(true);
+  const zoom = (f) => { const W = wrap.clientWidth / 2, H = wrap.clientHeight / 2, v = M.view, k = Math.max(0.15, Math.min(3, v.k * f));
+    v.x = W - (W - v.x) * (k / v.k); v.y = H - (H - v.y) * (k / v.k); v.k = k; apply(); };
+  $("#zin").onclick = () => zoom(1.25);
+  $("#zout").onclick = () => zoom(0.8);
+  if (selId && M.lastSel !== selId) {                    // a newly selected ticket comes into view
+    const n = g.node(selId), v = M.view, W = wrap.clientWidth, H = wrap.clientHeight;
+    const sx = v.x + n.x * v.k, sy = v.y + n.y * v.k;
+    if (sx < 40 || sx > W - 40 || sy < 60 || sy > H - 40) { v.x = W / 2 - n.x * v.k; v.y = H / 2 - n.y * v.k; apply(); }
+  }
+  M.lastSel = selId;
   if ($("#showclosed")) $("#showclosed").onchange = (e) => { M.showClosed = e.target.checked; drawDag(m, false); };
   svg.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -219,14 +246,19 @@ function renderTicket(m) {
   if (!t) { panel.hidden = true; panel.dataset.key = ""; return; }
   panel.hidden = false;
   const wk = workerFor(t);
-  const key = t.path + "|" + t.status_text + "|" + (wk ? wk.pane + wk.status : "");
+  // redraw when anything shown changes: the file (answer, assets, verdict), jobs, or the worker's state
+  const key = [t.path, t.status_text, t.mtime, t.jobs.join(";"), wk ? wk.pane + wk.status + wk.title + (wk.codex || []).length : ""].join("|");
   if (panel.dataset.key === key) return;
+  const keepTop = panel.dataset.path === t.path ? panel.scrollTop : 0;    // same ticket redrawn: stay where you were
   panel.dataset.key = key;
+  panel.dataset.path = t.path;
   const dir = t.path.replace(/\/ticket\.md$/, ""), sdir = `${serverMapDir(m)}/tickets/${t.folder}`;
   const open = !["resolved", "parked", "superseded"].includes(t.status);
   panel.innerHTML = `<div class="panel-head"><div class="row1"><span class="mid">${esc(t.id)}</span>${pill(t.waiting ? "waiting" : t.status, t.waiting ? "needs you" : t.status)}
       <span class="pill plain">${esc(t.type || "")}</span><span class="grow"></span><button class="btn ghost sm icon" id="tp-close" title="Close">${icon("x")}</button></div>
     <h3>${esc(t.title)}</h3>
+    ${t.verdict ? `<div class="verdict">${esc(t.verdict)}</div>` : ""}
+    ${t.blocked_by.length ? `<div class="muted" style="font-size:12px;margin:-2px 0 8px">Blocked by ${t.blocked_by.map((b) => `<a data-goto="${esc(b)}" class="mono">${esc(b)}</a>`).join(", ")}</div>` : ""}
     <div class="actions">
       ${open && t.type !== "grilling" && !wk && !m.driven ? `<button class="btn sm primary" id="tp-work">${icon("play")} Work on it</button>` : ""}
       ${t.waiting ? `<button class="btn sm primary" id="tp-answer">${icon("chat")} Answer with the desk</button>` : ""}
@@ -242,6 +274,10 @@ function renderTicket(m) {
       <div class="card rows">${t.jobs.map((j, i) => jobRow(j, i)).join("")}</div></div>` : ""}
     <div class="panel-body" id="tdoc"><div class="spin"></div></div>`;
   $("#tp-close").onclick = () => goMap(S.route.project, m.folder, null);
+  panel.querySelectorAll("[data-goto]").forEach((a) => a.onclick = () => {
+    const hit = S.data.maps.flatMap((mm) => mm.tickets.map((x) => [mm, x])).find(([, x]) => x.id === a.dataset.goto);
+    if (hit) goMap(S.route.project, hit[0].folder, hit[1].folder);
+  });
   if (wk) { $("#tp-wchat").onclick = () => hooks.openChat(wk.pane); $("#tp-wterm").onclick = () => hooks.openTerminal({ kind: "attach", pane: wk.pane, label: agentLabel(wk) }); }
   panel.querySelectorAll("[data-peek]").forEach((b) => b.onclick = () => { const j = parseJob(t.jobs[+b.dataset.peek]); hooks.peekJob(j.host, j.session); });
   panel.querySelectorAll("[data-attach]").forEach((b) => b.onclick = () => { const j = parseJob(t.jobs[+b.dataset.attach]);
@@ -265,7 +301,7 @@ function renderTicket(m) {
       { label: `Terminal in its code folder on ${S.data.server}`, icon: "server", run: () => hooks.openTerminal({ kind: "ssh", project: S.route.project, path: sdir, label: `ssh ${S.data.server}:${t.id}` }) }] : []),
     { label: "Copy ticket path", icon: "doc", run: () => navigator.clipboard.writeText(t.path).then(() => toast("Copied")) },
   ], { right: true });
-  showDoc($("#tdoc"), "local", t.path, { bare: true, skipKeys: ["id", "title", "type", "status", "legacy", "superseded_by"], onLink: (p, side) => linkTo(p, side) });
+  showDoc($("#tdoc"), "local", t.path, { bare: true, frontMatter: "details", dropTitle: true, skipKeys: ["id", "title", "type", "status", "legacy", "superseded_by", "verdict", "blocked_by", "jobs"], onLink: (p, side) => linkTo(p, side) }).then(() => { panel.scrollTop = keepTop; });
 }
 
 export { openFile, store };

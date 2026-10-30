@@ -206,14 +206,19 @@ def agent_view(a, snap, ros):
             "workspace_label": spaces.get(a.get("workspace_id"), {}).get("label", ""),
             "agent": a.get("agent"), "status": a.get("agent_status"), "title": a.get("terminal_title_stripped"),
             "tab_label": label, "role": role, "map": r.get("map", ""), "session": r.get("session", ""),
-            "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value")), "safeguard": guard_of(a)}
+            "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value")), "safeguard": guard_of(a),
+            "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None}
+
+
+def transcript_of(a):
+    if a.get("agent") != "claude":
+        return None
+    return rg_chat.transcript_path((a.get("agent_session") or {}).get("value"))
 
 
 def guard_of(a):
-    """The agent's latest Opus-safeguard event, if any (Claude sessions only)."""
-    if a.get("agent") != "claude":
-        return None
-    path = rg_chat.transcript_path((a.get("agent_session") or {}).get("value"))
+    """The agent's latest Opus-safeguard event that still matters, if any (Claude sessions only)."""
+    path = transcript_of(a)
     return rg_chat.last_safeguard(path) if path else None
 
 
@@ -249,6 +254,8 @@ def live_driver_maps(agents, maps):
             named = re.search(rf"(^|/){re.escape(folder)}(/|$|\s)", a["map"]) or (mid and re.search(rf"\b{re.escape(mid)}\b(?!-)", a["map"].lower()))
             if named or (mid and re.search(rf"\b{re.escape(mid)}\b(?!-)", a["tab_label"].lower())):
                 found.setdefault(folder, a["pane"])
+                a.setdefault("drives", m.get("id"))
+                a.setdefault("drives_folder", folder)
     return found
 
 
@@ -342,7 +349,7 @@ def fog(body):
     return items
 
 
-def ticket_view(k, by_id):
+def ticket_view(k, by_id, root):
     blockers = k.get("blocked_by") or []
     blockers = [blockers] if isinstance(blockers, str) else blockers
     jobs = k.get("jobs") or []
@@ -351,11 +358,21 @@ def ticket_view(k, by_id):
             "path": k["_path"], "folder": os.path.basename(os.path.dirname(k["_path"])),
             "answered": k["_answered"], "unblocked": all(tracker.blocker_met(b, by_id) for b in blockers),
             "holder": tracker.holder(k), "jobs": jobs if isinstance(jobs, list) else [jobs],
-            "cost_cap": k.get("cost_cap"), "verdict": k.get("verdict"), "updated": k.get("updated")}
+            "cost_cap": k.get("cost_cap"), "verdict": k.get("verdict"), "updated": k.get("updated"),
+            "mtime": mtime(os.path.join(root, k["_path"]))}
+
+
+def mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
 
 
 def project_state(p, with_agents=True):
-    maps = tracker.load(p["path"]) if os.path.isdir(p["path"]) else []
+    if not os.path.isdir(p["path"]):
+        raise ApiError(404, f"folder not found: {p['path']}")
+    maps = tracker.load(p["path"])
     problems, frontier = tracker.analyse(maps) if maps else ([], {})
     by_id = {k.get("id"): k for m in maps for k in m["_archived"]}
     by_id.update({k.get("id"): k for m in maps for k in m["_tickets"]})
@@ -367,7 +384,7 @@ def project_state(p, with_agents=True):
     for m in maps:
         folder = os.path.basename(os.path.dirname(m["_path"]))
         _, body = tracker.parse_front_matter(os.path.join(p["path"], m["_path"]))
-        tickets = [ticket_view(k, by_id) for k in m["_tickets"]]
+        tickets = [ticket_view(k, by_id, p["path"]) for k in m["_tickets"]]
         fr = {k.get("id") for k in frontier.get(m.get("id")) or []}
         for t in tickets:
             t["frontier"] = t["id"] in fr
@@ -383,7 +400,8 @@ def project_state(p, with_agents=True):
                          "status_text": m.get("status"), "outcome": m.get("outcome"), "updated": m.get("updated"),
                          "destination": m["_destination"], "path": m["_path"], "folder": folder,
                          "legacy": m["_legacy"], "tickets": tickets, "fog": fog(body), "counts": counts,
-                         "driven": folder in driven, "holder": tracker.holder(m)})
+                         "driven": folder in driven, "driver": driven.get(folder), "holder": tracker.holder(m),
+                         "mtime": mtime(os.path.join(p["path"], m["_path"]))})
     waiting += [{"kind": "agent", "pane": a["pane"], "role": a["role"], "label": a["tab_label"],
                  "text": f"{a['role'] or a['agent']} ({a['tab_label'] or a['pane']}) is waiting at a prompt"}
                 for a in agents if a["status"] == "blocked"]
@@ -401,7 +419,7 @@ def projects_summary():
             s = project_state(p)
             states = {f"map:{m['id']}": [m["status"], m["title"], m["folder"], None] for m in s["maps"]}
             states.update({t["id"]: [t["status"], t["title"], m["folder"], t["folder"]] for m in s["maps"] for t in m["tickets"]})
-            out.append({"name": name, "ok": True, "waiting": s["waiting"], "agents": s["agents"], "states": states,
+            out.append({"name": name, "ok": True, "path": p["path"], "waiting": s["waiting"], "agents": s["agents"], "states": states,
                         "open_maps": sum(m["status"] != "closed" for m in s["maps"]),
                         "running": sum(t["status"] in ("running", "claimed") for m in s["maps"] for t in m["tickets"]),
                         "changes": len(s["changes"]["items"]), "server": p.get("server")})
@@ -819,7 +837,16 @@ def skills():
 # ---------- chat ----------
 
 def chat(pane, after, session):
-    a, snap = live_agent(pane)
+    try:
+        a, snap = live_agent(pane)
+    except ApiError as e:
+        # the agent's tab closed (a driver ends finished workers): its transcript stays readable
+        path = rg_chat.transcript_path(session) if e.code == 404 and session else None
+        if not path:
+            raise
+        items, offset, cut = rg_chat.read(path, after)
+        return {"pane": pane, "agent": "claude", "status": "ended", "title": "this session has ended", "session": session,
+                "items": items, "offset": offset, "cut": cut, "transcript": path}
     sess = (a.get("agent_session") or {}).get("value")
     out = {"pane": pane, "agent": a.get("agent"), "status": a.get("agent_status"),
            "title": a.get("terminal_title_stripped"), "session": sess, "cwd": a.get("cwd")}
@@ -894,6 +921,9 @@ def chat_text(b):
     if len(text) > 2000 or re.search(r"[\x00-\x1f\x7f]", text):
         raise ApiError(400, "answers are one line of plain text (at most 2000 characters)")
     herdr("pane", "send-text", b["pane"], text, timeout=15)
+    if b.get("enter"):
+        herdr("agent", "send-keys", b["pane"], "enter", timeout=15)
+    _snap["t"] = 0
     return {"ok": True}
 
 
@@ -1136,9 +1166,26 @@ def config_text():
     return {"path": CONFIG, "text": text, "exists": os.path.exists(CONFIG)}
 
 
+def check_config(cfg):
+    """The shape load_config relies on; a project with a server also needs its code folder there."""
+    projects = cfg.get("projects", {})
+    if not isinstance(projects, dict):
+        raise ApiError(400, "[projects] must be a table of projects")
+    for name, p in projects.items():
+        if not isinstance(p, dict) or not isinstance(p.get("path"), str) or not p["path"].strip():
+            raise ApiError(400, f"project `{name}` needs path = \"<folder on this Mac>\"")
+        for key in ("server", "server_root", "server_maps"):
+            if key in p and not isinstance(p[key], str):
+                raise ApiError(400, f"project `{name}`: {key} must be a string")
+        if p.get("server") and not p.get("server_root"):
+            raise ApiError(400, f"project `{name}` has a server but no server_root (its code folder there)")
+        if "shared" in p and not (isinstance(p["shared"], list) and all(isinstance(s, str) for s in p["shared"])):
+            raise ApiError(400, f"project `{name}`: shared must be a list of folder names")
+
+
 def save_config(text):
     try:
-        tomllib.loads(text)
+        check_config(tomllib.loads(text))
     except tomllib.TOMLDecodeError as e:
         raise ApiError(400, f"not valid TOML: {e}")
     os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
@@ -1158,13 +1205,13 @@ def term_argv(q):
     if kind == "attach":
         a, _ = live_agent(q.get("pane"))
         return ["herdr", "agent", "attach", a["pane_id"]], a.get("cwd") or os.path.expanduser("~"), b"\x02q"
-    p = project(q.get("project"))
-    if kind == "shell":
-        return [os.environ.get("SHELL", "/bin/zsh"), "-l"], p["path"], b""
-    if kind == "tmux":
+    if kind == "tmux":                          # a job's tmux session: validated host and name, no project needed
         check_job(q.get("host"), q.get("session"))
         return (["ssh", "-t", "-o", "ClearAllForwardings=yes", q["host"], f"tmux attach -t {shlex.quote(q['session'])}"],
                 os.path.expanduser("~"), b"")
+    p = project(q.get("project"))
+    if kind == "shell":
+        return [os.environ.get("SHELL", "/bin/zsh"), "-l"], p["path"], b""
     if kind == "ssh":
         target = remote_path(p, clean_rel(q.get("path")))
         return (["ssh", "-t", "-o", "ClearAllForwardings=yes", p["server"],

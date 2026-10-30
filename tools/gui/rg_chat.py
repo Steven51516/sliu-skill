@@ -230,7 +230,7 @@ def last_safeguard(path):
         return None
     st = _guards.get(path)
     if not st or size < st["size"]:
-        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False}
+        st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False, "turn_end": None}
     if size > st["size"]:
         with open(path, "rb") as f:
             f.seek(st["size"])
@@ -245,6 +245,13 @@ def last_safeguard(path):
                         continue
                     if ev:
                         st["last"], st["resolved"] = ev, False
+                elif b"turn_duration" in line:
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    if d.get("type") == "system" and d.get("subtype") == "turn_duration":
+                        st["turn_end"] = d.get("timestamp")
                 elif st["last"] and not st["resolved"] and b"end_turn" in line:
                     try:
                         d = json.loads(line)
@@ -254,3 +261,10 @@ def last_safeguard(path):
                         st["resolved"] = True       # a normal reply after the flag: it no longer holds the agent up
             st["size"] += end + 1
     return None if st["resolved"] else st["last"]
+
+
+def last_turn_end(path):
+    """When the agent last finished a turn (its latest turn_duration line), from the same incremental scan."""
+    last_safeguard(path)
+    st = _guards.get(path)
+    return st["turn_end"] if st else None
