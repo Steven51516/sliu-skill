@@ -49,7 +49,8 @@ def started(name):
     screen = herdr("agent", "read", name).stdout
     if DEAD.search(screen):
         return False, "the worker is not logged in (its screen asks for a login)"
-    status = json.loads(herdr("agent", "get", name).stdout or "{}").get("result", {}).get("agent_status")
+    res = json.loads(herdr("agent", "get", name).stdout or "{}").get("result", {})
+    status = (res.get("agent") or res).get("agent_status")
     return (status in ("working", "blocked", "idle", "done")), f"worker status: {status}"
 
 
@@ -71,7 +72,10 @@ def open_worker(path):
     name = f"{tid.lower()}-{time.strftime('%H%M%S')}"
     r = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000", "--", "--model", MODEL)
     if r.returncode != 0:
-        fail(f"claude did not start in {pane}: {r.stderr.strip()[:200]}")
+        screen = herdr("agent", "read", name).stdout
+        if "trust" in screen.lower():
+            fail(f"{pane} waits at Claude Code's folder-trust check: open claude in {here} once and accept, then retry")
+        fail(f"claude did not start in {pane}: {(r.stderr or r.stdout).strip()[:200]}")
     prompt = (f"/research-work {path}. You are a worker: when you finish or stop, send the driver one line with "
               f"herdr agent prompt {driver} 'done|running|blocked {tid}: <path of the file that holds the result>'.")
     herdr("agent", "prompt", name, prompt)
