@@ -10,7 +10,7 @@ import { resetFiles, openPathLater, openFile } from "./files.js";
 import { resetMap } from "./map.js";
 
 const POLL_MS = 4000;
-let lastSig = "", prevStatus = new Map(), prevStates = null, polling = false, lastAttention = "", prevGuard = new Map(), guardPrimed = false, prevLoop = new Map();
+let lastSig = "", polling = false, lastAttention = "";
 
 Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob, askProject, askLabel, openArchive,
@@ -65,7 +65,7 @@ async function poll(force = false) {
   try {
     const sum = await get("/api/projects");
     S.summary = sum;
-    attention(sum);
+    attention();
     const changed = await loadProject();
     renderSidebar();
     refreshChatHead();
@@ -85,72 +85,30 @@ function toastOnce(msg) { if (Date.now() - lastToast > 30000) { lastToast = Date
 
 function looking(pane) { return document.hasFocus() && S.chat.open && S.chat.pane === pane; }
 
-function attention(sum) {
-  const now = new Map();
-  allAgents().forEach((a) => {
-    now.set(a.pane, a.status);
-    const before = prevStatus.get(a.pane);
-    if (before === undefined && prevStatus.size === 0) return;   // first poll: no history
-    if (a.status === "blocked" && before !== "blocked") {
-      note("blocked", `${agentLabel(a)}${a.project ? " · " + a.project : ""} needs your answer`);
-      if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)} needs your answer`, a.project ? `${a.project} · ${a.title || ""}` : a.title || "", a.pane);
-    }
-    // a turn the human started from the app has ended: its transcript recorded a turn end after the message went out
-    // (no need to catch "working" between polls); agents without a transcript fall back to the status change
-    const sentAt = S.sent.get(a.pane);
-    const ended = sentAt && (a.turn_end ? Date.parse(a.turn_end) > sentAt
-      : before === "working" && ["idle", "done"].includes(a.status));
-    if (ended) {
-      S.sent.delete(a.pane);
-      note("idle", `${agentLabel(a)} finished its turn`);
-      if (!looking(a.pane)) {
-        S.unread.set(a.pane, { project: a.project, label: agentLabel(a), at: Date.now(), text: a.title });
-        if (S.prefs.notifyDone) notify(`${agentLabel(a)} finished`, a.project ? `${a.project} · ${a.title || ""}` : a.title || "", a.pane);
-      }
-    }
-  });
-  for (const pane of [...S.unread.keys()]) if (!now.has(pane)) S.unread.delete(pane);
-  for (const [pane, at] of [...S.sent]) if (!now.has(pane) && Date.now() - at > 3600e3) S.sent.delete(pane);
-  saveAttention();
-  prevStatus = now;
-  allAgents().forEach((a) => {                           // a new Opus-safeguard flag on any agent
-    const at = a.safeguard?.ts, seen = prevGuard.get(a.pane);
-    prevGuard.set(a.pane, at);
-    if (!at || at === seen || seen === undefined && !guardPrimed) return;
-    note("blocked", `${agentLabel(a)}${a.project ? " · " + a.project : ""}: ${a.safeguard.text}`);
-    if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)}: Opus safeguards`, a.safeguard.text, a.pane);
-  });
-  guardPrimed = true;
-  allAgents().forEach((a) => {                           // a driver's /loop going quiet (missed a pass, or a pass died)
-    const st = a.loop?.state, was = prevLoop.get(a.pane);
-    prevLoop.set(a.pane, st);
-    if (!["missed", "stopped"].includes(st) || st === was || was === undefined) return;
-    note("blocked", `${agentLabel(a)}${a.project ? " · " + a.project : ""}: its loop ${st === "missed" ? "missed a pass" : "stopped"}`);
-    if (S.prefs.notifyPrompt && !looking(a.pane)) notify(`${agentLabel(a)}: loop ${st === "missed" ? "missed a pass" : "stopped"}`, "Open the overview to restart it", a.pane);
-  });
-  progress(sum);
-  badge();
+// Events (a prompt, a reply, a quiet loop, a safeguard flag, a decision, a result) are detected by the backend, which
+// also plays their sounds and sends their pushes (rg_notify), so they work with this window closed. Here they become
+// banners, inbox notes and unread replies.
+let evSeq = null;
+const NOTE_KIND = { prompt: "blocked", loop: "blocked", safeguard: "blocked", decision: "blocked", reply: "idle", desk_reply: "idle",
+  any_reply: "idle", result: "idle", progress: "working" };
+async function events() {
+  let r;
+  try { r = await get("/api/events", { after: evSeq ?? 0 }); } catch (_) { return; }
+  if (evSeq === null) { evSeq = r.last; return; }          // first look: no replay of what happened before the page loaded
+  evSeq = r.last;
+  for (const e of r.events) {
+    note(NOTE_KIND[e.kind] || "idle", e.title);
+    if (e.kind === "reply" && e.pane && !looking(e.pane)) S.unread.set(e.pane, { project: e.project, label: e.title.replace(/ replied.*$/, ""), at: Date.now(), text: e.body });
+    if (e.channels.includes("banner") && !(e.pane && looking(e.pane))) notify(e.title, e.body, e.pane || null, e.map ? { project: e.project, map: e.map, ticket: e.ticket } : null);
+  }
 }
 
-const NEWS = { resolved: "resolved", parked: "parked", held: "held", closed: "closed", running: "started running", paused: "paused" };
-function progress(sum) {
-  // ticket and map changes in any project while the app is open (what changed while away is on each overview)
-  const now = {};
-  sum.projects.forEach((p) => { now[p.name] = p.states || {}; });
-  if (prevStates) for (const [proj, states] of Object.entries(now)) {
-    const before = prevStates[proj];
-    if (!before) continue;
-    for (const [id, [st, title]] of Object.entries(states)) {
-      const old = before[id]?.[0];
-      if (old === st) continue;
-      const what = id.startsWith("map:") ? `Map ${id.slice(4)}` : id;
-      const verb = old === undefined ? "was added" : NEWS[st] || `is now ${st}`;
-      note(st === "resolved" || st === "closed" ? "idle" : "working", `${proj} · ${what} ${verb}: ${title}`);
-      if (S.prefs.notifyProgress && (NEWS[st] || old === undefined) && !(document.hasFocus() && S.route.project === proj))
-        notify(`${what} ${verb}`, `${proj} · ${title}`, null, { project: proj, map: states[id][2], ticket: states[id][3] });
-    }
-  }
-  prevStates = now;
+function attention() {
+  const live = new Set(allAgents().map((a) => a.pane));
+  for (const pane of [...S.unread.keys()]) if (!live.has(pane)) S.unread.delete(pane);
+  saveAttention();
+  events().then(badge);
+  badge();
 }
 
 function note(kind, text) { S.notes.unshift({ kind, text, at: Date.now() }); S.notes.length = Math.min(S.notes.length, 50); }

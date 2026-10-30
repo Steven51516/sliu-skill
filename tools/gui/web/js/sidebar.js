@@ -85,6 +85,7 @@ export function renderSidebar() {
   } else html += agents.map((a) => row(a)).join("");
   html += `</div><div class="side-foot">
     <button class="btn ghost sm icon ${r.view === "settings" ? "on" : ""}" id="sb-gear" title="Settings (⌘,)">${icon("gear")}</button>
+    <button class="btn ghost sm icon" id="sb-bell" title="Notifications: what reaches you, and how">${icon("bell")}</button>
     <span class="dot ${sum && !sum.herdr_error ? "idle" : "blocked"}" title="${esc(sum?.herdr_error || "herdr connected")}"></span>
     ${window.desk?.showHerdr ? `<a id="sb-herdr" title="Show herdr (⇧⌘H)" style="color:inherit">${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</a>`
       : `<span>${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</span>`}<span class="grow"></span>
@@ -102,6 +103,7 @@ export function renderSidebar() {
     if (name === S.route.project && S.route.view === "project") { e.preventDefault(); return setFold(name, !folded.has(name)); }   // a second click folds
     if (folded.has(name)) setFold(name, false);   // opening a project unfolds it
   });
+  $("#sb-bell").onclick = () => { S.scrollToNotify = true; if (S.route.view === "settings") $("#notify")?.scrollIntoView({ block: "start", behavior: "smooth" }); else go({ view: "settings" }); };
   $("#sb-gear").onclick = () => (S.route.view === "settings" ? hooks.leaveSettings() : go({ view: "settings" }));
   el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {
     const show = () => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth", block: "start" });

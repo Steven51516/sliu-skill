@@ -27,7 +27,7 @@ export function saveAttention() {
 export function markSent(pane) { S.sent.set(pane, Date.now()); saveAttention(); }
 
 function loadPrefs() {
-  const d = { verbose: false, notifyDone: true, notifyPrompt: true, notifyProgress: true };
+  const d = { verbose: false };
   try { return { ...d, ...JSON.parse(localStorage.getItem("rd.prefs") || "{}") }; }
   catch (_) { return d; }
 }
@@ -225,6 +225,7 @@ const P = {
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
   doc: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
 };
 export const icon = (name, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24 24">${P[name] || ""}</svg>`;
 

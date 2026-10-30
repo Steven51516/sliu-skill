@@ -40,6 +40,7 @@ sys.path.insert(0, HERE)
 import status as tracker  # noqa: E402  (tools/status.py, the `research-status` parser)
 import rg_chat  # noqa: E402
 import rg_term  # noqa: E402
+import rg_notify  # noqa: E402
 
 warnings.filterwarnings("ignore", message=".*fork.*", category=DeprecationWarning)   # pty.fork, child execs at once
 VERSION = "2"
@@ -1053,6 +1054,9 @@ def input_box(text):
     return typed, len(box)
 
 
+SENT = {}   # pane -> when the human last sent it something from the app
+
+
 def chat_send(b):
     pane, text = b.get("pane"), (b.get("text") or "").strip()
     if not text:
@@ -1071,6 +1075,7 @@ def chat_send(b):
     except HerdrError as e:
         raise ApiError(409 if e.code == "agent_blocked" else 502, str(e))
     _snap["t"] = 0
+    SENT[pane] = time.time()
     return {"ok": True, "cleared": cleared}
 
 
@@ -1080,6 +1085,8 @@ def chat_keys(b):
         raise ApiError(400, f"keys must be among {sorted(KEYS)}")
     live_agent(b.get("pane"))
     herdr("agent", "send-keys", b["pane"], *keys, timeout=15)
+    if any(k == "enter" or k.isdigit() for k in keys):
+        SENT[b["pane"]] = time.time()
     _snap["t"] = 0
     return {"ok": True}
 
@@ -1094,6 +1101,7 @@ def chat_text(b):
     herdr("pane", "send-text", b["pane"], text, timeout=15)
     if b.get("enter"):
         herdr("agent", "send-keys", b["pane"], "enter", timeout=15)
+        SENT[b["pane"]] = time.time()
     _snap["t"] = 0
     return {"ok": True}
 
@@ -1330,6 +1338,106 @@ def focus(pane):
     return {"ok": True}
 
 
+# ---------- the notification monitor: state changes become events (rg_notify delivers them) ----------
+
+def label_of(a):
+    if a.get("role") == "worker" and a.get("ticket"):
+        return f"Worker · {a['ticket']}"
+    if a.get("role") == "driver" and a.get("drives"):
+        return f"Driver · {a['drives']}"
+    if a.get("role"):
+        return a["role"].capitalize()
+    tab = a.get("tab_label") or ""
+    return (a.get("agent") or "agent").capitalize() + (f" · {tab}" if tab and not tab.isdigit() else "")
+
+
+def monitor_view():
+    view = {"agents": {}, "states": {}, "waiting": {}}
+    cfg = load_config()
+    for name, p in cfg["projects"].items():
+        try:
+            s = project_state(p)
+        except Exception:
+            continue
+        for a in s["agents"]:
+            view["agents"][a["pane"]] = dict(a, project=name)
+        for m in s["maps"]:
+            view["states"][(name, "map:" + m["id"])] = (m["status"], m["title"], m["folder"], None)
+            for t in m["tickets"]:
+                view["states"][(name, t["id"])] = (t["status"], t["title"], m["folder"], t["folder"])
+        for w in s["waiting"]:
+            if w["kind"] == "ticket":
+                view["waiting"][(name, w["id"])] = (w["text"], w["map_folder"], w.get("folder"))
+    snap, _ = herdr_snapshot()
+    for a in (snap or {}).get("agents", []):
+        if a["pane_id"] not in view["agents"]:
+            view["agents"][a["pane_id"]] = dict(agent_view(a, snap, {}), project=None)
+    return view
+
+
+def diff_events(prev, now):
+    emit = rg_notify.emit
+    cfg = rg_notify.load()["events"]
+    for pane, a in now["agents"].items():
+        b = prev["agents"].get(pane)
+        if not b:
+            continue
+        who, proj = label_of(a), a.get("project")
+        where = {"project": proj, "pane": pane}
+        tail = f" · {proj}" if proj else ""
+        if a["status"] == "blocked" and b["status"] != "blocked":
+            emit("prompt", f"{who} needs your answer{tail}", a.get("title") or "", **where)
+        ended = (a.get("turn_end") and a.get("turn_end") != b.get("turn_end")) or \
+            (not a.get("turn_end") and b["status"] == "working" and a["status"] in ("idle", "done"))
+        if ended:
+            sent = SENT.get(pane)
+            end_t = rg_chat_ts(a.get("turn_end")) if a.get("turn_end") else time.time()
+            kinds = (["reply"] if sent and end_t > sent else []) + (["desk_reply"] if a.get("role") == "desk" else []) + ["any_reply"]
+            if sent and end_t > sent:
+                SENT.pop(pane, None)
+            kind = next((k for k in kinds if cfg[k]["channels"]), kinds[0])   # one event per reply, the most specific
+            emit(kind, f"{who} replied{tail}", a.get("title") or "", **where)
+        ls, lb = (a.get("loop") or {}).get("state"), (b.get("loop") or {}).get("state")
+        if ls in ("missed", "stopped") and ls != lb:
+            emit("loop", f"{who}: its loop {'missed a pass' if ls == 'missed' else 'stopped'}{tail}", "Restart it from the app", **where)
+        g, gb = a.get("safeguard"), b.get("safeguard")
+        if g and (not gb or g.get("ts") != gb.get("ts")):
+            emit("safeguard", f"{who}: Opus safeguards{tail}", g.get("text", ""), **where)
+    for key, (text, mf, tf) in now["waiting"].items():
+        if key not in prev["waiting"]:
+            emit("decision", f"Decision for you · {key[0]}", f"{key[1]}: {text}", project=key[0], map=mf, ticket=tf)
+    for key, st in now["states"].items():
+        old = prev["states"].get(key)
+        if not old or old[0] == st[0]:
+            continue
+        proj, ident = key
+        name = ident.replace("map:", "Map ")
+        if st[0] in ("resolved", "closed"):
+            emit("result", f"{name} {st[0]} · {proj}", st[1], project=proj, map=st[2], ticket=st[3])
+        elif st[0] in ("running", "held", "parked"):
+            emit("progress", f"{name} is {st[0]} · {proj}", st[1], project=proj, map=st[2], ticket=st[3])
+
+
+def rg_chat_ts(iso):
+    try:
+        return dt.datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()
+    except (ValueError, AttributeError):
+        return time.time()
+
+
+def monitor():
+    prev = None
+    while True:
+        try:
+            now = monitor_view()
+            if prev is not None:
+                diff_events(prev, now)
+            prev = now
+        except Exception as e:
+            sys.stderr.write(f"monitor: {e}\n")
+        time.sleep(5)
+
+
 # ---------- settings ----------
 
 def config_text():
@@ -1539,6 +1647,11 @@ class Handler(BaseHTTPRequestHandler):
                         q.get("around"))
         if path == "/api/search":
             return search(project(q.get("project")), q.get("q") or "")
+        if path == "/api/events":
+            after = q.get("after")
+            return rg_notify.events_after(int(after) if after and after.isdigit() else 0)
+        if path == "/api/notify":
+            return rg_notify.describe()
         if path == "/api/skills":
             return skills()
         if path == "/api/gpus":
@@ -1575,6 +1688,16 @@ class Handler(BaseHTTPRequestHandler):
             return chat_keys(b)
         if path == "/api/chat/text":
             return chat_text(b)
+        if path == "/api/notify":
+            return {"settings": rg_notify.save(b)}
+        if path == "/api/notify-test":
+            r = rg_notify.send_push("Research Desk", "Test push: notifications from Research Desk reach this phone.")
+            if not r["ok"]:
+                raise ApiError(502, f"push failed: {r['error']}")
+            return r
+        if path == "/api/notify-sound":
+            rg_notify.play(b.get("sound"))
+            return {"ok": True}
         if path == "/api/seen":
             return mark_seen(b.get("project"))
         if path == "/api/config":
@@ -1659,6 +1782,8 @@ def main():
             except Exception:
                 pass
     threading.Thread(target=warm, daemon=True).start()
+    rg_notify.QUIET = ARGS.dry_run
+    threading.Thread(target=monitor, daemon=True).start()
     print(f"research-gui at {url}{'  (dry run: Start buttons send nothing)' if ARGS.dry_run else ''}"
           f"  [{dt.datetime.now():%H:%M}]", flush=True)
     if not (ARGS.no_open or ARGS.serve):

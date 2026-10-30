@@ -318,6 +318,53 @@ export function renderSearch() {
   if (inp.value) run();
 }
 
+// ---------- notification settings: event kinds × channels (Mac banner, Mac sound, Moshi push) ----------
+
+async function renderNotify() {
+  const card = $("#nt-card");
+  let d;
+  try { d = await get("/api/notify"); } catch (e) { card.innerHTML = `<div class="err" style="padding:14px">${esc(e.message)}</div>`; return; }
+  const st = d.settings;
+  const save = async () => { try { Object.assign(st, (await post("/api/notify", st)).settings); } catch (e) { toast(e.message, "err"); } };
+  const draw = () => {
+    const box = (k, ch) => `<input type="checkbox" data-k="${k}" data-ch="${ch}" ${st.events[k].channels.includes(ch) ? "checked" : ""} ${ch === "push" && !d.push_ready ? "disabled" : ""}>`;
+    card.innerHTML = `<table class="ntable"><tr><th>When</th><th title="A macOS notification banner (needs the app open, the window may be hidden)">Mac banner</th>
+        <th title="A sound on the Mac (works with the app closed)">Mac sound</th><th title="A push to your phone through Moshi">Phone (Moshi)</th></tr>
+      ${d.kinds.map((k) => `<tr class="${k.inbox ? "inbox" : ""}"><td><b>${esc(k.label)}</b>${k.inbox ? ` <span class="tag">Inbox</span>` : ""}<div class="muted" style="font-size:12px">${esc(k.meaning)}</div></td>
+        <td>${box(k.kind, "banner")}</td>
+        <td class="snd">${box(k.kind, "sound")}<select data-snd="${k.kind}">${d.sounds.map((s) => `<option ${s === st.events[k.kind].sound ? "selected" : ""}>${s}</option>`).join("")}</select>
+          <button class="btn ghost sm icon" data-play="${k.kind}" title="Play">${icon("play")}</button></td>
+        <td>${box(k.kind, "push")}</td></tr>`).join("")}</table>
+      <div class="ntfoot">
+        ${d.push_ready ? `<span class="pill s-idle">Moshi connected</span>` : `<span class="pill s-blocked">no Moshi token</span> <span class="muted" style="font-size:12px">store it with <code>security add-generic-password -a "$USER" -s moshi-push -w</code></span>`}
+        <label><input type="checkbox" id="nt-away" ${st.push_away_only ? "checked" : ""}> Push only when I've been away from the Mac for
+          <input type="number" id="nt-mins" min="1" max="120" value="${st.away_minutes}" style="width:56px;padding:2px 6px"> min</label>
+        <span class="grow"></span><button class="btn sm" id="nt-test" ${d.push_ready ? "" : "disabled"}>Send a test push</button></div>
+      <div class="muted" style="font-size:12px;padding:0 16px 14px">Pushes are bundled (several within 20 s become one) and capped at ${st.push_max_per_hour} an hour.
+        Sounds and pushes come from the backend, so they work with the window closed. Claude Code's own hook sounds (CLAUDE_BELL) are separate.</div>`;
+    card.querySelectorAll("[data-ch]").forEach((c) => c.onchange = () => {
+      const rule = st.events[c.dataset.k];
+      rule.channels = c.checked ? [...new Set([...rule.channels, c.dataset.ch])] : rule.channels.filter((x) => x !== c.dataset.ch);
+      save();
+    });
+    card.querySelectorAll("[data-snd]").forEach((sel) => sel.onchange = () => { st.events[sel.dataset.snd].sound = sel.value; post("/api/notify-sound", { sound: sel.value }); save(); });
+    card.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => post("/api/notify-sound", { sound: st.events[b.dataset.play].sound }));
+    $("#nt-away").onchange = (e) => { st.push_away_only = e.target.checked; save(); };
+    $("#nt-mins").onchange = (e) => { st.away_minutes = +e.target.value || 5; save(); };
+    $("#nt-test").onclick = async () => { try { await post("/api/notify-test", {}); toast("Test push sent"); } catch (e) { toast(e.message, "err", 6000); } };
+  };
+  document.querySelectorAll("[data-preset]").forEach((b) => b.onclick = () => {
+    const inbox = d.kinds.filter((k) => k.inbox).map((k) => k.kind);
+    for (const k of d.kinds) {
+      st.events[k.kind].channels = b.dataset.preset === "all" ? ["banner", "sound", "push"].filter((c) => c !== "push" || d.push_ready)
+        : b.dataset.preset === "inbox" ? (inbox.includes(k.kind) ? ["banner", "sound", "push"].filter((c) => c !== "push" || d.push_ready) : [])
+        : (k.kind === "prompt" ? ["banner"] : []);
+    }
+    save().then(draw);
+  });
+  draw();
+}
+
 // ---------- settings ----------
 
 export async function renderSettings() {
@@ -329,10 +376,10 @@ export async function renderSettings() {
   const pr = S.prefs;
   host.innerHTML = `<div class="page" style="max-width:980px"><div class="ph"><div class="grow"><h1>Settings</h1><div class="sub">Research Desk ${esc(sum.version || "")}${window.desk ? " · app" : " · browser"}</div></div>
       <div class="actions"><button class="btn" id="st-close" title="Back (Esc)">${icon("x")} Close</button></div></div>
-    <div class="sec"><h2>Notifications</h2></div><div class="card pad" style="display:flex;flex-direction:column;gap:8px">
-      <label><input type="checkbox" id="pf-prompt" ${pr.notifyPrompt ? "checked" : ""}> When an agent stops at a prompt and needs your answer</label>
-      <label><input type="checkbox" id="pf-done" ${pr.notifyDone ? "checked" : ""}> When an agent finishes a turn you started from here (only if you aren't looking at it)</label>
-      <label><input type="checkbox" id="pf-progress" ${pr.notifyProgress ? "checked" : ""}> When a ticket resolves, starts running, is held or parked, or a map closes (in projects you aren't looking at)</label>
+    <div class="sec" id="notify"><h2>Notifications</h2><span class="meta">what reaches you, and how</span><span class="grow"></span>
+      <div class="actions"><button class="btn sm" data-preset="inbox">Inbox only</button><button class="btn sm" data-preset="all">Everything</button><button class="btn sm" data-preset="quiet">Quiet</button></div></div>
+    <div class="card" id="nt-card"><div class="spin" style="margin:16px"></div></div>
+    <div class="sec"><h2>App</h2></div><div class="card pad" style="display:flex;flex-direction:column;gap:8px">
       <label><input type="checkbox" id="pf-verbose" ${pr.verbose ? "checked" : ""}> Show every tool call in the chat (otherwise long runs fold)</label>
       ${window.desk?.loginItem ? `<label><input type="checkbox" id="pf-login"> Open Research Desk when you log in</label>` : ""}</div>
     <div class="sec"><h2>Status</h2></div><div class="card pad kv">
@@ -349,7 +396,9 @@ export async function renderSettings() {
     window.desk.loginItem().then((on) => { $("#pf-login").checked = on; });
     $("#pf-login").onchange = (e) => window.desk.loginItem(e.target.checked);
   }
-  pref("#pf-prompt", "notifyPrompt"); pref("#pf-done", "notifyDone"); pref("#pf-progress", "notifyProgress"); pref("#pf-verbose", "verbose");
+  pref("#pf-verbose", "verbose");
+  renderNotify();
+  if (location.hash.includes("notify") || S.scrollToNotify) { S.scrollToNotify = false; setTimeout(() => $("#notify")?.scrollIntoView({ block: "start" }), 50); }
   $("#st-add").onclick = () => hooks.addProject();
   $("#st-close").onclick = () => hooks.leaveSettings();
   $("#st-save").onclick = async () => {
