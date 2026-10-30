@@ -19,7 +19,7 @@ export function renderTitlebar() {
   $("#titlebar").innerHTML = `<div class="crumbs">${crumbs.map((c, i) => (i ? `<span class="sep">/</span>` : "") + `<span class="${i === crumbs.length - 1 ? "cur" : ""}">${c}</span>`).join("")}</div>
     <span class="grow"></span>
     <button class="btn ghost sm icon" id="tb-term" title="Terminals (⌃\`)">${icon("bottom")}</button>
-    <button class="btn ${S.chat.open ? "" : "ghost"} sm" id="tb-chat" title="Chat (⌘J)">${icon("chat")} Chat${unread ? ` <span class="count alert">${unread}</span>` : ""}</button>`;
+    <button class="btn ${S.chat.open ? "" : "ghost"} sm" id="tb-chat" title="Chat (⌘J)">${icon("chat")} Chat${unread ? ` <span class="dot unread" title="${unread} unread repl${unread > 1 ? "ies" : "y"}"></span>` : ""}</button>`;
   $("#tb-term").onclick = () => hooks.toggleDock();
   $("#tb-chat").onclick = () => hooks.toggleChat();
 }
@@ -185,14 +185,13 @@ export function renderInbox() {
   if (!sum) { host.innerHTML = `<div class="empty big"><div class="spin"></div></div>`; return; }
   const blocked = allAgents().filter((a) => a.status === "blocked");
   const tickets = sum.projects.flatMap((p) => (p.waiting || []).filter((w) => w.kind !== "agent").map((w) => ({ ...w, project: p.name })));
-  const unread = [...S.unread.entries()].map(([pane, u]) => ({ pane, ...u }));
   const changed = sum.projects.filter((p) => p.changes);
   const loops = allAgents().filter((a) => loopDead(a));
   const asks = sum.asks || [];
-  const none = !blocked.length && !tickets.length && !unread.length && !loops.length && !asks.length;
+  const none = !blocked.length && !tickets.length && !loops.length && !asks.length;
   host.innerHTML = `<div class="page" style="max-width:920px">
     <div class="ph"><div class="grow"><h1>Inbox</h1><div class="sub">Everything waiting on you, across projects</div></div>
-      ${unread.length ? `<div class="actions"><button class="btn" id="ib-clear">${icon("check")} Mark all read</button></div>` : ""}</div>
+</div>
     ${!sum.projects.length ? `<div class="card pad" style="padding:22px 24px"><h2 style="margin:0 0 6px;font-size:16px">Welcome to Research Desk</h2>
       <div class="muted" style="margin-bottom:12px">Add a project folder that uses the research harness (it has <code>maps/</code>), and its maps, tickets, agents and files appear here.</div>
       <button class="btn primary" id="ib-add">${icon("plus")} Add a project</button></div>` : none ? `<div class="card empty big">${icon("check")} All clear. Nothing is waiting on you.</div>` : ""}
@@ -205,9 +204,6 @@ export function renderInbox() {
     ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a driver missed its pass, or a pass died (network, sleep)</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2 err">${esc(loopNote(a))}</div></div>
       <button class="btn sm primary" data-restart="${esc(a.pane)}">Restart loop</button></div>`).join("")}</div>` : ""}
-    ${unread.length ? `<div class="sec"><h2>Finished turns</h2><span class="meta">replies to what you sent</span></div><div class="card rows">${unread.map((u) => `<div class="row click" data-pane="${esc(u.pane)}">
-      ${icon("chat")}<div class="grow"><div class="t1">${esc(u.label)}${u.project ? ` · <span class="muted">${esc(u.project)}</span>` : ""}</div><div class="t2">${esc(u.text || "finished its turn")}</div></div>
-      <span class="meta muted">${esc(ago(u.at / 1000))}</span></div>`).join("")}</div>` : ""}
     ${tickets.length ? `<div class="sec"><h2>Decisions waiting</h2><span class="meta">grilling tickets and needs-you items</span></div><div class="card rows">${tickets.map((w) => `<div class="row click" data-project="${esc(w.project)}" data-map="${esc(w.map_folder)}" data-ticket="${esc(w.folder || "")}">
       ${pill("waiting", w.project)}<div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.id || w.map)}</div></div></div>`).join("")}</div>` : ""}
     ${changed.length ? `<div class="sec"><h2>Changed since you last looked</h2></div><div class="card rows">${changed.map((p) => `<a class="row click" href="${href({ project: p.name })}" style="color:inherit;text-decoration:none">
@@ -222,7 +218,6 @@ export function renderInbox() {
     try { await post("/api/ask-answer", { id: b.dataset.ask, answer: b.dataset.opt }); toast(`Answered: ${b.dataset.opt}`); hooks.refresh(); }
     catch (e) { toast(e.message, "err", 6000); hooks.refresh(); }
   });
-  if ($("#ib-clear")) $("#ib-clear").onclick = () => { S.unread.clear(); hooks.badge(); renderInbox(); };
 }
 
 // ---------- GPUs ----------

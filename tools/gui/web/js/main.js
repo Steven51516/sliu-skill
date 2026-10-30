@@ -133,13 +133,12 @@ function notify(title, body, pane, where = null) {
 
 function badge() {
   const blocked = allAgents().filter((a) => a.status === "blocked").length;
-  const n = blocked + S.unread.size;
+  const n = blocked;                                   // replies to you are not waiting on you
   document.title = n ? `(${n}) Research Desk` : "Research Desk";
   if (isApp) {
     window.desk.setBadge(n);
     const items = [
       ...allAgents().filter((a) => a.status === "blocked").map((a) => ({ label: `● ${agentLabel(a)}${a.project ? " · " + a.project : ""} needs your answer`, cmd: "openChat", arg: a.pane })),
-      ...[...S.unread.entries()].map(([pane, u]) => ({ label: `✓ ${u.label}${u.project ? " · " + u.project : ""} finished`, cmd: "openChat", arg: pane })),
       ...allAgents().filter((a) => a.loop?.state === "missed").map((a) => ({ label: `↻ ${agentLabel(a)}${a.project ? " · " + a.project : ""}: loop ${a.loop.state}`, cmd: "openChat", arg: a.pane })),
       ...(S.summary?.projects || []).flatMap((p) => (p.waiting || []).filter((w) => w.kind === "ticket").map((w) => ({ label: `◆ ${p.name} · ${w.id}: ${w.text}`, cmd: "goTicket", arg: [p.name, w.map_folder, w.folder] }))),
     ];
@@ -149,12 +148,11 @@ function badge() {
   void inboxCount;
 }
 
-// the next thing that needs you, in turn: an agent at a prompt, an unread reply, then a decision ticket
+// the next thing that needs you, in turn: an agent at a prompt, then a decision ticket
 let attnIndex = 0;
 function nextAttention() {
   const items = [
     ...allAgents().filter((a) => a.status === "blocked").map((a) => () => openChat(a.pane)),
-    ...[...S.unread.keys()].map((pane) => () => openChat(pane)),
     ...(S.summary?.projects || []).flatMap((p) => (p.waiting || []).filter((w) => w.kind !== "agent")
       .map((w) => () => go({ project: p.name, view: "map", map: w.map_folder, tab: "dag", ticket: w.folder || null }))),
   ];

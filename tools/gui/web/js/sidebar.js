@@ -5,7 +5,7 @@ export function inboxCount() {
   if (!S.summary) return 0;
   const waiting = S.summary.projects.reduce((n, p) => n + (p.waiting || []).length, 0);
   const blockedOutside = (S.summary.other_agents || []).filter((a) => a.status === "blocked").length;
-  return waiting + blockedOutside + S.unread.size + (S.summary.asks || []).length;
+  return waiting + blockedOutside + (S.summary.asks || []).length;      // replies to you are not waiting on you
 }
 
 // projects folded in the sidebar (their maps, Files and Search hidden); remembered across reloads
@@ -56,7 +56,7 @@ export function renderSidebar() {
   // inside a project: its sessions as a team tree. Outside one (Inbox, GPUs, Settings): only sessions that need you;
   // the project rows above already show how busy each project is
   // a folded project shows its sessions the same way: only those that need you
-  const needsYou = (a) => a.status === "blocked" || S.unread.has(a.pane) || loopDead(a) || !!guardNote(a);
+  const needsYou = (a) => a.status === "blocked" || loopDead(a) || !!guardNote(a);
   const tree = cur && !folded.has(cur);
   const agents = allAgents().filter((a) => (tree ? a.project === cur : needsYou(a)));
   if (tree || agents.length) {
@@ -67,7 +67,7 @@ export function renderSidebar() {
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
-      ${S.unread.has(a.pane) ? `<span class="count alert" title="finished a turn">1</span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
+      ${S.unread.has(a.pane) ? `<span class="dot unread" title="replied to you: not read yet"></span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
   if (tree) {
     // the team as a tree: desk, then each driver with the workers it opened, then everything else
     const workers = agents.filter((a) => a.role === "worker");

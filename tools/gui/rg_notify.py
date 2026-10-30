@@ -13,7 +13,7 @@ import threading
 import time
 
 FILE = os.path.expanduser("~/.config/research-gui/notify.json")
-KINDS = {   # kind -> (label, what it means, default channels, default sound); the first five are the Inbox
+KINDS = {   # kind -> (label, what it means, default channels, default sound); INBOX below marks what waits on you
     "prompt": ("Needs your answer", "an agent stops at a permission or question prompt", ["banner", "sound", "push"], "Sosumi"),
     "reply": ("Reply to your message", "an agent finishes the turn you started from the app", ["banner", "sound", "push"], "Glass"),
     "decision": ("New decision for you", "a grilling or prototype ticket appears", ["banner", "push"], "Ping"),
@@ -24,7 +24,7 @@ KINDS = {   # kind -> (label, what it means, default channels, default sound); t
     "result": ("Results", "a ticket resolves or a map closes", ["banner"], "Hero"),
     "progress": ("Other ticket changes", "a ticket starts running, is held or parked", [], "Pop"),
 }
-INBOX = ["prompt", "reply", "decision", "loop", "safeguard"]
+INBOX = ["prompt", "decision", "loop", "safeguard"]   # what waits on the human (a reply to them does not)
 SOUNDS = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse", "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
 MOSHI_URL = "https://api.getmoshi.app/api/webhook"
 KEYCHAIN = "moshi-push"

@@ -588,3 +588,4 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 #sb-moshi.moshi { color: var(--accent); }
 .askrow { align-items: flex-start; }
 .askopts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.dot.unread { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
