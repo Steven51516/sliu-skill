@@ -442,7 +442,8 @@ def projects_summary():
     if snap:
         for a in snap.get("agents", []):
             claimed = {pane for q in cfg["projects"].values() for pane in roster(q)}
-            if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed:
+            if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed \
+                    and not is_asker(a):
                 others.append(agent_view(a, snap, {}))
     return {"projects": out, "unregistered": found, "config": CONFIG, "other_agents": others, "herdr_error": err,
             "dry_run": ARGS.dry_run, "version": VERSION, "moshi_mode": moshi_mode(), "asks": open_asks()}
@@ -466,6 +467,11 @@ def moshi_mode(value=None):
         return False
 
 
+def is_asker(a):
+    """A helper session of ask-human (it holds a question on the phone)."""
+    return in_folder(a.get("cwd"), os.path.join(ASK_DIR, "asker"))
+
+
 def open_asks():
     """Questions on the phone with no outcome yet whose waiter is still alive, oldest first."""
     asks = {}
@@ -478,6 +484,8 @@ def open_asks():
                     continue
                 if r.get("state") == "asked":
                     asks[r.get("id")] = r
+                elif r.get("state") == "posted" and r.get("id") in asks:     # its helper session is up
+                    asks[r["id"]].update(helper=r.get("helper"), tab=r.get("tab"))
                 else:
                     asks.pop(r.get("id"), None)
     except OSError:
@@ -488,12 +496,12 @@ def open_asks():
             os.kill(int(r["pid"]), 0)
         except (OSError, KeyError, TypeError, ValueError):
             continue
-        out.append({k: r.get(k) for k in ("id", "question", "options", "pane", "label", "t", "pid")})
+        out.append({k: r.get(k) for k in ("id", "question", "options", "pane", "label", "t", "pid", "tab")})
     return out
 
 
 def answer_ask(b):
-    """Answer a phone question from the app: stop its waiter (and its moshi-hook ask), type the answer into the pane."""
+    """Answer a phone question from the app: stop its waiter, close its helper session, type the answer into the pane."""
     rec = next((a for a in open_asks() if a["id"] == b.get("id")), None)
     if not rec:
         raise ApiError(404, "That question is no longer open (answered on the phone, or its session ended).")
@@ -504,16 +512,19 @@ def answer_ask(b):
         os.killpg(int(rec["pid"]), signal.SIGTERM)
     except OSError:
         pass
-    text = ans == rec["options"][-1]                   # "I'll reply in text"
-    msg = (f"The human will answer in text (to: {rec['question']}). Wait for their message." if text
-           else f"Answer from the human (app): {ans} (to: {rec['question']})")
+    if rec.get("tab"):
+        try:
+            herdr("tab", "close", rec["tab"], timeout=15)
+        except HerdrError:
+            pass
+    msg = f"Answer from the human (app): {ans} (to: {rec['question']})"
     try:
         herdr("agent", "prompt", rec["pane"], msg, timeout=30)
         delivered = True
     except HerdrError:
         delivered = False
     with open(os.path.join(ASK_DIR, "asks.jsonl"), "a") as f:
-        f.write(json.dumps({"id": rec["id"], "state": "text" if text else "answered", "answer": None if text else ans,
+        f.write(json.dumps({"id": rec["id"], "state": "answered", "answer": ans,
                             "via": "app", "delivered": delivered, "t": time.time()}) + "\n")
     if not delivered:
         raise ApiError(502, f"Couldn't type the answer into {rec['pane']} (the session may have ended).")
@@ -1442,7 +1453,7 @@ def monitor_view():
                 view["waiting"][(name, w["id"])] = (w["text"], w["map_folder"], w.get("folder"))
     snap, _ = herdr_snapshot()
     for a in (snap or {}).get("agents", []):
-        if a["pane_id"] not in view["agents"]:
+        if a["pane_id"] not in view["agents"] and not is_asker(a):
             view["agents"][a["pane_id"]] = dict(agent_view(a, snap, {}), project=None)
     return view
 

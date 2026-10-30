@@ -30,7 +30,7 @@
 
 ## Communication
 - Lead with the result or the decision you need, then the evidence, then the details.
-- A question for the human with fixed answers (yes/no, or one of 2-5 options) goes through
+- A question for the human with fixed answers (yes/no, or one of 2-4 options) goes through
   `ask-human "<question>" <your pick> <other options>` and you carry on: in Moshi mode it reaches the human's phone as
   buttons, and the answer arrives later as a message starting `Answer from the human`. When it says to ask in plain
   text (Moshi mode off), do that. Open questions are always plain text.
