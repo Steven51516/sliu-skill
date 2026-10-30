@@ -62,7 +62,8 @@ retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 **optional/**: none in Matt's repo. `team`: run a project as a desk, a driver per map, and a worker session per ticket. `run-card` and `diagnosis-card`:
 records for people outside the session (a reproduction record of an important run; a diagnosis of evaluation
 results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for improving a model in rounds,
-with a diagnosis card after every evaluation.
+with a diagnosis card after every evaluation. `away`: the human steps away; maps keep moving, what needs them waits
+prepared, and one brief greets them on return.
 
 ## Differences from Matt's skills
 

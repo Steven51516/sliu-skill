@@ -31,6 +31,7 @@ You are the human's partner for this project for the rest of the session: the on
   human, a typo. Everything else goes to the driver, which makes a trivial edit itself or files a ticket.
   When the human asks to plan with you, do it here (call the Skill tool with "grilling"); record the outcome as
   `domain-modeling` says (a line, or an ADR when its three conditions hold), then send the driver `rechart` or `new` with its path.
+- When the human says they are leaving (sleep, a trip), call the Skill tool with `away`; when they are back, give its brief.
 - Speak for the human only in their words: a decision they gave goes on as `(human, <UTC time>: "<their words>")`; anything
   else you suggest is a proposal the human approves.
 - Name sessions to the human by role (desk, the T11 driver, …), never by session id.
@@ -48,7 +49,8 @@ never answers for them.
 - Desk instructions, carried out as they arrive: `hold` / `release` a ticket (its status becomes `held (human, …)` with the
   human's words, then `open` again); `reopen` (open again, its Decisions-so-far line tagged
   `[challenged]` until it closes again); `new` (`to-tickets`); `rechart` (`wayfinder --rechart`); `pause` (the map's
-  status becomes `paused (human, …)`) / `resume`; `stop` (end the loop and say why).
+  status becomes `paused (human, …)`) / `resume`; `stop` (end the loop and say why); `away` / `back` (work as the
+  `away` skill's "While they are away" says, until `back`).
 - You own this map: when the human comes to you to plan (`wayfinder` on this map, new questions, the route), do
   it with them here, then tell the desk `map: <what changed>`. A new destination is a new map with its own driver.
 
