@@ -13,6 +13,7 @@ chmod +x "$HERE/tools/status.py"; ln -sfn "$HERE/tools/status.py" "$HOME/.local/
 chmod +x "$HERE/tools/migrate_to_maps.py"; ln -sfn "$HERE/tools/migrate_to_maps.py" "$HOME/.local/bin/research-migrate"
 chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.local/bin/codex-run"
 chmod +x "$HERE/tools/team-watch.py"; ln -sfn "$HERE/tools/team-watch.py" "$HOME/.local/bin/team-watch"
+chmod +x "$HERE/tools/team-worker.py"; ln -sfn "$HERE/tools/team-worker.py" "$HOME/.local/bin/team-worker"
 chmod +x "$HERE/tools/gui/server.py"; ln -sfn "$HERE/tools/gui/server.py" "$HOME/.local/bin/research-gui"
 # drop links left by skills that were removed or renamed here
 for d in "$DEST" "$AGENTS_DEST"; do for l in "$d"/*; do

@@ -2,7 +2,8 @@
 # team-up <map, e.g. T8>
 # Run inside herdr from the project folder. Adds tabs A desk, B driver and watch to the current workspace; each agent tab
 # is a Claude Code session started with its /team command (TEAM-PROTOCOL.md). Worker tabs open and close as the driver
-# starts and finishes tickets. Extra claude flags: CLAUDE_ARGS.
+# starts and finishes tickets. Sessions start logged in (Keychain item claude-code-oauth)
+# and on an explicit model (TEAM_MODEL, default claude-opus-5-5), so a /model in another tab cannot change it. Extra claude flags: CLAUDE_ARGS.
 set -euo pipefail
 [[ "${HERDR_ENV:-}" == 1 ]] || { echo "run team-up inside herdr"; exit 1; }
 T="${1:?usage: team-up <map, e.g. T8>}"
@@ -10,12 +11,13 @@ if [[ ! -d "$T" ]]; then for d in maps/"$T"-* tracks/"$T"-*; do [[ -d "$d" ]] &&
 [[ -f "$T/map.md" || -f "$T/track.md" ]] || { echo "no map '$1' in $PWD/maps"; exit 1; }
 P="$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | cut -c1-20)"   # agent-name prefix
 
+TOK=$(security find-generic-password -a "$USER" -s claude-code-oauth -w 2>/dev/null || true)   # login for new tabs
 tab() {  # tab <label> -> pane id of a new tab in this workspace
-  herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "$1" --no-focus |
+  herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "$1" --no-focus ${TOK:+--env "CLAUDE_CODE_OAUTH_TOKEN=$TOK"} |
     python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])'
 }
 go() {  # go <agent name> <pane> <prompt>
-  herdr agent start "$1" --kind claude --pane "$2" --timeout 120000 ${CLAUDE_ARGS:+-- $CLAUDE_ARGS} >/dev/null
+  herdr agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --model "${TEAM_MODEL:-claude-opus-5-5}" ${CLAUDE_ARGS:-} >/dev/null
   herdr agent prompt "$1" "$3" >/dev/null
 }
 

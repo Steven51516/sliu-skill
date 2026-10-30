@@ -22,20 +22,16 @@ the map.
 | **worker** | opened by the driver | `/research-work <ticket>` in a fresh session, delegating inside it as `docs/agents/delegation.md` says | its ticket folder | `map.md`, other tickets |
 
 ## Workers
-- **Open** one per ticket, at most as many as `research-drive` allows at once, from the project folder:
-  `herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "<ticket id>" --no-focus` (its root pane is
-  the worker's), then `herdr agent start <ticket id> --kind claude --pane <pane>` and
-  `herdr agent prompt <ticket id> "/research-work <ticket path>. You are a worker: when you finish or stop, send the
-  driver one line with herdr agent prompt <driver pane> 'done|running|blocked <ticket>: <one line>'."`
+- **Open** one per ticket, at most as many as `research-drive` allows at once: `team-worker <ticket path>`. It opens
+  a tab labelled with the ticket id, logged in, on Opus 5.5, tells it to work the ticket and report back to you, and
+  fails loudly if the worker did not start.
 - **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker
   (`herdr agent prompt <ticket id> "/exit"`, then `herdr tab close <tab>`). First check that no job depends on that
   session: a session's cleanup can stop jobs it launched.
 - **On `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
-  ("safeguards stopped the response", often a false positive on biology wording), resume its own session on Sonnet 5.5
-  at xhigh effort, keeping its chat: `herdr agent prompt <ticket id> "/exit"`, then `herdr agent start <ticket id>-s --kind claude --pane
-  <pane> -- --resume <session id> --model sonnet --effort xhigh` (the session id is on its line in `herdr agent list`), then prompt it
-  to continue with no summary and biology steps handed off by pointer. New workers still start on the default model.
+  (often a false positive on biology wording), `team-worker --rescue <ticket id>` resumes its own session on Sonnet 5.5
+  at xhigh effort, keeping its chat. New workers still start on Opus 5.5.
 
 ## Control
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
@@ -65,7 +61,8 @@ a path, sent after the action it reports has happened, never in the same batch:
 - driver → desk: `driver up for <map>` · `map: <what changed>` (after the human worked on the map with the driver) ·
   `propose <ticket>: <why next>` · `needs-you <pointer>: <one line>` · `closed <ticket name>: <answer in one line>` ·
   `progress <ticket name>: <one line>` (an Assets row got its first result) · `stopped: <why>`
-- worker → driver: `done <ticket>: <answer>` · `running <ticket>: <jobs>` · `blocked <ticket>: <one line>`
+- worker → driver: `done <ticket>: <path>` · `running <ticket>: <path>` · `blocked <ticket>: <path>`, the path of the
+  file that holds the result, jobs or question; never the content itself
 
 **How a message travels**, by the receiver's agent:
 - Claude Code → Claude Code: the SendMessage tool, to the session name; a worker uses `herdr agent prompt <driver pane>`.

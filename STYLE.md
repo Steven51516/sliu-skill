@@ -23,7 +23,7 @@
 - Deleting or overwriting data, results, checkpoints or code outside `scratch/` (rewriting a map or ticket record is routine;
   consolidating tickets is not deleting); the request names what can no
   longer be resumed or reproduced afterwards.
-- Pushing to a remote, posting anything externally, or emailing.
+- Pushing to a repository the human does not own, posting anything externally, or emailing.
 - Opening a network listener, relay or remote command channel on a shared machine.
 - Stopping a process you did not start. Stop your own by PID, never by a name pattern.
 

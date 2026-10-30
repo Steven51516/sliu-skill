@@ -180,6 +180,9 @@ def load(project):
             kmeta, kbody = parse_front_matter(kpath)
             kmeta["_path"] = os.path.relpath(kpath, project)
             kmeta["_answered"] = answered(kbody)
+            b = kmeta.get("blocked_by") or []
+            b = [b] if isinstance(b, str) else b          # a plain number names a ticket on the same map
+            kmeta["blocked_by"] = [f"{meta.get('id')}-{int(x):02d}" if str(x).strip().isdigit() else x for x in b]
             tickets.append(kmeta)
         archived = []                     # consolidated tickets still resolve the blockers that name them
         for kpath in sorted(glob.glob(os.path.join(mdir, "archive", "**", "ticket.md"), recursive=True)):

@@ -117,9 +117,25 @@ def restart(pane, name, map_ref, reason, session, n):
     return True
 
 
+def single():
+    """Only one team-watch per project: two would both restart the same driver."""
+    lock = os.path.join("scratch", "agents", "team-watch.pid")
+    try:
+        other = int(open(lock).read().strip())
+        os.kill(other, 0)
+        if other != os.getpid():
+            sys.exit(f"team-watch is already running for this project (pid {other}); stop it first or use that one")
+    except (OSError, ValueError):
+        pass
+    os.makedirs(os.path.dirname(lock), exist_ok=True)
+    with open(lock, "w") as f:
+        f.write(str(os.getpid()))
+
+
 def main():
     if len(sys.argv) == 2 or sys.argv[1:2] in (["-h"], ["--help"]):
         sys.exit(__doc__)
+    single()
     fixed = {sys.argv[2]: sys.argv[1]} if len(sys.argv) >= 3 else None
     base = sys.argv[3] if len(sys.argv) > 3 else "driver"
     restarts, seen = {}, os.path.getsize(LOG) if os.path.exists(LOG) else 0
