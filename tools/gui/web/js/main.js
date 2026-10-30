@@ -117,7 +117,7 @@ function notify(title, body, pane, where = null) {
   try {
     if (!("Notification" in window) || Notification.permission === "denied") return;
     if (Notification.permission === "default") { Notification.requestPermission(); return; }
-    const n = new Notification(title, { body, silent: false });
+    const n = new Notification(title, { body, silent: true });   // the sound is its own channel (rg_notify plays it)
     n.onclick = () => {
       window.focus(); if (isApp) window.desk.focus();
       if (pane) openChat(pane);
