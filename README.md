@@ -9,7 +9,7 @@ git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 ~/research-harness/install.sh
 ```
 
-`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts five commands on your PATH (`research-status`, `research-migrate`, `codex-run`, `team-up`, `research-gui`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
+`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts its commands on your PATH (`research-status`, `codex-run`, `team-up`, `team-worker`, `team-watch`, `research-gui`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
 
 ## How it fits together
 
@@ -27,9 +27,10 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | open a new map from a loose idea (it interviews you) | `/wayfinder "<loose idea>"` |
 | add a ticket | `/to-tickets <map> "<question>"` |
 | work one ticket | `/research-work <ticket>` |
-| work a map's frontier in parallel, or overnight | `/research-drive <map>` (`/loop` it) |
+| **default:** work maps in one session, a fresh subagent per ticket | `/loop /research-drive <map> [map ...]` |
+| leave it running while you sleep or travel | `/away` (or `/away --go`) |
 | re-plan a map | `/wayfinder <map> --rechart` |
-| run a long-lived team (a desk and a driver per map) | `team-up <map>` in a herdr pane, or `/team <role>` |
+| optional: a team (a desk you talk to, a driver for one or several maps, worker tabs) | `team-up <map>` in a herdr pane, or `/team <role>` |
 | work from one desktop app: every project, maps as DAGs, tickets, Mac and server files, chat with any agent, terminals, GPUs, teams by click | the **Research Desk** app (`research-gui` opens it; build once with `cd tools/gui/app && npm install && npm run pack`; projects in `~/.config/research-gui/projects.toml`) |
 
 ## Skills
@@ -49,14 +50,9 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `research`, `grilling` | copied | the reading and interview tickets |
-| `domain-modeling` | adapted | glossary and decisions |
-
-**engineering/**: Matt's engineering skills: `codebase-design` (copied, deep-module vocabulary), `improve-codebase-architecture`
-(adapted, deep modules for research code), `prototype` (copied, a throwaway prototype for a design question; also the
-`prototype` ticket type).
 
 **personal/**: everyday helpers, all user-invoked: `wait-what` (adapted: re-pitch the last message), `ketchup` (from
-pstack: catch up on a long chat and every call waiting on you), `handoff` (copied: compact a session), `retro` (adapted:
+pstack: catch up on a long chat and every call waiting on you), `retro` (adapted:
 retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **optional/**: none in Matt's repo. `team`: run a project as a desk, a driver per map, and a worker session per ticket. `run-card` and `diagnosis-card`:
@@ -100,8 +96,6 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `research-work` (vs `implement`): no TDD or commits per ticket; jobs, smoke checks, failure classification, `rigor` and `review` as above.
 - `to-tickets`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
 - `research-init` (vs `setup-matt-pocock-skills`): adds the scope and delegation sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
-- `domain-modeling`: every cross-map decision is one line in `docs/decisions.md`; one that meets Matt's three conditions also gets an ADR in his format (`docs/adr/`); terms are defined on first use.
-- `improve-codebase-architecture`: checks are the test surface, the scope is the shared research code (ticket code is throwaway), code may live on a remote server, and a refactor waits for live runs that import the code.
 - `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
 - `wait-what`: also defines each project term on first use.
 
@@ -110,11 +104,11 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research harness), engineering/ (code design, prototypes), personal/ (everyday helpers), optional/ (team, records)
+skills/      core/ (the research harness), personal/ (everyday helpers), optional/ (team, records, away)
 STYLE.md     your rules for every project (honesty, what always needs the human's OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status), migrate_to_maps.py (research-migrate), codex-run.sh, team-up.sh,
+tools/       status.py (research-status), codex-run.sh, team-up.sh, team-worker.py,
              team-watch.py (team-watch: the watch tab's supervisor; resumes a stuck driver's own session on Sonnet 5.5), gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
@@ -138,4 +132,4 @@ Skill descriptions load when a session starts, so a new skill or a changed `desc
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `prototype`, `codebase-design`, `handoff`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `domain-modeling`, `retro`, `wait-what`, `improve-codebase-architecture`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `retro`, `wait-what`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).

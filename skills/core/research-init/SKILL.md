@@ -72,7 +72,7 @@ Let them edit before writing.
 
 **New folder:** run [init.sh](init.sh) `<name> ["<direction>"]` with the chosen settings as environment variables (its header lists them: `SCOPE_FILE`, `SCOPE_INHERITED`, `PROJECTS_ROOT`, `POOL_ROOT`, `SCRATCH_ROOT`, `CODE_LOCATION`, `GIT`, `TRACKER`). Then apply any edits the user made to the drafts.
 
-**Existing folder:** never run `init.sh` and never overwrite. Create the missing pieces from the templates. Keep both `AGENTS.md` and `CLAUDE.md`: Codex reads only `AGENTS.md` and cannot follow `@` imports, so shared rules live there as plain path pointers, and `CLAUDE.md` starts with `@AGENTS.md`. If a `## Claude Code` block already exists in `CLAUDE.md`, update its contents in place rather than appending a duplicate. Don't overwrite user edits to the surrounding sections. A project on the old `tracks/` layout moves to the local tracker with `research-migrate <project>`: run `--dry-run` first and show it.
+**Existing folder:** never run `init.sh` and never overwrite. Create the missing pieces from the templates. Keep both `AGENTS.md` and `CLAUDE.md`: Codex reads only `AGENTS.md` and cannot follow `@` imports, so shared rules live there as plain path pointers, and `CLAUDE.md` starts with `@AGENTS.md`. If a `## Claude Code` block already exists in `CLAUDE.md`, update its contents in place rather than appending a duplicate. Don't overwrite user edits to the surrounding sections. A project on the old `tracks/` layout is migrated by hand (the one-off tool is in the harness's `archive/`).
 
 Write the docs files using the seed templates in this skill folder as a starting point:
 

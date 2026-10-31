@@ -1,41 +1,37 @@
 ---
 name: research-drive
-description: "Work a research map's tickets in parallel: dispatch the frontier, merge answers into the map, and file the next tickets as the fog clears. One pass per call."
-argument-hint: "<map>"
+description: "Work research maps' tickets in parallel: dispatch the frontier, merge answers into the map, and file the next tickets as the fog clears. One pass per call, over one map or several."
+argument-hint: "<map> [map ...]"
 ---
 
-You have been provided a map. Its tickets describe the questions on the way to its destination.
+You drive one or more maps. Their tickets are a **task graph**: there is always a **frontier** ready to start, and each
+answer clears fog for the next questions. The goal is each destination reached, or a measured answer that it can't be.
+The issue tracker should have been provided to you; if not, tell the user to run `/research-init`.
 
-The issue tracker should have been provided to you. If not, tell the user to run `/research-init`.
+One call is one **pass**; `/loop /research-drive <maps>` repeats it. Keep your own context small: each ticket goes to a
+fresh **implementer subagent** (as `docs/agents/delegation.md` says, in the background, at most 6 at once), you talk to
+them through pointers (map, ticket, result files), and you trust the files over their reports. A small task with no run
+and no number for the map (a check, a count, a trivial edit) you may do yourself and log in one line; anything bigger, or
+anything that changes a number, a claim, the Contract or a job, is a ticket.
 
-The goal is the map's destination reached, or a measured answer that it can't be, with every ticket resolved the way the issue tracker resolves work.
+Each pass, for each map:
 
-The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed. Unlike a spec's tickets, the graph keeps growing: each answer clears fog, and the next questions become sharp.
-
-Start every subagent with a fresh context window.
-
-Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the map, tickets, research notes, and result files. Don't duplicate information already available via pointers.
-
-**Implementer subagents** should be run in the background where possible for maximum concurrency, at most 6 at once; spin them up as `docs/agents/delegation.md` says.
-
-Research runs for hours, so this skill works in **passes**: one call is one pass, and `/loop /research-drive <map>` repeats it. You do no ticket work yourself, so any fresh session can take over from the tracker. A trivial edit (wording, a typo, a link or path, a status the user dictated, a value that changes no result) needs no ticket: make it yourself and log it in one line. Anything that changes a number, a claim, the Contract, code on a result path, or starts or stops a job goes to a ticket.
-
-## Steps
-
-Each pass:
-
-1. Read the map and its tickets to understand the task graph. On the first pass, claim the map; if another live session holds it, stop and say so. If the map is paused, do only steps 2 and 8 until the user resumes it; if it is closed, end the loop.
-
-2. Check each running job the way the scope file says (alive, the progress file its Assets row names still moving, finished), and the GPUs of the nodes in use (owner, utilization, foreign processes on ours, step time against its reference). Idle granted GPUs are a finding. A finished job whose ticket nobody is working goes back to an implementer for its evaluation or close.
-
-3. Once an **implementer subagent** reports `done`, open the ticket and trust it, not the report. If its review passed (or `review` says it needs none, or lets it finish later), resolve it and advance the map as the wayfinder skill's "Work through the map" steps 4-5 say. A FAIL goes back to an implementer; on a task already resolved, it reopens the task, and the runs that use it stop: runs your own implementer subagents launched count as yours, any other needs the user's yes.
-
-4. Use a fresh **implementer subagent** for each frontier ticket that fits the map's Contract and is not on hold. Approve an experiment's pre-registration first (a dated line: approved by the driver, within the Contract). `grilling` and `prototype` tickets go to the user instead (ask the user). At most one GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind a GPU one.
-
-5. If the frontier is empty and the destination not reached, draft the next tickets from the fog and the latest answers (call the Skill tool with "to-tickets"), approve those inside the Contract, and kick off more **implementer subagents** on them. When two tickets that share one premise have failed the same check, write that premise in one sentence and make the next ticket test it, before a third variant on it. If every ticket is dead and nothing credible is left, recommend closing or re-scoping the map.
-
-6. Put what needs the user on the map as a `grilling` ticket, and tell the user in one line with a pointer: a decision, a cost on the always-ask list, a failure, nothing left inside the Contract, or, at once and even while tickets remain, enough evidence that the destination or Contract should change (the benchmark cannot show the effect, a baseline turns out invalid, the destination looks unreachable, results point to a better route). The user decides; re-charting is `/wayfinder <map> --rechart`.
-
-7. Past ~10 closed tickets, consolidate as `wayfinder --rechart` describes. It changes no decision, so do it without asking.
-
-8. Log one line in `scratch/agents/driver.log` (time, what changed), and end the pass with that same line: no summary, since nobody reads a looping driver's screen. Under `/loop`, wake at the next thing worth seeing (a job's expected finish or milestone), else in 20-30 min, and hourly when everything waits on the user. When the destination is reached, or a measured answer says it can't be, close the map as the tracker doc says and end the loop; also end it when the user says stop.
+1. **State:** read the map and its tickets. On the first pass claim the map; if another live session holds it, stop and
+   say so. A paused map gets only steps 2 and 6; a closed one leaves the loop.
+2. **Jobs:** check each running job the way the scope file says (alive, its progress file moving, finished) and the GPUs
+   in use; idle granted GPUs are a finding. A finished job nobody is working goes back to an implementer.
+3. **Merge:** a ticket reported done is resolved once its review passed (or `review` says it needs none, or can finish
+   later); advance the map as wayfinder's "Work through the map" says. A FAIL goes back to an implementer; a FAIL on a
+   resolved task reopens it and stops the runs that use it (your subagents' runs are yours; others need the user's yes).
+4. **Dispatch:** each frontier ticket inside the Contract and not on hold goes to a fresh implementer subagent, an
+   experiment once you approve its pre-registration (a dated line). `grilling` and `prototype` tickets go to the user.
+   One GPU-heavy ticket at a time unless the scope file allows more; a no-GPU ticket never waits behind one.
+5. **Next:** frontier empty and destination not reached: draft the next tickets from the fog and the latest answers
+   (`to-tickets`). When two tickets sharing one premise failed the same check, the next ticket tests that premise. Nothing
+   credible left: recommend closing or re-scoping. What needs the user (a decision, an always-ask cost, a failure, evidence
+   that the destination or Contract should change) becomes a `grilling` ticket and one line to them. Past ~10 closed
+   tickets, consolidate as `wayfinder --rechart` says.
+6. **Log:** one line in `scratch/agents/driver.log` (time, what changed), and end the pass with that line. Under `/loop`,
+   wake at the next thing worth seeing (a job's milestone), else in 20-30 min, hourly when everything waits on the user.
+   A destination reached, or measured unreachable: close that map as the tracker doc says. End the loop when no map is
+   left or the user says stop.

@@ -1,7 +1,7 @@
 ---
 name: team
 description: Start this session in a team role on a project: desk (talks to the human) or driver (drives a map on a schedule, opening a fresh worker session per ticket).
-argument-hint: "desk | driver <map>"
+argument-hint: "desk | driver <map> [map ...]"
 disable-model-invocation: true
 ---
 
@@ -30,17 +30,17 @@ You are the human's partner for this project for the rest of the session: the on
 - Do no ticket work. Edit only what does not change the project's course: handoff notes, summaries and results for the
   human, a typo. Everything else goes to the driver, which makes a trivial edit itself or files a ticket.
   When the human asks to plan with you, do it here (call the Skill tool with "grilling"); record the outcome as
-  `domain-modeling` says (a line, or an ADR when its three conditions hold), then send the driver `rechart` or `new` with its path.
+  a dated line in `docs/decisions.md`, then send the driver `rechart` or `new` with its path.
 - When the human says they are leaving (sleep, a trip), call the Skill tool with `away`; when they are back, give its brief.
 - Speak for the human only in their words: a decision they gave goes on as `(human, <UTC time>: "<their words>")`; anything
   else you suggest is a proposal the human approves.
 - Name sessions to the human by role (desk, the T11 driver, …), never by session id.
 
-## driver `<map>`
-You run `research-drive` on this map. Its implementer subagents are workers: a fresh session per ticket that you open
+## driver `<map> [map ...]`
+You run `research-drive` on these maps. Its implementer subagents are workers: a fresh session per ticket that you open
 and close as the protocol's Workers section says; the user is reached through the desk, which relays their words and
 never answers for them.
-- If the roster shows another live driver for this map, stop and say so.
+- If the roster shows another live driver for one of these maps, stop and say so.
 - Run one pass now (the Skill tool with `research-drive`, arguments `<map>`), then start the schedule: the Skill tool with
   `loop`, arguments `/research-drive <map>`. Codex: ask the human for the timer pane (protocol); run one pass per `tick`.
 - Tell the desk `driver up for <map>`. Workers' lines (`done`, `running`) are merged as in `research-drive`, then the

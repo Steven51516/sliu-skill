@@ -1,7 +1,7 @@
 # Team protocol: desk (A), driver (B), workers
 
 Long-lived agent sessions on one project, each with one job, so none of them fills its context: the **desk**, which the
-human talks to; one **driver** per active map; and **workers**, a fresh session per ticket that the driver opens and
+human talks to; a **driver** for one or several maps (one driver can drive every open map); and **workers**, a fresh session per ticket that the driver opens and
 closes. Started with the `team` skill (`/team <role>` in Claude Code), or by typing `team-up <map>` (e.g. `team-up T8`)
 in a herdr pane in the project folder; workers' tabs come and go as tickets start and finish.
 
@@ -19,7 +19,7 @@ the map.
 | role | started with | does | writes | never |
 |---|---|---|---|---|
 | **desk** (A) | `/team desk` | the human's partner: reports state, discusses results, diagnoses and the route, turns the human's decisions into instructions for a driver, relays what drivers report | its roster line; handoff notes, summaries for the human, typos | ticket work, edits that change the project's course |
-| **driver** (B) | `/team driver <map>` | runs `/research-drive <map>` under `/loop`: approves tickets within the map's Contract, opens a worker per ticket, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, trivial edits (no ticket needed), `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
+| **driver** (B) | `/team driver <map> [map ...]` | runs `/research-drive <map>` under `/loop`: approves tickets within the map's Contract, opens a worker per ticket, merges reviewed answers into the map, carries out the desk's instructions | `map.md`, new ticket drafts, trivial edits (no ticket needed), `STATUS.md` (generated), `scratch/agents/driver.log` | ticket work |
 | **worker** | opened by the driver | `/research-work <ticket>` in a fresh session, delegating inside it as `docs/agents/delegation.md` says | its ticket folder | `map.md`, other tickets |
 
 ## Workers

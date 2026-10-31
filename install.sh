@@ -7,10 +7,9 @@ AGENTS_DEST="$HOME/.agents/skills"   # Codex and other Agent Skills-compatible h
 # Every rule and skill refers to ~/research-harness; point it here when the harness lives elsewhere.
 if [[ ! -e "$HOME/research-harness" ]]; then ln -s "$HERE" "$HOME/research-harness"; echo "linked  ~/research-harness -> $HERE"; fi
 mkdir -p "$DEST" "$AGENTS_DEST"
-# team-up (start a team in herdr), research-status and research-migrate as commands on PATH
+# research-status, codex-run and the team commands (team-up, team-worker, team-watch) on PATH
 mkdir -p "$HOME/.local/bin"; chmod +x "$HERE/tools/team-up.sh"; ln -sfn "$HERE/tools/team-up.sh" "$HOME/.local/bin/team-up"
 chmod +x "$HERE/tools/status.py"; ln -sfn "$HERE/tools/status.py" "$HOME/.local/bin/research-status"
-chmod +x "$HERE/tools/migrate_to_maps.py"; ln -sfn "$HERE/tools/migrate_to_maps.py" "$HOME/.local/bin/research-migrate"
 chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.local/bin/codex-run"
 chmod +x "$HERE/tools/team-watch.py"; ln -sfn "$HERE/tools/team-watch.py" "$HOME/.local/bin/team-watch"
 chmod +x "$HERE/tools/team-worker.py"; ln -sfn "$HERE/tools/team-worker.py" "$HOME/.local/bin/team-worker"
