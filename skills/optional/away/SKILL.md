@@ -1,21 +1,17 @@
 ---
 name: away
 description: "The user is stepping away (sleep, a meeting, a trip): keep the maps moving without them, park what needs them with everything prepared, and brief them when they are back. Use when the user says they are going away, going to sleep, or leaving it running."
-argument-hint: "[--go] [map]"
 ---
 
 The user is stepping away. Work keeps going on everything that does not need them; what needs them waits, prepared, for
 one brief when they are back.
 
-## Before they go
+## When they go
 
-Unless the user said `--go`, propose the plan for the time away in one short message: per map, the tickets you will work,
-the runs you will start, and what you will leave for them. Wait for their yes ("yes" accepts it as proposed). With
-`--go`, skip this and carry on with the current maps as they stand.
-
-Then make sure nothing will stall unattended work: a launch the map's Contract does not already allow is approved now or
-left out; the machine stays awake; in a team, `team-watch` is running. Record the start as one dated line in each map's
-Decisions so far, `(human, <UTC time>: "away")`, and in `scratch/agents/away.md` with the agreed plan (or "current maps").
+Don't plan with them: carry on with the current maps as they stand. Make sure nothing will stall unattended work: the
+machine stays awake, and in a team `team-watch` is running. Record the start as one dated line in each map's Decisions so
+far, `(human, <UTC time>: "away")`, and in `scratch/agents/away.md`. Reply in one line: what keeps running and what will
+wait for them.
 
 ## While they are away
 
