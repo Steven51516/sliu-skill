@@ -392,7 +392,7 @@ def project_state(p, with_agents=True):
         fr = {k.get("id") for k in frontier.get(m.get("id")) or []}
         for t in tickets:
             t["frontier"] = t["id"] in fr
-            t["waiting"] = t["type"] in tracker.HITL and t["status"] not in tracker.CLOSED
+            t["waiting"] = t["type"] in tracker.HITL and t["status"] not in tracker.CLOSED | tracker.HUMAN_ONLY   # held: parked by the human
             if t["waiting"]:
                 waiting.append({"kind": "ticket", "map": m.get("id"), "map_folder": folder, "id": t["id"],
                                 "text": t["title"], "path": t["path"], "folder": t["folder"]})

@@ -338,7 +338,7 @@ def render_now(maps, frontier, problems):
     """What is live: printed, never stored."""
     out = []
     waiting = [(m.get("id"), f"{k.get('title')} ({k['_path']})") for m in maps for k in m["_tickets"]
-               if type_of(k) in HITL and status_of(k) not in CLOSED]
+               if type_of(k) in HITL and status_of(k) not in CLOSED | HUMAN_ONLY]   # held: the human parked it
     waiting += [(m.get("id"), n) for m in maps for n in m["_needs"]]
     out.append("Waiting on you:")
     out += [f"  {mid}  {w}" for mid, w in waiting[:MAX_WAITING]] or ["  nothing open"]
