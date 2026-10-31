@@ -27,10 +27,10 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | open a new map from a loose idea (it interviews you) | `/wayfinder "<loose idea>"` |
 | add a ticket | `/to-tickets <map> "<question>"` |
 | work one ticket | `/research-work <ticket>` |
-| **default:** work maps in one session, a fresh subagent per ticket | `/loop /research-drive <map> [map ...]` |
+| **default:** work a map in one session, a fresh subagent per ticket | `/loop /research-drive <map>` |
 | leave it running while you sleep or travel | `/away` (or `/away --go`) |
 | re-plan a map | `/wayfinder <map> --rechart` |
-| optional: a team (a desk you talk to, a driver for one or several maps, worker tabs) | `team-up <map>` in a herdr pane, or `/team <role>` |
+| optional: a team (a desk you talk to, a driver per map in its own tab, worker tabs) | `team-up <map>` in a herdr pane, or `/team <role>` |
 | work from one desktop app: every project, maps as DAGs, tickets, Mac and server files, chat with any agent, terminals, GPUs, teams by click | the **Research Desk** app (`research-gui` opens it; build once with `cd tools/gui/app && npm install && npm run pack`; projects in `~/.config/research-gui/projects.toml`) |
 
 ## Skills

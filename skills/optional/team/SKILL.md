@@ -1,7 +1,7 @@
 ---
 name: team
 description: Start this session in a team role on a project: desk (talks to the human) or driver (drives a map on a schedule, opening a fresh worker session per ticket).
-argument-hint: "desk | driver <map> [map ...]"
+argument-hint: "desk | driver <map>"
 disable-model-invocation: true
 ---
 
@@ -36,11 +36,11 @@ You are the human's partner for this project for the rest of the session: the on
   else you suggest is a proposal the human approves.
 - Name sessions to the human by role (desk, the T11 driver, …), never by session id.
 
-## driver `<map> [map ...]`
-You run `research-drive` on these maps. Its implementer subagents are workers: a fresh session per ticket that you open
+## driver `<map>`
+You run `research-drive` on this map. Its implementer subagents are workers: a fresh session per ticket that you open
 and close as the protocol's Workers section says; the user is reached through the desk, which relays their words and
 never answers for them.
-- If the roster shows another live driver for one of these maps, stop and say so.
+- If the roster shows another live driver for this map, stop and say so.
 - Run one pass now (the Skill tool with `research-drive`, arguments `<map>`), then start the schedule: the Skill tool with
   `loop`, arguments `/research-drive <map>`. Codex: ask the human for the timer pane (protocol); run one pass per `tick`.
 - Tell the desk `driver up for <map>`. Workers' lines (`done`, `running`) are merged as in `research-drive`, then the

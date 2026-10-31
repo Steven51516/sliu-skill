@@ -1,23 +1,23 @@
 ---
 name: research-drive
-description: "Work research maps' tickets in parallel: dispatch the frontier, merge answers into the map, and file the next tickets as the fog clears. One pass per call, over one map or several."
-argument-hint: "<map> [map ...]"
+description: "Work a research map's tickets in parallel: dispatch the frontier, merge answers into the map, and file the next tickets as the fog clears. One pass per call."
+argument-hint: "<map>"
 ---
 
-You drive one or more maps. Their tickets are a **task graph**: there is always a **frontier** ready to start, and each
-answer clears fog for the next questions. The goal is each destination reached, or a measured answer that it can't be.
+You drive one map. Its tickets are a **task graph**: there is always a **frontier** ready to start, and each
+answer clears fog for the next questions. The goal is its destination reached, or a measured answer that it can't be.
 The issue tracker should have been provided to you; if not, tell the user to run `/research-init`.
 
-One call is one **pass**; `/loop /research-drive <maps>` repeats it. Keep your own context small: each ticket goes to a
+One call is one **pass**; `/loop /research-drive <map>` repeats it. Keep your own context small: each ticket goes to a
 fresh **implementer subagent** (as `docs/agents/delegation.md` says, in the background, at most 6 at once), you talk to
 them through pointers (map, ticket, result files), and you trust the files over their reports. A small task with no run
 and no number for the map (a check, a count, a trivial edit) you may do yourself and log in one line; anything bigger, or
 anything that changes a number, a claim, the Contract or a job, is a ticket.
 
-Each pass, for each map:
+Each pass:
 
 1. **State:** read the map and its tickets. On the first pass claim the map; if another live session holds it, stop and
-   say so. A paused map gets only steps 2 and 6; a closed one leaves the loop.
+   say so. A paused map gets only steps 2 and 6; a closed one ends the loop.
 2. **Jobs:** check each running job the way the scope file says (alive, its progress file moving, finished) and the GPUs
    in use; idle granted GPUs are a finding. A finished job nobody is working goes back to an implementer.
 3. **Merge:** a ticket reported done is resolved once its review passed (or `review` says it needs none, or can finish
@@ -33,5 +33,5 @@ Each pass, for each map:
    tickets, consolidate as `wayfinder --rechart` says.
 6. **Log:** one line in `scratch/agents/driver.log` (time, what changed), and end the pass with that line. Under `/loop`,
    wake at the next thing worth seeing (a job's milestone), else in 20-30 min, hourly when everything waits on the user.
-   A destination reached, or measured unreachable: close that map as the tracker doc says. End the loop when no map is
-   left or the user says stop.
+   The destination reached, or measured unreachable: close the map as the tracker doc says and end the loop; also end it
+   when the user says stop.
