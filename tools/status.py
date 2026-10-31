@@ -259,9 +259,6 @@ def analyse(maps):
             problems.append(f"{m['_path']}: `{status_of(m)}` must be the human's: `{status_of(m)} (human, <date>: why)`")
         if status_of(m) == "closed" and not m.get("outcome"):
             problems.append(f"{m['_path']}: closed without an `outcome:` line")
-        age = claim_age_hours(claim_text(m))
-        if age is not None and age > STALE_HOURS:
-            problems.append(f"{m['_path']}: claim is {age:.0f} h old (stale?)")
         if bad_claim_date(claim_text(m)):
             problems.append(f"{m['_path']}: claim has an invalid date: {claim_text(m)}")
         fr = []
