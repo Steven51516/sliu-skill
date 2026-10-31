@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """team-worker: open a worker for one ticket, or rescue a stopped one, and check that it really started.
 
-  team-worker <ticket path>          a new tab labelled with the ticket id, logged in from the Keychain, on Opus 5.5
+  team-worker <ticket path>          a new tab labelled with the ticket id, logged in (macOS: from the Keychain), on Opus 5.5
                                      (an explicit --model, so a /model elsewhere cannot change it), told to work the
                                      ticket and to report to the calling driver with one line:
                                      `done|running|blocked <id>: <path of the file that holds the result>`
@@ -38,8 +38,11 @@ def ticket_id(path):
 
 
 def token():
-    r = subprocess.run(["security", "find-generic-password", "-a", os.environ.get("USER", ""), "-s", "claude-code-oauth",
-                        "-w"], capture_output=True, text=True)
+    try:
+        r = subprocess.run(["security", "find-generic-password", "-a", os.environ.get("USER", ""), "-s",
+                            "claude-code-oauth", "-w"], capture_output=True, text=True)
+    except FileNotFoundError:          # not macOS: claude reads its own login file in every tab
+        return None
     return r.stdout.strip() if r.returncode == 0 else None
 
 
@@ -61,7 +64,7 @@ def open_worker(path):
     tok = token()
     if tok:
         env = ["--env", f"CLAUDE_CODE_OAUTH_TOKEN={tok}"]
-    elif not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    elif sys.platform == "darwin" and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         fail("no login token: neither the Keychain item claude-code-oauth nor CLAUDE_CODE_OAUTH_TOKEN is set")
     out = herdr("tab", "create", "--workspace", os.environ.get("HERDR_WORKSPACE_ID", ""), "--cwd", here, "--label", tid,
                 "--no-focus", *env)
