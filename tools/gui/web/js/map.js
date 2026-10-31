@@ -46,6 +46,7 @@ function linkTo(path, side) {
 function renderHead(m) {
   const el = $("#mhead");
   if (!el) return;
+  $("#map-root").classList.toggle("tkopen", S.route.tab === "dag" && !!S.route.ticket);   // a ticket open: header to one line
   const live = ["open", "claimed"].includes(m.status);
   const tab = S.route.tab;
   const n = m.tickets.length, done = m.counts.resolved || 0, running = (m.counts.running || 0) + (m.counts.claimed || 0);
@@ -54,8 +55,8 @@ function renderHead(m) {
       <div class="sub"><span class="mono">${esc(m.id)}</span> · ${pill(m.driven ? "working" : m.status, m.driven ? "driver live" : m.status)}
         ${m.status === "paused" ? `<span class="muted">${esc((m.status_text || "").replace(/^paused\s*/, ""))}</span>` : ""}
         · ${done}/${n} resolved${running ? ` · ${running} running` : ""}${ready ? ` · ${ready} ready` : ""}${waiting ? ` · <span class="err">${waiting} need you</span>` : ""}</div>
-      <div style="margin-top:6px;color:var(--ink-2);font-size:12.5px;max-width:980px">${esc(m.status === "closed" ? "Outcome: " + (m.outcome || "") : m.destination)}</div>
-      ${workersOf(m).length ? `<div class="actions" style="margin-top:8px"><span class="muted" style="font-size:12px">Workers</span>${workersOf(m).map((w) =>
+      <div class="mdest" style="margin-top:6px;color:var(--ink-2);font-size:12.5px;max-width:980px">${esc(m.status === "closed" ? "Outcome: " + (m.outcome || "") : m.destination)}</div>
+      ${workersOf(m).length ? `<div class="actions mworkers" style="margin-top:8px"><span class="muted" style="font-size:12px">Workers</span>${workersOf(m).map((w) =>
         `<button class="btn sm" data-wpane="${esc(w.pane)}" title="${esc(w.ticket_title || "")} · ${esc(AGENT_WORD[w.status] || w.status)}"><span class="dot ${safeCls(w.status)}"></span>${esc(w.ticket)}</button>`).join("")}</div>` : ""}</div>
     <div class="actions">
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
@@ -168,8 +169,8 @@ function drawDag(m, keepView) {
       <path d="M0,0 L10,5 L0,10 z" fill="var(--line-2)"/></marker></defs><g id="vp">${edges}${nodes}</g></svg>
     <div class="floatbar" style="top:12px;left:12px"><button class="btn ghost sm icon" id="zout" title="Zoom out">−</button>
       <button class="btn ghost sm icon" id="zin" title="Zoom in">+</button><button class="btn ghost sm" id="fit" title="Show the whole map">Fit</button>
-      ${nClosed ? `<label><input type="checkbox" id="showclosed" ${M.showClosed ? "checked" : ""}> parked / superseded (${nClosed})</label>` : ""}
-      <span class="muted">${m.tickets.length} tickets · ${m.fog.length} in fog</span></div>
+      ${nClosed ? `<label title="Show parked and superseded tickets"><input type="checkbox" id="showclosed" ${M.showClosed ? "checked" : ""}> <span class="wide">parked / superseded </span>(${nClosed})</label>` : ""}
+      <span class="muted wide">${m.tickets.length} tickets · ${m.fog.length} in fog</span></div>
     <div class="floatbar legend"><span><i style="background:var(--c-open)"></i>open</span><span><i style="background:var(--c-work)"></i>running</span>
       <span><i style="background:var(--c-held)"></i>held</span><span><i style="background:var(--c-ok)"></i>resolved</span>
       <span><i style="border:2px solid var(--c-alert)"></i>needs you</span><span><i style="border:1px dashed var(--muted)"></i>fog</span></div>`;

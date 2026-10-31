@@ -589,3 +589,18 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 .askrow { align-items: flex-start; }
 .askopts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .dot.unread { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* a ticket open on the graph: the map header shrinks to its title line, and the ticket gets most of the width */
+#map-root.tkopen .mhead { padding-top: 10px; }
+#map-root.tkopen .mhead .ph { margin-bottom: 4px; }
+#map-root.tkopen .mhead .ph .grow { min-width: 0; }
+#map-root.tkopen .mhead .ph h1 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#map-root.tkopen .mhead .mdest, #map-root.tkopen .mhead .mworkers { display: none; }
+.tabbody { container-type: inline-size; }
+.panel { width: clamp(400px, 55%, 760px); }
+@container (max-width: 960px) { .panel { width: 68%; } }
+@container (max-width: 620px) { .panel { width: 100%; } }
+/* a narrow graph (chat and ticket open): toolbar and legend keep to one line */
+.dagwrap { container-type: inline-size; }
+.dagwrap .floatbar { white-space: nowrap; }
+@container (max-width: 520px) { .dagwrap .floatbar .wide { display: none; } .dagwrap .legend { display: none; } }
