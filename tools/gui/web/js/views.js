@@ -201,7 +201,7 @@ export function renderInbox() {
     ${asks.length ? `<div class="sec"><h2>Questions on your phone</h2><span class="meta">Moshi mode: answer on the phone, or here</span></div><div class="card rows">${asks.map((q) => `<div class="row askrow">
       ${icon("phone")}<div class="grow"><div class="t1">${esc(q.question)}</div><div class="t2">${esc(q.label || "")} · asked ${esc(ago(q.t))}</div>
       <div class="askopts">${q.options.map((o, i) => `<button class="btn sm ${i === 0 ? "primary" : ""}" data-ask="${esc(q.id)}" data-opt="${esc(o)}">${esc(o)}</button>`).join("")}</div></div></div>`).join("")}</div>` : ""}
-    ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a driver missed its pass, or a pass died (network, sleep)</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
+    ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a pass is overdue, or Claude returned an API error</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2 err">${esc(loopNote(a))}</div></div>
       <button class="btn sm primary" data-restart="${esc(a.pane)}">Restart loop</button></div>`).join("")}</div>` : ""}
     ${tickets.length ? `<div class="sec"><h2>Decisions waiting</h2><span class="meta">grilling tickets and needs-you items</span></div><div class="card rows">${tickets.map((w) => `<div class="row click" data-project="${esc(w.project)}" data-map="${esc(w.map_folder)}" data-ticket="${esc(w.folder || "")}">

@@ -77,7 +77,10 @@ export const AGENT_WORD = { blocked: "needs you", working: "working", idle: "idl
 export const fmtDur = (s) => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
 // "Codex running · 9 min" when the agent's delegated Codex job is still going (its own screen may say idle)
 // an Opus safeguard flag in the last two hours (biology work trips them falsely now and then)
+// Claude Code's own "API Error: ..." reply, until a real reply follows (an account block stops every loop)
+export const apiNote = (a) => a?.api_error ? `⚠ API error: ${(a.api_error.text || "").replace(/^API Error:\s*/i, "").split(/\. /)[0]}` : "";
 export const guardNote = (a) => {
+  if (apiNote(a)) return apiNote(a);
   const g = a?.safeguard;
   if (!g || Date.now() - Date.parse(g.ts) > 2 * 3600 * 1000) return "";
   return g.kind === "fallback" ? "⚠ Opus safeguards: an older model is answering" : "⚠ Opus safeguards stopped a reply";
@@ -87,10 +90,11 @@ const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digi
 export const loopNote = (a) => {
   const l = a?.loop;
   if (!l) return "";
+  if (a.api_error && l.state !== "ended") return apiNote(a);
   return { scheduled: `next pass ${l.fallback ? "~" : ""}${hhmm(l.due)}`, running: "pass running",
     missed: l.fired && !l.fallback ? `⚠ loop pass from ${hhmm(l.fired)} still running` : `⚠ loop missed its ${hhmm(l.due)} pass`, ended: "loop ended" }[l.state] || "";
 };
-export const loopDead = (a) => a?.loop?.state === "missed";
+export const loopDead = (a) => a?.loop?.state === "missed" || (!!a?.api_error && !!a?.loop && a.loop.state !== "ended");
 export const codexNote = (a) => a?.codex?.length ? `Codex running · ${fmtDur(Math.max(...a.codex.map((r) => r.seconds)))}` : "";
 
 // ---------- routing: #/inbox  #/gpus  #/settings  #/p/<project>[/files | /map/<folder>[/<tab>[/<ticket>]]] ----------

@@ -300,7 +300,7 @@ def last_safeguard(path):
     st = _guards.get(path)
     if not st or size < st["size"]:
         st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False, "turn_end": None,
-                              "wake": None, "fired": None}
+                              "wake": None, "fired": None, "api_error": None}
     if size > st["size"]:
         with open(path, "rb") as f:
             f.seek(st["size"])
@@ -308,6 +308,16 @@ def last_safeguard(path):
         end = data.rfind(b"\n")
         if end >= 0:
             for line in data[:end].split(b"\n"):
+                if b'"isApiErrorMessage":true' in line:          # Claude Code's own "API Error: ..." reply
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    text = "".join(c.get("text", "") for c in (d.get("message") or {}).get("content") or [] if isinstance(c, dict))
+                    st["api_error"] = {"ts": d.get("timestamp"), "text": text.strip()}
+                    continue
+                if st["api_error"] and b'"type":"assistant"' in line:
+                    st["api_error"] = None                       # a real reply since: Claude answers again
                 if b"safeguards" in line:
                     try:
                         ev = safeguard_event(json.loads(line))
@@ -347,6 +357,13 @@ def last_safeguard(path):
     return None if st["resolved"] else st["last"]
 
 
+def last_api_error(path):
+    """The agent's latest "API Error: ..." reply ({ts, text}) if no real reply has come since, from the same scan."""
+    last_safeguard(path)
+    st = _guards.get(path)
+    return st["api_error"] if st else None
+
+
 def last_turn_end(path):
     """When the agent last finished a turn (its latest turn_duration line), from the same incremental scan."""
     last_safeguard(path)
@@ -374,10 +391,10 @@ def loop_state(path, now=None):
     out = {"prompt": w["prompt"], "reason": w["reason"], "set_at": w["at"]}
     if w["stop"]:
         return dict(out, state="ended")
-    due = at + float(w["delay"])
+    due = at + min(3600.0, max(60.0, float(w["delay"])))   # ScheduleWakeup clamps to 60 s - 1 h
     out["due"] = _dt.datetime.fromtimestamp(due, _dt.timezone.utc).isoformat().replace("+00:00", "Z")
     fired = ts(st["fired"]) if st["fired"] else 0
-    slack = 300
+    slack = 900                                       # a pass can fire ~10 min late (seen when the Mac was busy)
     if fired >= at:                                   # the wakeup fired, and its pass has set no next one (yet)
         out["fired"] = st["fired"]
         end = ts(st["turn_end"]) if st["turn_end"] else 0

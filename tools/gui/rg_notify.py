@@ -18,13 +18,14 @@ KINDS = {   # kind -> (label, what it means, default channels, default sound); I
     "reply": ("Reply to your message", "an agent finishes the turn you started from the app", ["banner", "sound", "push"], "Glass"),
     "decision": ("New decision for you", "a grilling or prototype ticket appears", ["banner", "push"], "Ping"),
     "loop": ("A loop went quiet", "a driver missed a pass, or a pass died", ["banner", "sound", "push"], "Basso"),
+    "api_error": ("Claude API error", "a session's request failed (account blocked, rate limit, outage); its loop stops", ["banner", "sound", "push"], "Basso"),
     "safeguard": ("Safeguard flag", "Opus's safeguards stopped a reply or switched the model", ["banner", "push"], "Funk"),
     "desk_reply": ("Every desk reply", "the desk finishes any turn", [], "Glass"),
     "any_reply": ("Every reply from any agent", "any session finishes a turn", [], "Tink"),
     "result": ("Results", "a ticket resolves or a map closes", ["banner"], "Hero"),
     "progress": ("Other ticket changes", "a ticket starts running, is held or parked", [], "Pop"),
 }
-INBOX = ["prompt", "decision", "loop", "safeguard"]   # what waits on the human (a reply to them does not)
+INBOX = ["prompt", "decision", "loop", "api_error", "safeguard"]   # what waits on the human (a reply to them does not)
 SOUNDS = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse", "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
 MOSHI_URL = "https://api.getmoshi.app/api/webhook"
 KEYCHAIN = "moshi-push"

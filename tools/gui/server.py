@@ -210,7 +210,8 @@ def agent_view(a, snap, ros):
             "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value")), "safeguard": guard_of(a),
             "session_id": (a.get("agent_session") or {}).get("value"),
             "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None,
-            "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None}
+            "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None,
+            "api_error": rg_chat.last_api_error(transcript_of(a)) if transcript_of(a) else None}
 
 
 def transcript_of(a):
@@ -1483,6 +1484,9 @@ def diff_events(prev, now):
         ls, lb = (a.get("loop") or {}).get("state"), (b.get("loop") or {}).get("state")
         if ls == "missed" and ls != lb:
             emit("loop", f"{who}: its loop missed a pass{tail}", "Restart it from the app", **where)
+        e, eb = a.get("api_error"), b.get("api_error")
+        if e and (not eb or e.get("ts") != eb.get("ts")):
+            emit("api_error", f"{who}: Claude API error{tail}", e.get("text", ""), **where)
         g, gb = a.get("safeguard"), b.get("safeguard")
         if g and (not gb or g.get("ts") != gb.get("ts")):
             emit("safeguard", f"{who}: Opus safeguards{tail}", g.get("text", ""), **where)
