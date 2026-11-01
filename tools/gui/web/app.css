@@ -609,3 +609,5 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 body.remote-project :is(#mh-driver, #mh-ask, #mh-ticket, #mh-driverchat, #tp-ask, #tp-work, #tp-review, #tp-answer, #ch-start) { display: none !important; }
 .nav .rhost { font-size: 10.5px; color: var(--muted); margin-left: 6px; padding: 0 5px; border: 0.5px solid var(--line-2); border-radius: 6px; }
 body.remote-project [data-driver] { display: none !important; }
+.nav .muted-ico { color: var(--muted); display: inline-flex; margin-left: 4px; }
+.nav .muted-ico svg { width: 13px; height: 13px; }

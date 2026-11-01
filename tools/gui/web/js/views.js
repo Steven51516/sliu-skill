@@ -51,7 +51,7 @@ export function renderOverview() {
       ${statChip(d.waiting.length, "need you", "alert")}${statChip(running.length, "running", "work")}${statChip(ready.length, "ready", "open")}
       ${statChip(open.length, "open maps", "")}${statChip(`${working}/${d.agents.length}`, "agents working", working ? "work" : "")}</div>
     <div class="cols" style="margin-top:6px"><div>
-      ${d.waiting.length ? `<div class="sec"><h2>Needs you</h2></div><div class="card rows">${d.waiting.map(waitingRow).join("")}</div>` : ""}
+      ${d.waiting.length ? `<div class="sec"><h2>Needs you</h2>${d.muted ? `<span class="meta">${icon("belloff")} muted: kept out of the Inbox and alerts</span>` : ""}</div><div class="card rows">${d.waiting.map(waitingRow).join("")}</div>` : ""}
       ${ch.since && ch.items.length ? changesBlock(ch, tickets) : ""}
       ${running.length ? `<div class="sec"><h2>Running</h2></div><div class="card rows">${running.map((t) => `<div class="row click" data-map="${esc(t.map.folder)}" data-ticket="${esc(t.folder)}">
           <span class="mono muted">${esc(t.id)}</span><div class="grow"><div class="t1">${esc(t.title)}</div>${t.jobs.length ? `<div class="t2 mono">${esc(t.jobs.slice(-2).join(" · "))}</div>` : ""}</div>${pill(t.status)}</div>`).join("")}</div>` : ""}
@@ -99,6 +99,9 @@ export function renderOverview() {
     { label: "Reveal in Finder", icon: "folder", run: () => post("/api/reveal", { project: d.name, path: "" }) },
     "-",
     { label: "Mark everything as seen", icon: "check", run: () => post("/api/seen", { project: d.name }).then(() => hooks.refresh()) },
+    { label: d.muted ? "Unmute its Inbox items" : "Mute its Inbox items", icon: d.muted ? "bell" : "belloff",
+      hint: d.muted ? "" : "e.g. until you re-chart it", run: () => post("/api/project-inbox", { project: d.name, muted: !d.muted })
+        .then(() => { toast(d.muted ? `${d.name}: back in the Inbox` : `${d.name}: muted`); hooks.refresh(); }).catch((e) => toast(e.message, "err")) },
   ], { right: true });
   if (!ch.since) post("/api/seen", { project: d.name }).catch(() => {});   // first visit: start tracking from now
   loadMiniGpus();
@@ -197,7 +200,8 @@ export function renderInbox() {
   const host = $("#view"), sum = S.summary;
   if (!sum) { host.innerHTML = `<div class="empty big"><div class="spin"></div></div>`; return; }
   const blocked = allAgents().filter((a) => a.status === "blocked");
-  const tickets = sum.projects.flatMap((p) => (p.waiting || []).filter((w) => w.kind !== "agent").map((w) => ({ ...w, project: p.name })));
+  const tickets = sum.projects.filter((p) => !p.muted).flatMap((p) => (p.waiting || []).filter((w) => w.kind !== "agent").map((w) => ({ ...w, project: p.name })));
+  const muted = sum.projects.filter((p) => p.muted && (p.waiting || []).some((w) => w.kind !== "agent"));
   const changed = sum.projects.filter((p) => p.changes);
   const loops = allAgents().filter((a) => loopDead(a));
   const asks = sum.asks || [];
@@ -217,6 +221,7 @@ export function renderInbox() {
     ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a pass is overdue, or Claude returned an API error</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2 err">${esc(loopNote(a))}</div></div>
       <button class="btn sm primary" data-restart="${esc(a.pane)}">Restart loop</button></div>`).join("")}</div>` : ""}
+    ${muted.length ? `<div class="muted" style="font-size:12px;margin:14px 2px 0">${icon("belloff")} Muted: ${muted.map((p) => `<a href="${href({ project: p.name })}">${esc(p.name)}</a> (${p.waiting.filter((w) => w.kind !== "agent").length})`).join(", ")}. Unmute from its page.</div>` : ""}
     ${tickets.length ? `<div class="sec"><h2>Decisions waiting</h2><span class="meta">grilling tickets and needs-you items</span></div><div class="card rows">${tickets.map((w) => `<div class="row click" data-project="${esc(w.project)}" data-map="${esc(w.map_folder)}" data-ticket="${esc(w.folder || "")}">
       ${pill("waiting", w.project)}<div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.id || w.map)}</div></div></div>`).join("")}</div>` : ""}
     ${changed.length ? `<div class="sec"><h2>Changed since you last looked</h2></div><div class="card rows">${changed.map((p) => `<a class="row click" href="${href({ project: p.name })}" style="color:inherit;text-decoration:none">

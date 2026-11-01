@@ -84,6 +84,7 @@ def load_config():
         p["path"] = os.path.expanduser(p["path"])
         p.setdefault("shared", [])
         p.setdefault("server_maps", "maps")
+        p["muted"] = p.get("inbox") is False       # inbox = false: its tickets stay out of the Inbox and alerts
     return cfg
 
 
@@ -476,7 +477,8 @@ def project_state(p, with_agents=True):
     return {"name": p["name"], "path": p["path"], "server": p.get("server"), "server_root": p.get("server_root"), "team": team,
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
             "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
-            "keychain": keychain_has(), "dry_run": ARGS.dry_run, "remote": remote_info(p) if p.get("remote_host") else None}
+            "keychain": keychain_has(), "dry_run": ARGS.dry_run, "remote": remote_info(p) if p.get("remote_host") else None,
+            "muted": p["muted"]}
 
 
 def projects_summary():
@@ -490,7 +492,7 @@ def projects_summary():
             out.append({"name": name, "ok": True, "path": p["path"], "waiting": s["waiting"], "agents": s["agents"], "states": states,
                         "open_maps": sum(m["status"] != "closed" for m in s["maps"]),
                         "running": sum(t["status"] in ("running", "claimed") for m in s["maps"] for t in m["tickets"]),
-                        "changes": len(s["changes"]["items"]), "server": p.get("server"), "remote": s["remote"]})
+                        "changes": len(s["changes"]["items"]), "server": p.get("server"), "remote": s["remote"], "muted": p["muted"]})
         except Exception as e:  # one broken project must not hide the others
             out.append({"name": name, "ok": False, "error": str(e), "waiting": [], "agents": [],
                         "remote": remote_info(p) if p.get("remote_host") else None})
@@ -636,6 +638,22 @@ def new_project(b):
     add_project({"name": name, "path": path, "server": b.get("server"), "server_root": b.get("server_root"),
                  "server_maps": "tracks", "shared": ["common"]})
     return {"ok": True, "name": name, "path": path}
+
+
+def set_inbox(b):
+    """Mute or unmute a project's Inbox items: `inbox = false` in its [projects.<name>] block (or the line removed)."""
+    name = b.get("project")
+    project(name)
+    lines = open(CONFIG).read().split("\n")
+    start = next((i for i, l in enumerate(lines) if l.strip() == f"[projects.{name}]"), None)
+    if start is None:
+        raise ApiError(400, f"no [projects.{name}] block in {CONFIG}")
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].lstrip().startswith("[")), len(lines))
+    body = [l for l in lines[start + 1:end] if not re.match(r"\s*inbox\s*=", l)]
+    if b.get("muted"):
+        body.insert(0, "inbox = false   # muted in Research Desk: its tickets stay out of the Inbox and alerts")
+    save_config("\n".join(lines[:start + 1] + body + lines[end:]))
+    return {"ok": True, "muted": bool(b.get("muted"))}
 
 
 # ---------- what changed since the human last looked ----------
@@ -1597,7 +1615,8 @@ def monitor_view():
             s = project_state(p)
         except Exception:
             continue
-        view["projects"].add(name)
+        if not p["muted"]:
+            view["projects"].add(name)                 # muted: its tickets are skipped below (a baseline that never moves)
         for a in s["agents"]:
             view["agents"][a["pane"]] = dict(a, project=name)
         for m in s["maps"]:
@@ -1943,6 +1962,8 @@ class Handler(BaseHTTPRequestHandler):
             if not r["ok"]:
                 raise ApiError(502, f"push failed: {r['error']}")
             return r
+        if path == "/api/project-inbox":
+            return set_inbox(b)
         if path == "/api/remote-sync":
             p = project(b.get("project"))
             if not p.get("remote_host"):
