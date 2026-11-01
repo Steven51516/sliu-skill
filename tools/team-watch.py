@@ -138,9 +138,12 @@ def tick(pane, agent, ticks, warned):
     ticks[pane] = time.time()
 
 
+LOCK = os.path.join("scratch", "agents", "team-watch.pid")   # also the heartbeat: touched every cycle
+
+
 def single():
     """Only one team-watch per project: two would both restart the same driver."""
-    lock = os.path.join("scratch", "agents", "team-watch.pid")
+    lock = LOCK
     try:
         other = int(open(lock).read().strip())
         os.kill(other, 0)
@@ -162,6 +165,7 @@ def main():
     restarts, ticks, warned, seen = {}, {}, set(), os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
     while True:
+        os.utime(LOCK)        # a session that cannot list processes (Codex's sandbox) reads this file's age instead
         if os.path.exists(LOG) and os.path.getsize(LOG) > seen:     # show the driver's log as it grows
             with open(LOG) as f:
                 f.seek(seen)

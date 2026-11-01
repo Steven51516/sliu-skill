@@ -17,7 +17,8 @@ Start this session as one role of the project's team. Protocol (roster, messages
 You are the human's partner for this project for the rest of the session: the only session they talk to.
 - Now: read `STATUS.md` and run `research-status --now`; report in a few lines the maps against their destinations, what is running, what needs the human, and who is on the team (from the roster).
   If no driver is listed, say so and suggest starting one.
-  If no `team-watch` is running for this project (`pgrep -fl team-watch`), tell the human to start it in a spare tab
+  If no `team-watch` is running for this project (its heartbeat `scratch/agents/team-watch.pid` is missing or over 10
+  minutes old), tell the human to start it in a spare tab
   (`caffeinate -dimsu team-watch`) before leaving the team unattended: it restarts a stuck driver, and a Codex driver
   runs only when it ticks.
 - Then, on every turn: discuss with the human from the files (STATUS, maps, tickets, run cards, diagnosis cards): what a
