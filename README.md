@@ -59,7 +59,8 @@ retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 records for people outside the session (a reproduction record of an important run; a diagnosis of evaluation
 results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for improving a model in rounds,
 with a diagnosis card after every evaluation. `away`: the human steps away; maps keep moving, what needs them waits
-prepared, and one brief greets them on return.
+prepared, and one brief greets them on return. `ask-via-feishu`: a session asks someone other than the human on Feishu, through a
+bridge bot (`ask-feishu`); the answer comes back into its pane.
 
 ## Differences from Matt's skills
 
@@ -108,7 +109,7 @@ skills/      core/ (the research harness), personal/ (everyday helpers), optiona
 STYLE.md     your rules for every project (honesty, what always needs the human's OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status), codex-run.sh, team-up.sh, team-worker.py,
+tools/       status.py (research-status), codex-run.sh, ask-human.py, ask-feishu.py, team-up.sh, team-worker.py,
              team-watch.py (team-watch: the watch tab's supervisor; resumes a stuck driver's own session on Sonnet 5.5), gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again

@@ -14,6 +14,7 @@ chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.
 chmod +x "$HERE/tools/team-watch.py"; ln -sfn "$HERE/tools/team-watch.py" "$HOME/.local/bin/team-watch"
 chmod +x "$HERE/tools/team-worker.py"; ln -sfn "$HERE/tools/team-worker.py" "$HOME/.local/bin/team-worker"
 chmod +x "$HERE/tools/ask-human.py"; ln -sfn "$HERE/tools/ask-human.py" "$HOME/.local/bin/ask-human"
+chmod +x "$HERE/tools/ask-feishu.py"; ln -sfn "$HERE/tools/ask-feishu.py" "$HOME/.local/bin/ask-feishu"
 chmod +x "$HERE/tools/gui/server.py"; ln -sfn "$HERE/tools/gui/server.py" "$HOME/.local/bin/research-gui"
 # drop links left by skills that were removed or renamed here
 for d in "$DEST" "$AGENTS_DEST"; do for l in "$d"/*; do
