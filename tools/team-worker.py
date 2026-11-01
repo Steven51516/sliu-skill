@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """team-worker: open a worker for one ticket, or rescue a stopped one, and check that it really started.
 
-  team-worker <ticket path>          a new tab labelled with the ticket id, logged in (macOS: from the Keychain), on Opus 5.5
-                                     (an explicit --model, so a /model elsewhere cannot change it), told to work the
-                                     ticket and to report to the calling driver with one line:
+  team-worker <ticket path>          a new tab labelled with the ticket id, on the driver's own agent: Claude Code on Opus
+                                     5.5, logged in (macOS: from the Keychain), with an explicit --model so a /model
+                                     elsewhere cannot change it; or Codex with the flags in codex-team.args at xhigh. It is
+                                     told to work the ticket and to report to the calling driver with one line:
                                      `done|running|ask|blocked <id>: <path of the file that holds the result>`,
                                      or `handback <id>: <request>` for a request beyond its ticket
   team-worker --rescue <ticket id>   the worker in the tab labelled <id>: exited and its own session resumed on Sonnet 5.5
@@ -21,7 +22,15 @@ import sys
 import time
 
 MODEL, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "sonnet", "xhigh"
-DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)", re.I)
+DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)|"
+                  r"sign in with chatgpt|run codex login", re.I)
+
+
+def codex_args(effort):
+    """The Codex team flags (codex-team.args, next to this file) plus a reasoning effort."""
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "codex-team.args")) as f:
+        args = [os.path.expanduser(l.strip()) for l in f if l.strip() and not l.lstrip().startswith("#")]
+    return args + ["-c", f'model_reasoning_effort="{effort}"']
 
 
 def herdr(*args, timeout=150):
@@ -58,14 +67,22 @@ def started(name):
     return (status in ("working", "blocked", "idle", "done")), f"worker status: {status}"
 
 
+def caller_kind():
+    """The agent in the calling pane (the driver): a worker runs on the same one."""
+    try:
+        return json.loads(herdr("pane", "current").stdout)["result"]["pane"].get("agent") or "claude"
+    except (ValueError, KeyError, TypeError):
+        return "claude"
+
+
 def open_worker(path):
     tid, here = ticket_id(path), os.getcwd()
     driver = os.environ.get("HERDR_PANE_ID") or fail("run this inside herdr (no HERDR_PANE_ID)")
-    env = []
-    tok = token()
+    kind, env = caller_kind(), []
+    tok = token() if kind == "claude" else None
     if tok:
         env = ["--env", f"CLAUDE_CODE_OAUTH_TOKEN={tok}"]
-    elif sys.platform == "darwin" and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+    elif kind == "claude" and sys.platform == "darwin" and not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
         fail("no login token: neither the Keychain item claude-code-oauth nor CLAUDE_CODE_OAUTH_TOKEN is set")
     out = herdr("tab", "create", "--workspace", os.environ.get("HERDR_WORKSPACE_ID", ""), "--cwd", here, "--label", tid,
                 "--no-focus", *env)
@@ -74,20 +91,28 @@ def open_worker(path):
     except (ValueError, KeyError, TypeError):
         fail(f"could not open a tab: {(out.stderr or out.stdout).strip()[:200]}")
     name = f"{tid.lower()}-{time.strftime('%H%M%S')}"
-    r = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000", "--", "--model", MODEL)
+    if kind == "codex":
+        flags, first, what = codex_args("xhigh"), f"Use the research-work skill (~/.agents/skills/research-work/SKILL.md) on {path}.", "Codex, xhigh"
+    else:
+        flags, first, what = ["--model", MODEL], f"/research-work {path}.", MODEL
+    for _ in range(10):                # a new tab's shell may still be starting
+        r = herdr("agent", "start", name, "--kind", kind, "--pane", pane, "--timeout", "120000", "--", *flags)
+        if r.returncode == 0 or "not an available shell" not in (r.stderr + r.stdout):
+            break
+        time.sleep(1)
     if r.returncode != 0:
         screen = herdr("agent", "read", name).stdout
         if "trust" in screen.lower():
-            fail(f"{pane} waits at Claude Code's folder-trust check: open claude in {here} once and accept, then retry")
-        fail(f"claude did not start in {pane}: {(r.stderr or r.stdout).strip()[:200]}")
-    prompt = (f"/research-work {path}. You are a worker: when you finish, stop or need the user, send the driver one line with "
+            fail(f"{pane} waits at {kind}'s folder-trust check: open {kind} in {here} once and accept, then retry")
+        fail(f"{kind} did not start in {pane}: {(r.stderr or r.stdout).strip()[:200]}")
+    prompt = (f"{first} You are a worker: when you finish, stop or need the user, send the driver one line with "
               f"herdr agent prompt {driver} 'done|running|ask|blocked {tid}: <path of the file that holds the result or "
               f"question>', or 'handback {tid}: <request>' for a request beyond your ticket.")
     herdr("agent", "prompt", name, prompt)
     ok, why = started(name)
     if not ok:
         fail(f"{tid} in {pane} did not start: {why}")
-    print(f"team-worker: {tid} working in {pane} (agent {name}, {MODEL})")
+    print(f"team-worker: {tid} working in {pane} (agent {name}, {what})")
 
 
 def rescue(tid):
@@ -95,6 +120,8 @@ def rescue(tid):
     tab = next((t["tab_id"] for t in tabs if t.get("label") == tid), None) or fail(f"no tab labelled {tid}")
     agents = json.loads(herdr("agent", "list").stdout or "{}").get("result", {}).get("agents", [])
     a = next((a for a in agents if a.get("tab_id") == tab), None) or fail(f"no agent in the tab of {tid}")
+    if a.get("agent") != "claude":
+        fail(f"{tid} runs on {a.get('agent')}: --rescue is for Claude sessions stopped by Claude's safeguards")
     session = (a.get("agent_session") or {}).get("value") or fail(f"the session of {tid} is unknown")
     pane = a["pane_id"]
     herdr("agent", "prompt", pane, "/exit")

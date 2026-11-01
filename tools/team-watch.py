@@ -13,6 +13,10 @@ permission prompt (`blocked`) needs the human and is left alone. A stuck driver 
 in the same pane on Sonnet 5.5 at xhigh effort (`claude --resume <session> --model sonnet --effort xhigh`), keeping its whole chat, then told to
 continue. It stays on Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run; every action is
 logged to driver.log.
+
+A Codex driver has no /loop: the watchdog is its schedule. It types `tick` into the driver's pane once the driver is idle
+and neither a pass nor a tick has come for 25 minutes. A Codex driver is never resumed; one that logs no pass for 90
+minutes despite the ticks is noted once, for the human.
 """
 import datetime as dt
 import glob
@@ -22,7 +26,7 @@ import subprocess
 import sys
 import time
 
-EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT = 300, 90, 3, "sonnet", "xhigh"
+EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "xhigh", 25
 LOG = os.path.join("scratch", "agents", "driver.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
 
@@ -119,6 +123,21 @@ def restart(pane, name, map_ref, reason, session, n):
     return True
 
 
+def tick(pane, agent, ticks, warned):
+    """Wake an idle Codex driver with `tick` when neither a pass nor a tick came for TICK_MIN minutes."""
+    if agent.get("agent_status") in ("working", "blocked"):
+        return
+    last_pass = os.path.getmtime(LOG) if os.path.exists(LOG) else 0
+    if (time.time() - max(last_pass, ticks.get(pane, 0))) / 60 < TICK_MIN:
+        return
+    silent = (time.time() - last_pass) / 60
+    if last_pass and silent > STALE_MIN and pane not in warned:
+        note(f"Codex driver in {pane} has logged no pass for {silent:.0f} min despite ticks; leaving it for the human")
+        warned.add(pane)
+    herdr("agent", "prompt", pane, "tick")
+    ticks[pane] = time.time()
+
+
 def single():
     """Only one team-watch per project: two would both restart the same driver."""
     lock = os.path.join("scratch", "agents", "team-watch.pid")
@@ -140,7 +159,7 @@ def main():
     single()
     fixed = {sys.argv[2]: sys.argv[1]} if len(sys.argv) >= 3 else None
     base = sys.argv[3] if len(sys.argv) > 3 else "driver"
-    restarts, seen = {}, os.path.getsize(LOG) if os.path.exists(LOG) else 0
+    restarts, ticks, warned, seen = {}, {}, set(), os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
     while True:
         if os.path.exists(LOG) and os.path.getsize(LOG) > seen:     # show the driver's log as it grows
@@ -151,6 +170,9 @@ def main():
             seen = os.path.getsize(LOG)
         for pane, map_ref in (fixed or roster_drivers()).items():
             agent = agent_at(pane)
+            if agent and agent.get("agent") == "codex":
+                tick(pane, agent, ticks, warned)
+                continue
             reason = stuck_reason(agent)
             if not reason or restarts.get(pane, 0) > MAX_RESTARTS:
                 continue

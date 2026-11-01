@@ -39,18 +39,29 @@ function planHtml(plan) {
     <pre id="dlg-log" hidden style="max-height:200px;overflow:auto"></pre>`;
 }
 
+const TEAM_AGENTS = [["claude", "Claude Code", "every session on Opus 5.5"], ["codex", "Codex", "every session on gpt-6-astra"]];
+
 export async function startTeam(project, map = null) {
   const d = dialog(`<div class="dh">${map ? "Start a driver" : "Start the team"} · ${esc(project)}</div><div class="db"><div class="spin"></div></div>`);
-  let plan;
-  try { plan = await get("/api/plan", { project, ...(map ? { map } : {}) }); }
-  catch (e) { $(".db", d).innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
-  $(".db", d).innerHTML = planHtml(plan);
+  let plan, agent = null;
+  const load = async () => {   // a team is all Claude Code or all Codex; a live team keeps its agent
+    try { plan = await get("/api/plan", { project, ...(map ? { map } : {}), ...(agent ? { agent } : {}) }); }
+    catch (e) { $(".db", d).innerHTML = `<div class="err">${esc(e.message)}</div>`; return false; }
+    agent = plan.agent;
+    const pick = plan.agent_fixed
+      ? `<div class="muted" style="margin-bottom:8px">This project's team runs on ${agent === "codex" ? "Codex" : "Claude Code"}; new sessions join it.</div>`
+      : `<div class="choice" id="st-agent">${TEAM_AGENTS.map(([k, b, s]) => `<div class="opt ${k === agent ? "on" : ""}" data-k="${k}"><b>${b}</b><span>${s}</span></div>`).join("")}</div>`;
+    $(".db", d).innerHTML = pick + planHtml(plan);
+    $$("#st-agent .opt", d).forEach((o) => o.onclick = () => { if (o.dataset.k !== agent) { agent = o.dataset.k; load(); } });
+    return true;
+  };
+  if (!(await load())) return;
   d.insertAdjacentHTML("beforeend", `<div class="df"><span class="grow muted" style="font-size:12px">Sessions run in herdr; closing the app leaves them running.</span>
     <button class="btn" id="dlg-cancel">Close</button>${plan.steps.length ? `<button class="btn primary" id="dlg-go">${icon("play")} ${plan.dry_run ? "Dry run" : "Start"}</button>` : ""}</div>`);
   $("#dlg-cancel", d).onclick = closeDialog;
   if ($("#dlg-go", d)) $("#dlg-go", d).onclick = (e) => {
     e.currentTarget.disabled = true;
-    runJob(d, () => post("/api/start", { project, map }), (j) => {
+    runJob(d, () => post("/api/start", { project, map, agent }), (j) => {
       const desk = plan.steps.findIndex((s) => s.role === "desk");
       if (!plan.dry_run && j.panes.length) setTimeout(() => { hooks.refresh(); hooks.openChat(j.panes[desk >= 0 ? desk : 0]); }, 1500);
     });
@@ -151,8 +162,39 @@ export function ask({ title, label = "", placeholder = "", value = "", multiline
   });
 }
 
+// A new project: a fresh folder under a projects root, registered here, then a Claude session in it runs
+// /research-init (scope, tracker, delegation, domain docs: it asks you section by section in the chat).
+export function newProject() {
+  const root = (S.summary?.roots || [])[0] || (S.summary?.projects?.[0]?.path || "~/Documents/GitHub/x").replace(/\/[^/]+\/?$/, "");
+  const d = dialog(`<div class="dh">New project</div><div class="db">
+      <label class="f">Name</label><input id="np-name" placeholder="prot-design" autocomplete="off" spellcheck="false">
+      <label class="f">Inside folder</label><input id="np-parent" value="${esc(root)}">
+      <div class="muted" style="font-size:12px;margin-top:4px" id="np-where"></div>
+      <label class="f">Direction in one line (optional)</label><input id="np-dir" placeholder="e.g. design binders for X with Y, beat Z on W">
+      <label class="f">Server (ssh alias, optional)</label><input id="np-server" placeholder="node-16">
+      <label class="f">Code folder on the server</label><input id="np-root" placeholder="~/code/&lt;name&gt;">
+      <div class="muted" style="font-size:12px;margin-top:10px">Creates the folder and adds it here, then starts a Claude session in it with
+        <code>/research-init</code>, which sets up the scope, tracker and docs by asking you, a section at a time, in the chat.</div></div>
+    <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${icon("plus")} Create</button></div>`, { width: 540 });
+  const where = () => { const n = $("#np-name", d).value.trim() || "<name>"; $("#np-where", d).textContent = `→ ${$("#np-parent", d).value.trim().replace(/\/$/, "")}/${n}`;
+    $("#np-root", d).placeholder = `~/code/${n}`; };
+  $("#np-name", d).oninput = where; $("#np-parent", d).oninput = where; where();
+  $("#dlg-cancel", d).onclick = closeDialog;
+  $("#dlg-go", d).onclick = async () => {
+    const v = (id) => $(id, d).value.trim();
+    const name = v("#np-name"), server = v("#np-server");
+    try {
+      await post("/api/new-project", { name, parent: v("#np-parent"), server, server_root: server ? v("#np-root") || `~/code/${name}` : "" });
+      closeDialog(); toast(`Created ${name}`); hooks.refresh(); location.hash = `#/p/${encodeURIComponent(name)}`;
+      const dir = v("#np-dir").replace(/"/g, "'");
+      setTimeout(() => newSession(name, "custom", { text: `/research-init ${name}${dir ? ` "${dir}"` : ""}` }), 300);
+    } catch (e) { toast(e.message, "err"); }
+  };
+  setTimeout(() => $("#np-name", d).focus(), 20);
+}
+
 export function addProject(pre = {}) {
-  const d = dialog(`<div class="dh">Add a project</div><div class="db">
+  const d = dialog(`<div class="dh">Add an existing folder</div><div class="db">
       <label class="f">Name</label><input id="ap-name" value="${esc(pre.name || "")}" placeholder="protbench">
       <label class="f">Folder on this Mac</label><input id="ap-path" value="${esc(pre.path || "")}" placeholder="~/Documents/GitHub/scinetics/…">
       <label class="f">Server (ssh alias, optional)</label><input id="ap-server" placeholder="node-16">

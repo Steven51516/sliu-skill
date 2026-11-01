@@ -604,3 +604,4 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 .dagwrap { container-type: inline-size; }
 .dagwrap .floatbar { white-space: nowrap; }
 @container (max-width: 520px) { .dagwrap .floatbar .wide { display: none; } .dagwrap .legend { display: none; } }
+.side-sec #sb-add { visibility: visible; }

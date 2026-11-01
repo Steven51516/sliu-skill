@@ -447,7 +447,7 @@ def projects_summary():
                     and not is_asker(a):
                 others.append(agent_view(a, snap, {}))
     return {"projects": out, "unregistered": found, "config": CONFIG, "other_agents": others, "herdr_error": err,
-            "dry_run": ARGS.dry_run, "version": VERSION, "moshi_mode": moshi_mode(), "asks": open_asks()}
+            "dry_run": ARGS.dry_run, "version": VERSION, "moshi_mode": moshi_mode(), "asks": open_asks(), "roots": cfg.get("roots", [])}
 
 
 # ---------- questions on the phone: Moshi mode (../ask-human.py asks them; the app lists the open ones) ----------
@@ -553,6 +553,25 @@ def add_project(b):
     except tomllib.TOMLDecodeError as e:
         raise ApiError(400, f"that would not be valid TOML: {e}")
     return save_config(text)
+
+
+def new_project(b):
+    """Make a new project's folder under a parent (a projects root) and register it; research-init then sets it up."""
+    name, parent = b.get("name") or "", (b.get("parent") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", name):
+        raise ApiError(400, "Name: letters, digits, - and _ (e.g. prot-design)")
+    if not os.path.isdir(os.path.expanduser(parent)):
+        raise ApiError(400, f"no folder {parent}")
+    path = os.path.join(parent, name)
+    full = os.path.expanduser(path)
+    if os.path.exists(full) and (not os.path.isdir(full) or os.listdir(full)):
+        raise ApiError(400, f"{path} already exists and is not empty: use Add an existing folder")
+    if name in load_config()["projects"]:
+        raise ApiError(400, f"`{name}` is already registered")
+    os.makedirs(full, exist_ok=True)
+    add_project({"name": name, "path": path, "server": b.get("server"), "server_root": b.get("server_root"),
+                 "server_maps": "tracks", "shared": ["common"]})
+    return {"ok": True, "name": name, "path": path}
 
 
 # ---------- what changed since the human last looked ----------
@@ -1243,10 +1262,48 @@ def role_settings(p):
             {**defaults.get("role_env", {}), **p.get("role_env", {})})
 
 
-def team_plan(p, only_map=None):
-    """The herdr steps to start a desk and drivers, skipping roles that are already live."""
+CODEX_TEAM_ARGS = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "codex-team.args")
+
+
+def codex_team_args(effort):
+    """The flags every Codex team session starts with (tools/codex-team.args) plus a reasoning effort."""
+    with open(CODEX_TEAM_ARGS) as f:
+        args = [os.path.expanduser(l.strip()) for l in f if l.strip() and not l.lstrip().startswith("#")]
+    return args + ["-c", f'model_reasoning_effort="{effort}"']
+
+
+def team_agent(s):
+    """The agent the project's live team runs on (its desk or a driver), else None."""
+    return next((a["agent"] for a in s["agents"] if a["role"] in ("desk", "driver") and a.get("agent") in ("claude", "codex")),
+                None)
+
+
+def watch_live(p):
+    """A team-watch is running for this project (its lock names a live pid)."""
+    try:
+        with open(os.path.join(p["path"], "scratch", "agents", "team-watch.pid")) as f:
+            os.kill(int(f.read().strip()), 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def team_plan(p, only_map=None, agent=None):
+    """The herdr steps to start a desk and drivers, skipping roles that are already live. A team is all Claude Code or
+    all Codex: a live team keeps its agent. A Codex team also gets a watch tab (team-watch), its drivers' schedule."""
     s = project_state(p)
     claude_args, _, role_env = role_settings(p)
+    live = team_agent(s)
+    if agent not in (None, "claude", "codex"):
+        raise ApiError(400, "agent is claude or codex")
+    if live and agent and agent != live:
+        raise ApiError(409, f"this project's team runs on {live}: stop it before starting a {agent} team")
+    kind = agent or live or "claude"
+    args = codex_team_args("medium") if kind == "codex" else claude_args
+
+    def role_prompt(role):
+        return f"Read ~/.agents/skills/team/SKILL.md and follow it as `team {role}`." if kind == "codex" else f"/team {role}"
+
     drivers = [m for m in s["maps"] if (m["folder"] == only_map if only_map else m["status"] in LIVE_MAP)]
     steps, notes = [], []
     if s["herdr_error"]:
@@ -1259,18 +1316,23 @@ def team_plan(p, only_map=None):
         if m["status"] == "closed":
             notes.append(f"{m['id']} is closed: skipped")
             continue
-        steps.append({"role": "driver", "kind": "claude", "map": m["id"], "label": f"B driver {m['id']}",
-                      "name": agent_name(p, f"driver-{m['id'].lower()}"), "args": claude_args,
-                      "prompt": f"/team driver {m['path'].rsplit('/', 1)[0]}", "env": role_env.get("driver", {})})
+        steps.append({"role": "driver", "kind": kind, "map": m["id"], "label": f"B driver {m['id']}",
+                      "name": agent_name(p, f"driver-{m['id'].lower()}"), "args": args,
+                      "prompt": role_prompt(f"driver {m['path'].rsplit('/', 1)[0]}"), "env": role_env.get("driver", {})})
     if only_map is None:
         if any(a["role"] == "desk" for a in s["agents"]):
             notes.append("a desk is already live: skipped")
         else:
-            steps.append({"role": "desk", "kind": "claude", "label": "A desk", "name": agent_name(p, "desk"),
-                          "args": claude_args, "prompt": "/team desk", "env": role_env.get("desk", {})})
+            steps.append({"role": "desk", "kind": kind, "label": "A desk", "name": agent_name(p, "desk"),
+                          "args": args, "prompt": role_prompt("desk"), "env": role_env.get("desk", {})})
         if not drivers:
             notes.append("no open map that isn't paused: no driver started")
-    return finish_plan(p, ws, steps, notes, s["keychain"])
+    if kind == "codex" and steps and not watch_live(p):
+        steps.append({"role": "watch", "kind": "shell", "label": "watch", "name": agent_name(p, "watch"), "args": [],
+                      "prompt": "", "env": {}, "command": "caffeinate -dimsu team-watch"})
+    plan = finish_plan(p, ws, steps, notes, s["keychain"])
+    plan.update(agent=kind, agent_fixed=bool(live))
+    return plan
 
 
 def session_plan(p, b):
@@ -1346,6 +1408,24 @@ def prompt_when_ready(name, prompt, say):
         say(f"{name}: never got past its startup prompt ({e}); send `{prompt}` yourself")
 
 
+def alive(pane, wait=8):
+    """An agent still runs in the pane a few seconds after its start."""
+    time.sleep(wait)
+    return any(a.get("pane_id") == pane for a in herdr("agent", "list").get("agents", []))
+
+
+def start_agent(name, st, pane):
+    """herdr agent start, retried while a new tab's shell is still starting (no login export step gives it time)."""
+    for attempt in range(10):
+        try:
+            return herdr("agent", "start", name, "--kind", st["kind"], "--pane", pane, "--timeout", "120000",
+                         *(["--", *st["args"]] if st["args"] else []), timeout=150)
+        except HerdrError as e:
+            if "not an available shell" not in str(e) or attempt == 9:
+                raise
+            time.sleep(1)
+
+
 def run_plan(p, plan, job):
     say = job["log"].append
     try:
@@ -1389,8 +1469,7 @@ def run_plan(p, plan, job):
                 time.sleep(1.5)   # let the shell finish the export before claude is typed
             name = unique_name(st["name"])
             try:
-                herdr("agent", "start", name, "--kind", st["kind"], "--pane", pane, "--timeout", "120000",
-                      *(["--", *st["args"]] if st["args"] else []), timeout=150)
+                start_agent(name, st, pane)
                 say(f"{st['label']}: {st['kind']} started as {name}")
             except HerdrError as e:
                 if e.code != "agent_not_ready":
@@ -1402,6 +1481,13 @@ def run_plan(p, plan, job):
             if st.get("prompt"):
                 herdr("agent", "prompt", name, st["prompt"])
                 say(f"{st['label']}: sent `{st['prompt']}`")
+            if not alive(pane):           # an agent can exit during startup (Codex: a daemon or login timeout)
+                say(f"{st['label']}: {st['kind']} exited during startup; starting it once more")
+                name = unique_name(st["name"])
+                start_agent(name, st, pane)
+                if st.get("prompt"):
+                    herdr("agent", "prompt", name, st["prompt"])
+                say(f"{st['label']}: " + ("started" if alive(pane) else "did not start again: see its tab"))
         job["ok"] = True
     except Exception as e:
         say(f"failed: {e}")
@@ -1722,7 +1808,7 @@ class Handler(BaseHTTPRequestHandler):
                 return local_read(p, rel, q.get("mode"))
             return server_read(p, rel, q.get("mode"), fresh)
         if path == "/api/plan":
-            return team_plan(project(q.get("project")), q.get("map") or None)
+            return team_plan(project(q.get("project")), q.get("map") or None, q.get("agent") or None)
         if path == "/api/job":
             job = _jobs.get(q.get("id"))
             if not job:
@@ -1754,7 +1840,7 @@ class Handler(BaseHTTPRequestHandler):
     def post_api(self, path, b):
         if path == "/api/start":
             p = project(b.get("project"))
-            return start_job(p, team_plan(p, b.get("map") or None))
+            return start_job(p, team_plan(p, b.get("map") or None, b.get("agent") or None))
         if path == "/api/session":
             p = project(b.get("project"))
             return start_job(p, session_plan(p, b))
@@ -1782,6 +1868,8 @@ class Handler(BaseHTTPRequestHandler):
             if not r["ok"]:
                 raise ApiError(502, f"push failed: {r['error']}")
             return r
+        if path == "/api/new-project":
+            return new_project(b)
         if path == "/api/moshi-mode":
             return {"moshi_mode": moshi_mode(bool(b.get("on")))}
         if path == "/api/ask-answer":

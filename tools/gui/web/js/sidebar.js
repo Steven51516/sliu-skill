@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu } from "./core.js";
 
 export function inboxCount() {
   if (!S.summary) return 0;
@@ -19,12 +19,12 @@ export function renderSidebar() {
   const inbox = inboxCount();
   const nav = (h, ic, label, on, extra = "") => `<a class="nav ${on ? "on" : ""}" href="${h}">${icon(ic)}<span class="label">${esc(label)}</span>${extra}</a>`;
   let html = `<div class="side-top"><span class="brand">Research Desk</span>
-      <button class="btn ghost sm icon" id="sb-new" title="New session (⌘N)">${icon("plus")}</button></div>
+      <button class="btn ghost sm icon" id="sb-new" title="New session or project">${icon("plus")}</button></div>
     <div class="side-search" id="sb-search">${icon("search")}<span class="grow">Search or jump to…</span><kbd>⌘K</kbd></div>
     <div class="side-scroll">
     ${nav("#/inbox", "inbox", "Inbox", r.view === "inbox", inbox ? `<span class="count ${inbox ? "alert" : ""}">${inbox}</span>` : "")}
     ${nav("#/gpus", "gpu", "GPUs", r.view === "gpus")}
-    <div class="side-sec"><span class="grow">Projects</span><button class="btn ghost sm icon" id="sb-add" title="Add a project">${icon("plus")}</button></div>`;
+    <div class="side-sec"><span class="grow">Projects</span><button class="btn ghost sm icon" id="sb-add" title="New project, or add an existing folder">${icon("plus")}</button></div>`;
   for (const p of projects) {
     const working = (p.agents || []).filter((a) => a.status === "working").length;
     const blocked = (p.agents || []).filter((a) => a.status === "blocked").length;
@@ -97,9 +97,14 @@ export function renderSidebar() {
   el.innerHTML = html;
   el.querySelector(".side-scroll").scrollTop = scroll;
   $("#sb-search").onclick = () => hooks.palette();
-  $("#sb-new").onclick = () => hooks.newSession(cur);
+  const projectMenu = [{ label: "New project…", icon: "plus", hint: "a fresh folder, set up by research-init", run: () => hooks.newProject() },
+    { label: "Add an existing folder…", icon: "folder", run: () => hooks.addProject() }];
+  $("#sb-new").onclick = (e) => popMenu(e.currentTarget, [
+    ...(cur ? [{ label: `New session in ${cur}`, icon: "chat", hint: "⌘N", run: () => hooks.newSession(cur) }]
+      : (S.summary?.projects || []).map((p) => ({ label: `New session in ${p.name}`, icon: "chat", run: () => hooks.newSession(p.name) }))),
+    "-", ...projectMenu]);
   if ($("#sb-new2")) $("#sb-new2").onclick = () => hooks.newSession(cur);
-  $("#sb-add").onclick = () => hooks.addProject();
+  $("#sb-add").onclick = (e) => popMenu(e.currentTarget, projectMenu);
   el.querySelectorAll("[data-proj]").forEach((a) => a.onclick = (e) => {
     const name = a.dataset.proj;
     if (e.target.closest("[data-fold]") && name === S.route.project) { e.preventDefault(); return setFold(name, !folded.has(name)); }

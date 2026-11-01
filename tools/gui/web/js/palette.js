@@ -17,6 +17,8 @@ function items() {
     act("Files", proj, () => go({ project: proj, view: "files" }), "go");
     act("Search conversations", proj, () => go({ project: proj, view: "search" }), "go");
   }
+  act("New project…", "a fresh folder, set up by research-init", () => hooks.newProject());
+  act("Add an existing folder…", "register a project folder", () => hooks.addProject());
   act("Next thing that needs you", "⇧⌘A", () => hooks.nextAttention());
   act("Inbox", "everything waiting on you", () => go({ view: "inbox" }), "go");
   act("GPUs", "nvidia-smi on the servers", () => go({ view: "gpus" }), "go");

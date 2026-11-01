@@ -4,7 +4,7 @@ import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
 import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive } from "./chat.js";
 import { initDock, toggleDock, typeIntoTerminal } from "./term.js";
-import { startTeam, newSession, addProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
+import { startTeam, newSession, addProject, newProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
 import { resetFiles, openPathLater, openFile } from "./files.js";
 import { resetMap } from "./map.js";
@@ -13,7 +13,7 @@ const POLL_MS = 4000;
 let lastSig = "", polling = false, lastAttention = "";
 
 Object.assign(hooks, {
-  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, shortcuts, palette, deskPane, peekJob, askProject, askLabel, openArchive,
+  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, newProject, shortcuts, palette, deskPane, peekJob, askProject, askLabel, openArchive,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
   nextAttention,
   setMoshiMode: async (on) => {

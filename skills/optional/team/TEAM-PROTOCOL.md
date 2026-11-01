@@ -24,8 +24,8 @@ the map.
 
 ## Workers
 - **Open** one per ticket, at most as many as `research-drive` allows at once: `team-worker <ticket path>`. It opens
-  a tab labelled with the ticket id, logged in, on Opus 5.5, tells it to work the ticket and report back to you, and
-  fails loudly if the worker did not start.
+  a tab labelled with the ticket id on the driver's own agent (Claude Code on Opus 5.5, logged in, or Codex), tells it
+  to work the ticket and report back to you, and fails loudly if the worker did not start.
 - **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker
   (`herdr agent prompt <ticket id> "/exit"`, then `herdr tab close <tab>`). First check that no job depends on that
   session: a session's cleanup can stop jobs it launched.
@@ -51,8 +51,8 @@ the map.
 `scratch/agents/roster.md`, one line per desk or driver session: `<role> | <agent> | <herdr pane or -> | <session name> |
 <YYYY-MM-DD HH:MM> | <map or ->`. `<agent>` is `claude` or `codex`. The pane is the address: a session's name changes when it
 resumes, so a session that starts or resumes rewrites its line (a driver also sends the desk `driver up for <map>`), and a
-send that fails re-reads the roster. A session learns its own name (Claude Code: the ListAgents tool; Codex: its session
-name in `codex agents`) and, inside herdr, its pane (`herdr pane current`). Workers are not on the roster: their driver
+send that fails re-reads the roster. A session learns its own name (Claude Code: the ListAgents tool; Codex: the session
+id in `herdr pane current`) and, inside herdr, its pane (`herdr pane current`). Workers are not on the roster: their driver
 knows their tabs.
 
 ## Messages
@@ -80,8 +80,11 @@ sessions of a team run on the same machine.
 ## Running it
 - One tab (or tmux window) for the desk and one per driver, every session started in the project folder
   (`cd <project> && claude`); a second active map gets a second driver tab. Worker tabs open and close with their tickets.
-- The driver's schedule: in Claude Code, `/loop` (the `team` skill starts it). Codex has no loop command: put a timer in
-  another pane that wakes the driver, e.g. `while sleep 1500; do herdr agent prompt <driver pane> "tick"; done`.
+- A team is all Claude Code (`team-up <map>`) or all Codex (`team-up --codex <map>`); Research Desk's Start team offers
+  both. Workers run on their driver's agent. In a Codex team, a delegation rule that sends work to Codex is the session's
+  own work, and one that names a Claude subagent goes to a fresh Codex session (`codex-run`) instead.
+- The driver's schedule: in Claude Code, `/loop` (the `team` skill starts it). Codex has no loop command: `team-watch`
+  types `tick` into an idle Codex driver every 25 minutes.
 - The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS).
 - Nobody watching (a night): `team-watch` runs in a tab of its own (`team-up` starts it; otherwise run
   `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster, shows the driver's log and resumes a stuck driver (idle, and stopped by Claude's safeguards or silent for 90 minutes) in its own
