@@ -36,13 +36,16 @@ export function renderOverview() {
   const working = d.agents.filter((a) => a.status === "working").length;
   const ch = d.changes;
   host.innerHTML = `<div class="page">
-    <div class="ph"><div class="grow"><h1>${esc(d.name)}</h1><div class="sub mono">${esc(d.path.replace(/^\/Users\/[^/]+/, "~"))}${d.server ? ` · ${esc(d.server)}:${esc(d.server_root)}` : ""}</div></div>
+    <div class="ph"><div class="grow"><h1>${esc(d.name)}</h1><div class="sub mono">${d.remote
+        ? `on ${esc(d.remote.host)}:${esc(d.remote.path)} · <span class="${d.remote.error ? "err" : ""}">${d.remote.error ? esc(d.remote.error) : `records mirrored ${esc(ago(d.remote.synced_at))}`}</span>`
+        : `${esc(d.path.replace(/^\/Users\/[^/]+/, "~"))}${d.server ? ` · ${esc(d.server)}:${esc(d.server_root)}` : ""}`}</div></div>
       <div class="actions">
-        ${d.team ? (desk ? `<button class="btn primary" id="ov-desk">${icon("chat")} Talk to the desk</button>` : `<button class="btn primary" id="ov-team">${icon("users")} Start team</button>`)
+        ${d.remote ? `<button class="btn primary" id="ov-ssh">${icon("term")} Terminal on ${esc(d.remote.host)}</button><button class="btn" id="ov-sync">${icon("refresh")} Sync now</button>`
+        : d.team ? (desk ? `<button class="btn primary" id="ov-desk">${icon("chat")} Talk to the desk</button>` : `<button class="btn primary" id="ov-team">${icon("users")} Start team</button>`)
           : `<button class="btn primary" id="ov-new">${icon("plus")} New session</button>${d.agents.length ? `<button class="btn" id="ov-ask">${icon("chat")} Ask Claude</button>` : ""}`}
-        ${d.team && desk && open.some((m) => ["open", "claimed"].includes(m.status) && !m.driven) ? `<button class="btn" id="ov-team">${icon("users")} Start drivers</button>` : ""}
-        ${d.team ? `<button class="btn" id="ov-new">${icon("plus")} New session</button>` : ""}
-        ${d.maps.length || d.team ? `<button class="btn" id="ov-idea">${icon("spark")} New map from an idea</button>` : ""}
+        ${!d.remote && d.team && desk && open.some((m) => ["open", "claimed"].includes(m.status) && !m.driven) ? `<button class="btn" id="ov-team">${icon("users")} Start drivers</button>` : ""}
+        ${!d.remote && d.team ? `<button class="btn" id="ov-new">${icon("plus")} New session</button>` : ""}
+        ${!d.remote && (d.maps.length || d.team) ? `<button class="btn" id="ov-idea">${icon("spark")} New map from an idea</button>` : ""}
         <button class="btn icon" id="ov-more" title="More">${icon("more")}</button></div></div>
     <div class="statline">
       ${statChip(d.waiting.length, "need you", "alert")}${statChip(running.length, "running", "work")}${statChip(ready.length, "ready", "open")}
@@ -56,8 +59,9 @@ export function renderOverview() {
       <div class="grid">${open.map(mapCard).join("") || `<div class="card empty">No open map. Chart one with “New map from an idea”.</div>`}</div>
     </div><div>
       <div class="sec"><h2>${d.team ? "Team" : "Sessions"}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
-      <div class="card rows">${teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
-      <div class="sec"><h2>GPUs</h2><span class="grow"></span><a href="#/gpus" class="meta">every node</a></div><div class="card pad" id="ov-gpus">${gpuCache.all || `<div class="spin"></div>`}</div>
+      <div class="card rows">${d.remote ? `<div class="empty">Its agents run on ${esc(d.remote.host)}, out of the app's sight; maps and tickets here are its records, mirrored every minute. <a id="ov-ssh2">Open a terminal there</a>.</div>`
+        : teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
+      ${d.remote ? "" : `<div class="sec"><h2>GPUs</h2><span class="grow"></span><a href="#/gpus" class="meta">every node</a></div><div class="card pad" id="ov-gpus">${gpuCache.all || `<div class="spin"></div>`}</div>`}
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
       <div class="card pad"><div class="timeline">${closed.map((m) => `<div class="tl" data-map="${esc(m.folder)}"><div class="h"><span class="mid">${esc(m.id)}</span>${esc(m.title)}</div>
         <div class="d">${esc(m.updated || "")}</div><div class="o">${esc(plain(m.outcome) || "(no outcome recorded)")}</div></div>`).join("") || `<div class="muted">None yet.</div>`}</div></div>
@@ -69,7 +73,16 @@ export function renderOverview() {
   if ($("#ov-desk")) $("#ov-desk").onclick = () => hooks.openChat(desk.pane);
   if ($("#ov-team")) $("#ov-team").onclick = team;
   if ($("#ov-team2")) $("#ov-team2").onclick = team;
-  $("#ov-new").onclick = () => hooks.newSession(d.name);
+  if ($("#ov-new")) $("#ov-new").onclick = () => hooks.newSession(d.name);
+  const ssh = () => hooks.openTerminal({ kind: "ssh", project: d.name, server: d.server, label: `ssh ${d.server}` });
+  if ($("#ov-ssh")) $("#ov-ssh").onclick = ssh;
+  if ($("#ov-ssh2")) $("#ov-ssh2").onclick = ssh;
+  if ($("#ov-sync")) $("#ov-sync").onclick = async (e) => {
+    e.currentTarget.disabled = true;
+    try { const r = await post("/api/remote-sync", { project: d.name }); r.error ? toast(r.error, "err", 6000) : toast("Mirrored"); }
+    catch (err) { toast(err.message, "err", 6000); }
+    hooks.refresh();
+  };
   if ($("#ov-idea")) $("#ov-idea").onclick = () => hooks.newSession(d.name, "wayfinder");
   if ($("#ov-ask")) $("#ov-ask").onclick = () => hooks.askProject(d.name);
   host.querySelectorAll("[data-restart]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); restartLoop(b.dataset.restart); });
@@ -78,10 +91,10 @@ export function renderOverview() {
     ...(desk ? [{ label: "Ask the desk for a digest", icon: "doc", run: () => hooks.openChat(desk.pane, { text: "digest" }) }, "-"] : []),
     ...(!d.team && d.maps.length ? [{ label: "Start a team (desk and drivers)", icon: "users", run: () => hooks.startTeam(d.name) }, "-"] : []),
     { label: "Search conversations", icon: "search", run: () => go({ project: d.name, view: "search" }) },
-    { label: "Shell in this project", icon: "term", run: () => hooks.openTerminal({ kind: "shell", project: d.name }) },
+    ...(d.remote ? [] : [{ label: "Shell in this project", icon: "term", run: () => hooks.openTerminal({ kind: "shell", project: d.name }) }]),
     ...(d.server ? [{ label: `SSH to ${d.server}`, icon: "server", run: () => hooks.openTerminal({ kind: "ssh", project: d.name, server: d.server, label: `ssh ${d.server}` }) }] : []),
     "-",
-    { label: "Open in VS Code (Mac)", icon: "ext", run: () => vscode("local", "", true) },
+    ...(d.remote ? [] : [{ label: "Open in VS Code (Mac)", icon: "ext", run: () => vscode("local", "", true) }]),
     ...(d.server ? [{ label: `Open in VS Code (${d.server})`, icon: "ext", run: () => vscode("server", "", true) }] : []),
     { label: "Reveal in Finder", icon: "folder", run: () => post("/api/reveal", { project: d.name, path: "" }) },
     "-",
@@ -418,6 +431,7 @@ export async function renderSettings() {
 
 export function renderView(full = true) {
   const r = S.route;
+  document.body.classList.toggle("remote-project", !!(r.project && S.data?.name === r.project && S.data.remote));   // its agents run elsewhere
   renderTitlebar();
   if (r.view === "inbox") return renderInbox();
   if (r.view === "gpus") return full ? renderGpus() : null;

@@ -605,3 +605,7 @@ html.app #sidebar { background: color-mix(in srgb, var(--side) 80%, transparent)
 .dagwrap .floatbar { white-space: nowrap; }
 @container (max-width: 520px) { .dagwrap .floatbar .wide { display: none; } .dagwrap .legend { display: none; } }
 .side-sec #sb-add { visibility: visible; }
+/* a remote project (records mirrored from another machine): no buttons that start local sessions */
+body.remote-project :is(#mh-driver, #mh-ask, #mh-ticket, #mh-driverchat, #tp-ask, #tp-work, #tp-review, #tp-answer, #ch-start) { display: none !important; }
+.nav .rhost { font-size: 10.5px; color: var(--muted); margin-left: 6px; padding: 0 5px; border: 0.5px solid var(--line-2); border-radius: 6px; }
+body.remote-project [data-driver] { display: none !important; }

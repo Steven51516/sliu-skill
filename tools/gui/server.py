@@ -76,10 +76,68 @@ def load_config():
     cfg.setdefault("projects", {})
     for name, p in cfg["projects"].items():
         p["name"] = name
+        if p.get("host"):          # a project on another machine: its records are mirrored here (sync_remote)
+            p["remote_host"], p["remote_path"] = p["host"], p["path"]
+            p["path"] = os.path.join(REMOTE_CACHE, name)
+            p.setdefault("server", p["host"])
+            p.setdefault("server_root", p["remote_path"])
         p["path"] = os.path.expanduser(p["path"])
         p.setdefault("shared", [])
         p.setdefault("server_maps", "maps")
     return cfg
+
+
+# ---------- remote projects: records on another machine (e.g. engaging), mirrored here read-only ----------
+
+REMOTE_CACHE = os.path.expanduser("~/Library/Caches/research-gui/remote")
+REMOTE_SKIP = [".git/", "artifacts/", "data/", "checkpoints/", "unsloth_compiled_cache/", "wandb/", "lit/", "node_modules/",
+               "__pycache__/", ".venv/", "envs/", "outputs/", "results/raw/"]
+REMOTE_KEEP = ["*.md", "*.json", "*.jsonl", "*.csv", "*.tsv", "*.yaml", "*.yml", "*.toml", "*.txt", "*.log", "*.png", "*.svg"]
+REMOTE_EVERY = 60
+_remote = {}
+
+
+def sync_remote(p):
+    """Mirror a remote project's records (text and small figures, under 2 MB each) with rsync over the shared ssh
+    connection; agents and code stay there. Returns {at, error}: the last good sync and the last failure."""
+    st = _remote.setdefault(p["name"], {"at": 0, "error": None, "lock": threading.Lock()})
+    if not os.path.realpath(p["path"]).startswith(os.path.realpath(REMOTE_CACHE) + os.sep):
+        raise ApiError(500, "remote mirror outside the cache")             # --delete must never touch anything else
+    if not st["lock"].acquire(blocking=False):
+        return st                                                          # a sync is already running
+    try:
+        os.makedirs(p["path"], exist_ok=True)
+        cmd = ["rsync", "-rtzm", "--delete", "--max-size=2m",
+               "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ClearAllForwardings=yes"]
+        cmd += [f"--exclude={x}" for x in REMOTE_SKIP] + ["--include=*/"] + [f"--include={x}" for x in REMOTE_KEEP]
+        cmd += ["--exclude=*", f"{p['remote_host']}:{p['remote_path'].rstrip('/')}/", p["path"] + "/"]
+        code, _, err = run(cmd, timeout=240)
+        if code == 0:
+            st.update(at=time.time(), error=None)
+        else:
+            lines = [l for l in err.strip().splitlines() if l.strip()]
+            st["error"] = (lines[-1] if lines else f"rsync exit {code}")[:300]
+            if "Permission denied" in err or "BatchMode" in err or code == 255:
+                st["error"] = f"can't reach {p['remote_host']} without a login: ssh to it once in a terminal (Duo), then Sync now"
+    finally:
+        st["lock"].release()
+    return st
+
+
+def remote_info(p):
+    st = _remote.get(p["name"]) or {}
+    return {"host": p["remote_host"], "path": p["remote_path"], "synced_at": st.get("at") or None, "error": st.get("error")}
+
+
+def remote_sync_loop():
+    while True:
+        for p in load_config()["projects"].values():
+            if p.get("remote_host"):
+                try:
+                    sync_remote(p)
+                except Exception:      # one unreachable host must not stop the others
+                    pass
+        time.sleep(REMOTE_EVERY)
 
 
 def project(name):
@@ -374,13 +432,18 @@ def mtime(path):
 
 
 def project_state(p, with_agents=True):
+    if p.get("remote_host") and not (_remote.get(p["name"]) or {}).get("at"):
+        st = _remote.get(p["name"]) or {}
+        raise ApiError(503, f"{p['name']} is on {p['remote_host']}: {st.get('error') or 'mirroring its records (first sync)…'}")
+    if p.get("remote_host") and not os.path.exists(os.path.join(p["path"], "CLAUDE.md")) and not glob.glob(os.path.join(p["path"], "*", "*", "*.md")):
+        raise ApiError(502, f"{p['name']} is on {p['remote_host']}: {(_remote.get(p['name']) or {}).get('error') or 'not mirrored yet'}")
     if not os.path.isdir(p["path"]):
         raise ApiError(404, f"folder not found: {p['path']}")
     maps = tracker.load(p["path"])
     problems, frontier = tracker.analyse(maps) if maps else ([], {})
     by_id = {k.get("id"): k for m in maps for k in m["_archived"]}
     by_id.update({k.get("id"): k for m in maps for k in m["_tickets"]})
-    agents, herdr_err = project_agents(p) if with_agents else ([], None)
+    agents, herdr_err = project_agents(p) if with_agents and not p.get("remote_host") else ([], None)   # remote: its agents run there
     driven = live_driver_maps(agents, maps)
     mark_workers(agents, maps, driven)
     codex = mark_codex(p, agents, maps)
@@ -413,7 +476,7 @@ def project_state(p, with_agents=True):
     return {"name": p["name"], "path": p["path"], "server": p.get("server"), "server_root": p.get("server_root"), "team": team,
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
             "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
-            "keychain": keychain_has(), "dry_run": ARGS.dry_run}
+            "keychain": keychain_has(), "dry_run": ARGS.dry_run, "remote": remote_info(p) if p.get("remote_host") else None}
 
 
 def projects_summary():
@@ -427,9 +490,10 @@ def projects_summary():
             out.append({"name": name, "ok": True, "path": p["path"], "waiting": s["waiting"], "agents": s["agents"], "states": states,
                         "open_maps": sum(m["status"] != "closed" for m in s["maps"]),
                         "running": sum(t["status"] in ("running", "claimed") for m in s["maps"] for t in m["tickets"]),
-                        "changes": len(s["changes"]["items"]), "server": p.get("server")})
+                        "changes": len(s["changes"]["items"]), "server": p.get("server"), "remote": s["remote"]})
         except Exception as e:  # one broken project must not hide the others
-            out.append({"name": name, "ok": False, "error": str(e), "waiting": [], "agents": []})
+            out.append({"name": name, "ok": False, "error": str(e), "waiting": [], "agents": [],
+                        "remote": remote_info(p) if p.get("remote_host") else None})
     registered = {os.path.realpath(p["path"]) for p in cfg["projects"].values()}
     found = []
     for root in cfg.get("roots", []):
@@ -442,7 +506,7 @@ def projects_summary():
     others = []
     if snap:
         for a in snap.get("agents", []):
-            claimed = {pane for q in cfg["projects"].values() for pane in roster(q)}
+            claimed = {pane for q in cfg["projects"].values() if not q.get("remote_host") for pane in roster(q)}
             if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed \
                     and not is_asker(a):
                 others.append(agent_view(a, snap, {}))
@@ -1291,6 +1355,8 @@ def watch_live(p):
 def team_plan(p, only_map=None, agent=None):
     """The herdr steps to start a desk and drivers, skipping roles that are already live. A team is all Claude Code or
     all Codex: a live team keeps its agent. A Codex team also gets a watch tab (team-watch), its drivers' schedule."""
+    if p.get("remote_host"):
+        raise ApiError(400, f"{p['name']} runs on {p['remote_host']}: start sessions there (Terminal on {p['remote_host']}, on its page)")
     s = project_state(p)
     claude_args, _, role_env = role_settings(p)
     live = team_agent(s)
@@ -1337,6 +1403,8 @@ def team_plan(p, only_map=None, agent=None):
 
 def session_plan(p, b):
     """One new session in the project's herdr workspace: claude or codex (optionally with a first prompt), or a shell."""
+    if p.get("remote_host"):
+        raise ApiError(400, f"{p['name']} runs on {p['remote_host']}: start sessions there (Terminal on {p['remote_host']}, on its page)")
     s = project_state(p)
     if s["herdr_error"]:
         raise ApiError(503, f"herdr: {s['herdr_error']}")
@@ -1522,13 +1590,14 @@ def label_of(a):
 
 
 def monitor_view():
-    view = {"agents": {}, "states": {}, "waiting": {}}
+    view = {"agents": {}, "states": {}, "waiting": {}, "projects": set()}
     cfg = load_config()
     for name, p in cfg["projects"].items():
         try:
             s = project_state(p)
         except Exception:
             continue
+        view["projects"].add(name)
         for a in s["agents"]:
             view["agents"][a["pane"]] = dict(a, project=name)
         for m in s["maps"]:
@@ -1576,10 +1645,13 @@ def diff_events(prev, now):
         g, gb = a.get("safeguard"), b.get("safeguard")
         if g and (not gb or g.get("ts") != gb.get("ts")):
             emit("safeguard", f"{who}: Opus safeguards{tail}", g.get("text", ""), **where)
+    seen = prev.get("projects", set())                # a project's first good look (a remote's first sync) is a baseline
     for key, (text, mf, tf) in now["waiting"].items():
-        if key not in prev["waiting"]:
+        if key not in prev["waiting"] and key[0] in seen:
             emit("decision", f"Decision for you · {key[0]}", f"{key[1]}: {text}", project=key[0], map=mf, ticket=tf)
     for key, st in now["states"].items():
+        if key[0] not in seen:
+            continue
         old = prev["states"].get(key)
         if not old or old[0] == st[0]:
             continue
@@ -1798,7 +1870,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/projects":
             return projects_summary()
         if path == "/api/project":
-            return project_state(project(q.get("name")))
+            p = project(q.get("name"))
+            if p.get("remote_host") and not (_remote.get(p["name"]) or {}).get("at"):
+                sync_remote(p)                           # opened before the first background sync: mirror it now
+            return project_state(p)
         if path == "/api/tree":
             p, rel = project(q.get("project")), clean_rel(q.get("path"))
             return {"entries": local_tree(p, rel) if q.get("side") == "local" else server_tree(p, rel, fresh)}
@@ -1868,6 +1943,11 @@ class Handler(BaseHTTPRequestHandler):
             if not r["ok"]:
                 raise ApiError(502, f"push failed: {r['error']}")
             return r
+        if path == "/api/remote-sync":
+            p = project(b.get("project"))
+            if not p.get("remote_host"):
+                raise ApiError(400, "not a remote project")
+            return {k: v for k, v in sync_remote(p).items() if k != "lock"}
         if path == "/api/new-project":
             return new_project(b)
         if path == "/api/moshi-mode":
@@ -1968,6 +2048,7 @@ def main():
     threading.Thread(target=warm, daemon=True).start()
     rg_notify.QUIET = ARGS.dry_run
     threading.Thread(target=monitor, daemon=True).start()
+    threading.Thread(target=remote_sync_loop, daemon=True).start()
     print(f"research-gui at {url}{'  (dry run: Start buttons send nothing)' if ARGS.dry_run else ''}"
           f"  [{dt.datetime.now():%H:%M}]", flush=True)
     if not (ARGS.no_open or ARGS.serve):

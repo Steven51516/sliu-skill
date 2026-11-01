@@ -31,7 +31,7 @@ export function renderSidebar() {
     const waiting = (p.waiting || []).length;
     const open = p.name === cur, unfolded = open && !folded.has(p.name);
     html += `<a class="nav ${open && r.view === "project" ? "on" : ""}" href="${href({ project: p.name })}" data-proj="${esc(p.name)}" title="${esc(p.error || "")}">
-      <span class="pcaret" data-fold="${esc(p.name)}" title="${unfolded ? "Fold" : "Unfold"}">${unfolded ? "▾" : "▸"}</span>${icon(open ? "home" : "folder")}<span class="label">${esc(p.name)}</span>
+      <span class="pcaret" data-fold="${esc(p.name)}" title="${unfolded ? "Fold" : "Unfold"}">${unfolded ? "▾" : "▸"}</span>${icon(p.remote ? "server" : open ? "home" : "folder")}<span class="label">${esc(p.name)}</span>${p.remote ? `<span class="rhost" title="records mirrored from ${esc(p.remote.host)}">${esc(p.remote.host)}</span>` : ""}
       ${p.ok === false ? `<span class="count alert">!</span>` : ""}
       ${waiting ? `<span class="count alert" title="waiting on you">${waiting}</span>` : working ? `<span class="count" title="${working} agent${working > 1 ? "s" : ""} working"><span style="color:var(--c-work)">●</span> ${working}</span>` : ""}
       ${!waiting && !working && (p.agents || []).length ? `<span class="dot idle" title="${p.agents.length} agents idle"></span>` : ""}

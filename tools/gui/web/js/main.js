@@ -12,8 +12,16 @@ import { resetMap } from "./map.js";
 const POLL_MS = 4000;
 let lastSig = "", polling = false, lastAttention = "";
 
+// a remote project's agents run on its host: no local sessions for it
+const remoteOf = (name) => (S.summary?.projects || []).find((p) => p.name === (name || S.route.project))?.remote;
+const localOnly = (fn) => (project, ...rest) => {
+  const r = remoteOf(project);
+  return r ? toast(`${project || S.route.project} runs on ${r.host}: start sessions there (Terminal on ${r.host}, on its page)`, "err", 6000) : fn(project, ...rest);
+};
+
 Object.assign(hooks, {
-  openChat, toggleChat, toggleDock, startTeam, newSession, addProject, newProject, shortcuts, palette, deskPane, peekJob, askProject, askLabel, openArchive,
+  openChat, toggleChat, toggleDock, startTeam: localOnly(startTeam), newSession: localOnly(newSession), addProject, newProject, shortcuts, palette, deskPane, peekJob,
+  askProject: localOnly(askProject), askLabel, openArchive,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
   nextAttention,
   setMoshiMode: async (on) => {
