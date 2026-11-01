@@ -8,8 +8,8 @@ in a herdr pane in the project folder; workers' tabs come and go as tickets star
 The roles run the same skills as a single session, with two swaps:
 - **"use implementer subagents"** (the driver): open a worker per ticket (below). A worker runs `research-work` in a
   session of its own, so it can open subagents itself (a subagent cannot), and the human can watch or answer it in its tab.
-- **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>`; a worker reports
-  `blocked` to the driver, which tells the desk. The desk puts it to the human, a question with fixed answers through
+- **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>`; a worker sends the
+  driver `ask` and keeps working (`blocked` once nothing is left that doesn't need the answer), and the driver tells the desk. The desk puts it to the human, a question with fixed answers through
   `ask-human --from "desk · <project>"` (STYLE.md), and relays the answer to the driver.
 
 Delegation inside any role follows `docs/agents/delegation.md` as usual. The human talks to the desk day to day, and to a
@@ -29,7 +29,9 @@ the map.
 - **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker
   (`herdr agent prompt <ticket id> "/exit"`, then `herdr tab close <tab>`). First check that no job depends on that
   session: a session's cleanup can stop jobs it launched.
-- **On `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
+- **On `ask` or `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
+- **On `handback`** (the human asked the worker, in its tab, for something beyond its ticket): the driver takes it as the
+  human's request: a trivial edit it does itself, anything else becomes a ticket draft (`to-tickets`).
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
   (often a false positive on biology wording), `team-worker --rescue <ticket id>` resumes its own session on Sonnet 5.5
   at xhigh effort, keeping its chat. New workers still start on Opus 5.5.
@@ -63,8 +65,8 @@ a path, sent after the action it reports has happened, never in the same batch:
 - driver → desk: `driver up for <map>` · `map: <what changed>` (after the human worked on the map with the driver) ·
   `propose <ticket>: <why next>` · `needs-you <pointer>: <one line>` · `closed <ticket name>: <answer in one line>` ·
   `progress <ticket name>: <one line>` (an Assets row got its first result) · `stopped: <why>`
-- worker → driver: `done <ticket>: <path>` · `running <ticket>: <path>` · `blocked <ticket>: <path>`, the path of the
-  file that holds the result, jobs or question; never the content itself
+- worker → driver: `done <ticket>: <path>` · `running <ticket>: <path>` · `ask <ticket>: <path>` · `blocked <ticket>: <path>`,
+  the path of the file that holds the result, jobs or question, never the content itself · `handback <ticket>: <request>`
 
 **How a message travels**, by the receiver's agent:
 - Claude Code → Claude Code: the SendMessage tool, to the session name; a worker uses `herdr agent prompt <driver pane>`.

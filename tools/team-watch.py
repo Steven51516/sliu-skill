@@ -112,8 +112,10 @@ def restart(pane, name, map_ref, reason, session, n):
         note(f"could not resume the driver: {start.stderr.strip()[:200]}; leaving it for the human")
         return False
     herdr("agent", "prompt", name, f"continue: the watchdog resumed this session on Sonnet 5.5 ({reason}). Pick up the "
-                                   f"pass for {map_ref} where you stopped; no summary, end with one line naming the file; "
-                                   f"hand biology steps to their delegate by pointer.")
+                                   f"pass for {map_ref} where you stopped, but before repeating a dispatch, launch or other "
+                                   f"outside action, check driver.log, the tickets and the server for what already ran; "
+                                   f"no summary, end with one line naming the file; hand biology steps to their delegate "
+                                   f"by pointer.")
     return True
 
 

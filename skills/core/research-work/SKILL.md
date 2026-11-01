@@ -16,6 +16,8 @@ Run jobs the way the scope file says. Smoke-test only code never run before (tra
 
 An execution fix before any result is yours: append it, dated, under the pre-registration. Criteria never change after results are seen; a design change goes back to the user.
 
+A question only the user can answer: put it as soon as it arises, one concrete question with your pick (ask the user), and keep working on everything that doesn't depend on the answer. A request the user makes in your session: within your ticket, do it; beyond it, don't: hand it to the map's driver in one line if another session drives the map, else say which ticket it belongs to. Never drop one silently.
+
 Once done, write the answer against the pre-registration, with numbers. Before calling a failure negative, classify it: execution, measurement, data, method or hypothesis; only the last two are negative, the rest are inconclusive, with the fix. Then have it reviewed, if `review` says so ("When to review"): delegate the review (`docs/agents/delegation.md`) to a session that calls the Skill tool with "review". Any FAIL keeps the ticket open; a `task` may resolve with its review still running, as `review` allows.
 
 Resolve the ticket as the tracker doc says, tagging its line in Decisions so far `[tentative]` (a screen) or `[established]` (confirmed, as `rigor` says). If another session drives the map, leave the map to it and end with one line: `done <ticket>: <answer>`, or `running <ticket>: <jobs>` while jobs still run. Leaving before the ticket resolves, write a dated **Where I stopped** at the end of its Log.

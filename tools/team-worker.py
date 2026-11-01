@@ -4,7 +4,8 @@
   team-worker <ticket path>          a new tab labelled with the ticket id, logged in (macOS: from the Keychain), on Opus 5.5
                                      (an explicit --model, so a /model elsewhere cannot change it), told to work the
                                      ticket and to report to the calling driver with one line:
-                                     `done|running|blocked <id>: <path of the file that holds the result>`
+                                     `done|running|ask|blocked <id>: <path of the file that holds the result>`,
+                                     or `handback <id>: <request>` for a request beyond its ticket
   team-worker --rescue <ticket id>   the worker in the tab labelled <id>: exited and its own session resumed on Sonnet 5.5
                                      at xhigh effort, keeping its chat, then told to continue (after a safeguard stop)
 
@@ -80,7 +81,8 @@ def open_worker(path):
             fail(f"{pane} waits at Claude Code's folder-trust check: open claude in {here} once and accept, then retry")
         fail(f"claude did not start in {pane}: {(r.stderr or r.stdout).strip()[:200]}")
     prompt = (f"/research-work {path}. You are a worker: when you finish or stop, send the driver one line with "
-              f"herdr agent prompt {driver} 'done|running|blocked {tid}: <path of the file that holds the result>'.")
+              f"herdr agent prompt {driver} 'done|running|ask|blocked {tid}: <path of the file that holds the result or "
+              f"question>', or 'handback {tid}: <request>' for a request beyond your ticket.")
     herdr("agent", "prompt", name, prompt)
     ok, why = started(name)
     if not ok:
@@ -103,8 +105,9 @@ def rescue(tid):
     if r.returncode != 0:
         fail(f"could not resume {tid}: {r.stderr.strip()[:200]}")
     herdr("agent", "prompt", name, "continue: this session was resumed on Sonnet 5.5 after Claude's safeguards stopped "
-                                   "it. Pick up where you stopped; no summary; hand biology steps to their delegate by "
-                                   "pointer; report to the driver as before.")
+                                   "it. Pick up where you stopped, but before repeating any launch or other outside "
+                                   "action, check the ticket's Log and the server for what already ran; no summary; hand "
+                                   "biology steps to their delegate by pointer; report to the driver as before.")
     ok, why = started(name)
     if not ok:
         fail(f"{tid} did not resume: {why}")
