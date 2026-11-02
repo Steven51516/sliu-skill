@@ -611,3 +611,8 @@ body.remote-project :is(#mh-driver, #mh-ask, #mh-ticket, #mh-driverchat, #tp-ask
 body.remote-project [data-driver] { display: none !important; }
 .nav .muted-ico { color: var(--muted); display: inline-flex; margin-left: 4px; }
 .nav .muted-ico svg { width: 13px; height: 13px; }
+.mtag { display: inline-block; font-size: 10.5px; font-weight: 500; line-height: 15px; padding: 0 5px; margin: 0 6px 0 6px; border-radius: 5px;
+  color: var(--ink-2); background: var(--active); vertical-align: 1px; }
+.l2 .mtag { margin-left: 0; }
+.mtag.alt { color: #8a5a00; background: color-mix(in srgb, #f0a400 22%, transparent); }
+@media (prefers-color-scheme: dark) { .mtag.alt { color: #ffc861; } }

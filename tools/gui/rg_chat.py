@@ -300,7 +300,7 @@ def last_safeguard(path):
     st = _guards.get(path)
     if not st or size < st["size"]:
         st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False, "turn_end": None,
-                              "wake": None, "fired": None, "api_error": None}
+                              "wake": None, "fired": None, "api_error": None, "model": None}
     if size > st["size"]:
         with open(path, "rb") as f:
             f.seek(st["size"])
@@ -308,6 +308,14 @@ def last_safeguard(path):
         end = data.rfind(b"\n")
         if end >= 0:
             for line in data[:end].split(b"\n"):
+                if b'"type":"assistant"' in line:                # the model that wrote the latest reply
+                    mm = _MODEL.search(line)
+                    if mm and mm.group(1) != b"<synthetic>":
+                        st["model"] = mm.group(1).decode()
+                elif b"<local-command-stdout>Set model to" in line:   # /model since: the next reply comes from it
+                    mm = _SETMODEL.search(line)
+                    if mm:
+                        st["model"] = mm.group(1).decode()
                 if b'"isApiErrorMessage":true' in line:          # Claude Code's own "API Error: ..." reply
                     try:
                         d = json.loads(line)
@@ -355,6 +363,23 @@ def last_safeguard(path):
                         st["resolved"] = True       # a normal reply after the flag: it no longer holds the agent up
             st["size"] += end + 1
     return None if st["resolved"] else st["last"]
+
+
+_MODEL = re.compile(rb'"message":\{"model":"([^"]+)"')
+_SETMODEL = re.compile(rb"<local-command-stdout>Set model to `([^`]+)`")
+
+
+def pretty_model(m):
+    """claude-sonnet-5-5 -> Sonnet 5.5 (a /model display name passes through)."""
+    r = re.match(r"claude-(opus|sonnet|haiku|fable)-(\d+)(?:-(\d+))?", m or "")
+    return f"{r.group(1).capitalize()} {r.group(2)}{'.' + r.group(3) if r.group(3) else ''}" if r else (m or None)
+
+
+def last_model(path):
+    """The model of the session's latest reply (or the one /model set since), e.g. "Opus 5.5"."""
+    last_safeguard(path)
+    st = _guards.get(path)
+    return pretty_model(st["model"]) if st else None
 
 
 def last_api_error(path):

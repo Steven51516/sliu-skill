@@ -98,6 +98,18 @@ REMOTE_EVERY = 60
 _remote = {}
 
 
+def synced_at(p):
+    """When the project was last mirrored: this run's sync, else the stamp a previous run left on disk."""
+    at = (_remote.get(p["name"]) or {}).get("at")
+    if at:
+        return at
+    try:
+        with open(os.path.join(REMOTE_CACHE, f".{p['name']}.synced")) as f:
+            return float(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
 def sync_remote(p):
     """Mirror a remote project's records (text and small figures, under 2 MB each) with rsync over the shared ssh
     connection; agents and code stay there. Returns {at, error}: the last good sync and the last failure."""
@@ -115,6 +127,8 @@ def sync_remote(p):
         code, _, err = run(cmd, timeout=240)
         if code == 0:
             st.update(at=time.time(), error=None)
+            with open(os.path.join(REMOTE_CACHE, f".{p['name']}.synced"), "w") as f:   # outside the mirror: --delete keeps off it
+                f.write(str(st["at"]))
         else:
             lines = [l for l in err.strip().splitlines() if l.strip()]
             st["error"] = (lines[-1] if lines else f"rsync exit {code}")[:300]
@@ -127,7 +141,7 @@ def sync_remote(p):
 
 def remote_info(p):
     st = _remote.get(p["name"]) or {}
-    return {"host": p["remote_host"], "path": p["remote_path"], "synced_at": st.get("at") or None, "error": st.get("error")}
+    return {"host": p["remote_host"], "path": p["remote_path"], "synced_at": synced_at(p), "error": st.get("error")}
 
 
 def remote_sync_loop():
@@ -270,7 +284,8 @@ def agent_view(a, snap, ros):
             "session_id": (a.get("agent_session") or {}).get("value"),
             "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None,
             "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None,
-            "api_error": rg_chat.last_api_error(transcript_of(a)) if transcript_of(a) else None}
+            "api_error": rg_chat.last_api_error(transcript_of(a)) if transcript_of(a) else None,
+            "model": rg_chat.last_model(transcript_of(a)) if transcript_of(a) else None}
 
 
 def transcript_of(a):
@@ -433,7 +448,7 @@ def mtime(path):
 
 
 def project_state(p, with_agents=True):
-    if p.get("remote_host") and not (_remote.get(p["name"]) or {}).get("at"):
+    if p.get("remote_host") and not synced_at(p):
         st = _remote.get(p["name"]) or {}
         raise ApiError(503, f"{p['name']} is on {p['remote_host']}: {st.get('error') or 'mirroring its records (first sync)…'}")
     if p.get("remote_host") and not os.path.exists(os.path.join(p["path"], "CLAUDE.md")) and not glob.glob(os.path.join(p["path"], "*", "*", "*.md")):
@@ -1890,8 +1905,8 @@ class Handler(BaseHTTPRequestHandler):
             return projects_summary()
         if path == "/api/project":
             p = project(q.get("name"))
-            if p.get("remote_host") and not (_remote.get(p["name"]) or {}).get("at"):
-                sync_remote(p)                           # opened before the first background sync: mirror it now
+            if p.get("remote_host") and not synced_at(p):
+                sync_remote(p)                           # never mirrored: do it now
             return project_state(p)
         if path == "/api/tree":
             p, rel = project(q.get("project")), clean_rel(q.get("path"))

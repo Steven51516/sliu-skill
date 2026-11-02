@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu, modelTag, modelOff } from "./core.js";
 
 export function inboxCount() {
   if (!S.summary) return 0;
@@ -32,7 +32,7 @@ export function renderSidebar() {
     const open = p.name === cur, unfolded = open && !folded.has(p.name);
     html += `<a class="nav ${open && r.view === "project" ? "on" : ""}" href="${href({ project: p.name })}" data-proj="${esc(p.name)}" title="${esc(p.error || "")}">
       <span class="pcaret" data-fold="${esc(p.name)}" title="${unfolded ? "Fold" : "Unfold"}">${unfolded ? "▾" : "▸"}</span>${icon(p.remote ? "server" : open ? "home" : "folder")}<span class="label">${esc(p.name)}</span>${p.remote ? `<span class="rhost" title="records mirrored from ${esc(p.remote.host)}">${esc(p.remote.host)}</span>` : ""}
-      ${p.ok === false ? `<span class="count alert">!</span>` : ""}${p.muted ? `<span class="muted-ico" title="Inbox muted for this project">${icon("belloff")}</span>` : ""}
+      ${p.ok === false ? (p.remote && !p.remote.synced_at && !p.remote.error ? `<span class="count" title="mirroring from ${esc(p.remote.host)}…">…</span>` : `<span class="count alert">!</span>`) : ""}${p.muted ? `<span class="muted-ico" title="Inbox muted for this project">${icon("belloff")}</span>` : ""}
       ${waiting ? `<span class="count alert" title="waiting on you">${waiting}</span>` : working ? `<span class="count" title="${working} agent${working > 1 ? "s" : ""} working"><span style="color:var(--c-work)">●</span> ${working}</span>` : ""}
       ${!waiting && !working && (p.agents || []).length ? `<span class="dot idle" title="${p.agents.length} agents idle"></span>` : ""}
       ${blocked && !waiting ? `<span class="dot blocked"></span>` : ""}</a>`;
@@ -65,7 +65,7 @@ export function renderSidebar() {
     if (!agents.length) html += `<div class="empty" style="padding:4px 10px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent in this project"}.</div>`;
   }
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
-      ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
+      ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${modelOff(a) ? modelTag(a) : ""}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
       ${S.unread.has(a.pane) ? `<span class="dot unread" title="replied to you: not read yet"></span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
   if (tree) {

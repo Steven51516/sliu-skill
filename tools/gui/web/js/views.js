@@ -1,5 +1,5 @@
 // Pages: project overview, inbox, GPUs, settings, project files; and the title bar.
-import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur, loopNote, loopDead, store } from "./core.js";
+import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur, loopNote, loopDead, store, modelTag } from "./core.js";
 import { renderFiles, vscode } from "./files.js";
 import { renderMap, curMap } from "./map.js";
 
@@ -37,7 +37,7 @@ export function renderOverview() {
   const ch = d.changes;
   host.innerHTML = `<div class="page">
     <div class="ph"><div class="grow"><h1>${esc(d.name)}</h1><div class="sub mono">${d.remote
-        ? `on ${esc(d.remote.host)}:${esc(d.remote.path)} · <span class="${d.remote.error ? "err" : ""}">${d.remote.error ? esc(d.remote.error) : `records mirrored ${esc(ago(d.remote.synced_at))}`}</span>`
+        ? `on ${esc(d.remote.host)}:${esc(d.remote.path)} · <span class="${d.remote.error ? "err" : ""}">${d.remote.error ? `${esc(d.remote.error)} · showing the copy from ${esc(ago(d.remote.synced_at))}` : `records mirrored ${esc(ago(d.remote.synced_at))}`}</span>`
         : `${esc(d.path.replace(/^\/Users\/[^/]+/, "~"))}${d.server ? ` · ${esc(d.server)}:${esc(d.server_root)}` : ""}`}</div></div>
       <div class="actions">
         ${d.remote ? `<button class="btn primary" id="ov-ssh">${icon("term")} Terminal on ${esc(d.remote.host)}</button><button class="btn" id="ov-sync">${icon("refresh")} Sync now</button>`
@@ -145,7 +145,7 @@ function waitingRow(w) {
 }
 
 function agentRow(a, sub = false) {
-  return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
+  return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${modelTag(a)}</div>
     <div class="t2 ${loopDead(a) ? "err" : ""}">${esc(a.status === "blocked" ? "waiting for your answer" : [loopNote(a), codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>
     ${loopDead(a) && a.status !== "working" ? `<button class="btn sm primary" data-restart="${esc(a.pane)}" title="Send ${esc(a.loop.prompt)}">Restart loop</button>` : ""}${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
     <button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button></div>`;

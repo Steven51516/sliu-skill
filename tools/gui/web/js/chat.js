@@ -1,6 +1,6 @@
 // Chat with any live agent: its Claude Code transcript rendered, prompts answered from the exact screen, messages sent
 // through herdr. Polls fast while the agent works or waits, slowly while it is idle.
-import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent } from "./core.js";
+import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent, modelTag } from "./core.js";
 
 const C = S.chat;
 Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0, turnFiles: new Set() });
@@ -295,7 +295,7 @@ function renderLive() {
   if (!live) return;
   const sub = $("#ch-sub");
   const codex = codexNote(agentByPane(C.pane));
-  if (sub) sub.innerHTML = C.err ? `<span class="err">${esc(C.err)}</span>` : `${esc(AGENT_WORD[C.status] || C.status || "…")}${codex ? " · " + esc(codex) : C.title ? " · " + esc(C.title) : ""}`;
+  if (sub) sub.innerHTML = C.err ? `<span class="err">${esc(C.err)}</span>` : `${modelTag(agentByPane(C.pane))}${esc(AGENT_WORD[C.status] || C.status || "…")}${codex ? " · " + esc(codex) : C.title ? " · " + esc(C.title) : ""}`;
   // queued messages + working indicator live at the bottom of the conversation
   body.querySelectorAll(".msg.queued, .working, .fallback").forEach((e) => e.remove());
   const stick = nearBottom(body);

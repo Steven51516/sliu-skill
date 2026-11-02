@@ -77,6 +77,15 @@ export const AGENT_WORD = { blocked: "needs you", working: "working", idle: "idl
 export const fmtDur = (s) => s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
 // "Codex running · 9 min" when the agent's delegated Codex job is still going (its own screen may say idle)
 // an Opus safeguard flag in the last two hours (biology work trips them falsely now and then)
+// the model a session answers with: a quiet tag, amber when it is not the newest Opus in use (team-watch moves stuck
+// drivers to Sonnet; Claude's safeguards can switch a session to an older Opus)
+const opusVer = (m) => { const r = /^opus\s+(\d+(?:\.\d+)?)/i.exec(m || ""); return r ? parseFloat(r[1]) : null; };
+export const modelOff = (a) => {
+  if (!a?.model) return false;
+  const v = opusVer(a.model), top = Math.max(0, ...allAgents().map((x) => opusVer(x.model) || 0));
+  return v === null || v < top;
+};
+export const modelTag = (a) => a?.model ? `<span class="mtag ${modelOff(a) ? "alt" : ""}" title="answering with ${esc(a.model)}">${esc(a.model.replace(/\s*\(.*\)$/, ""))}</span>` : "";
 // Claude Code's own "API Error: ..." reply, until a real reply follows (an account block stops every loop)
 export const apiNote = (a) => a?.api_error ? `⚠ API error: ${(a.api_error.text || "").replace(/^API Error:\s*/i, "").split(/\. /)[0]}` : "";
 export const guardNote = (a) => {
