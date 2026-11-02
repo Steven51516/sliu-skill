@@ -50,7 +50,8 @@ the map.
 ## Roster
 `scratch/agents/roster.md`, one line per desk or driver session: `<role> | <agent> | <herdr pane or -> | <session name> |
 <YYYY-MM-DD HH:MM> | <map or ->`. `<agent>` is `claude` or `codex`. The pane is the address: a session's name changes when it
-resumes, so a session that starts or resumes rewrites its line (a driver also sends the desk `driver up for <map>`), and a
+resumes, so a session that starts or resumes rewrites its line (a Claude Code session is reminded by the SessionStart hook
+`tools/team-roster-hook.py`; a driver also sends the desk `driver up for <map>`), and a
 send that fails re-reads the roster. A session learns its own name (Claude Code: the ListAgents tool; Codex: the session
 id in `herdr pane current`) and, inside herdr, its pane (`herdr pane current`). Workers are not on the roster: their driver
 knows their tabs.

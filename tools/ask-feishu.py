@@ -13,6 +13,12 @@ as lines starting `[Feishu bridge]`, and the answer as
 `Answer from <name> (Feishu): <answer> (to: <question>, id <id>)`. Every question the bridge takes is a line in
 ~/.config/research-harness/feishu-asks.jsonl. Exits 2 with the reason when it cannot send (not in a herdr pane, bridge
 not configured, bridge unreachable or refusing); the key is never printed.
+
+Setup: fill in the env file, then let Claude Code's auto mode run it, or its classifier blocks every call: add to
+`autoMode.allow` in ~/.claude/settings.json a rule such as "Running the user's Feishu bridge tool `ask-feishu` to send a
+colleague a question or a results summary, when the user named that colleague for this kind of question (in this
+conversation, the project's AGENTS.md or the ticket); never credentials or private data; never anyone the user did not
+name."
 """
 import argparse
 import json
