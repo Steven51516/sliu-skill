@@ -154,7 +154,7 @@ function render() {
     <div class="chat-body" id="ch-body"></div>
     <div id="ch-live"></div>
     <div class="composer"><div class="box">
-      <textarea id="composer" rows="1" placeholder="${a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : C.status === "ended" ? "This session has ended (its tab closed); its conversation stays readable here" : C.status === "archive" || (C.pane || "").startsWith("session:") ? "A saved conversation, read-only" : "Pick an agent first"}" ${a ? "" : "disabled"}></textarea>
+      <textarea id="composer" rows="1" placeholder="${a?.remote ? `On ${esc(a.remote)}: read-only here (its conversation, mirrored every minute). Message it in its terminal there.` : a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : C.status === "ended" ? "This session has ended (its tab closed); its conversation stays readable here" : C.status === "archive" || (C.pane || "").startsWith("session:") ? "A saved conversation, read-only" : "Pick an agent first"}" ${a && !a.remote ? "" : "disabled"}></textarea>
       <div class="bar2"><span class="hint" id="ch-hint">⏎ send · ⇧⏎ new line</span><span class="grow"></span>
         <button class="send" id="ch-send" title="Send">${icon("send")}</button></div></div></div>`;
   $("#ch-pick").onclick = (e) => pickAgent(e.currentTarget);

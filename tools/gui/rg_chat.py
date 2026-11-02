@@ -17,6 +17,9 @@ INPUT_CHARS = 3000
 _paths = {}
 
 
+EXTRA_DIRS = []    # more folders of <project>/<encoded dir>/<session>.jsonl (the app's mirrors of remote sessions)
+
+
 def transcript_path(session_id, agent="claude"):
     """The JSONL file for a session id (cached once found)."""
     if not session_id or not re.fullmatch(r"[0-9a-fA-F-]{8,64}", session_id):
@@ -27,6 +30,8 @@ def transcript_path(session_id, agent="claude"):
     pattern = (f"~/.codex/sessions/*/*/*/rollout-*-{session_id}.jsonl" if agent == "codex"
                else f"~/.claude/projects/*/{session_id}.jsonl")
     hits = glob.glob(os.path.expanduser(pattern))
+    if not hits and agent != "codex":                  # a remote project's session, mirrored by the app
+        hits = [h for d in EXTRA_DIRS for h in glob.glob(os.path.join(d, "*", "*", f"{session_id}.jsonl"))]
     if hits:
         _paths[session_id] = max(hits, key=os.path.getmtime)
         return _paths[session_id]

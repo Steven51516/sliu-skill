@@ -95,6 +95,10 @@ REMOTE_SKIP = [".git/", "artifacts/", "data/", "checkpoints/", "unsloth_compiled
                "__pycache__/", ".venv/", "envs/", "outputs/", "results/raw/"]
 REMOTE_KEEP = ["*.md", "*.json", "*.jsonl", "*.csv", "*.tsv", "*.yaml", "*.yml", "*.toml", "*.txt", "*.log", "*.png", "*.svg"]
 REMOTE_EVERY = 60
+REMOTE_SESSIONS = os.path.join(REMOTE_CACHE, ".sessions")   # <project>/<encoded dir>/<session>.jsonl, read-only
+SESSION_HOURS = 24                                          # conversations written to in the last day are shown
+SSH_BATCH = "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ClearAllForwardings=yes"
+rg_chat.EXTRA_DIRS.append(REMOTE_SESSIONS)
 _remote = {}
 
 
@@ -129,6 +133,7 @@ def sync_remote(p):
             st.update(at=time.time(), error=None)
             with open(os.path.join(REMOTE_CACHE, f".{p['name']}.synced"), "w") as f:   # outside the mirror: --delete keeps off it
                 f.write(str(st["at"]))
+            sync_remote_sessions(p)
         else:
             lines = [l for l in err.strip().splitlines() if l.strip()]
             st["error"] = (lines[-1] if lines else f"rsync exit {code}")[:300]
@@ -137,6 +142,49 @@ def sync_remote(p):
     finally:
         st["lock"].release()
     return st
+
+
+def sync_remote_sessions(p):
+    """Copy the project's Claude conversations written to in the last day (from ~/.claude/projects there, any folder
+    whose name ends in the project's) beside the mirror, so the app can list and show them; rsync sends only what grew."""
+    enc = re.sub(r"[^A-Za-z0-9]", "-", "/".join(p["remote_path"].rstrip("/").split("/")[-2:]))
+    find = (f"cd ~/.claude/projects 2>/dev/null && find . -maxdepth 2 -name '*.jsonl' -mmin -{SESSION_HOURS * 60} -size -80M "
+            f"| grep -E '^\\./[^/]*{enc}(-[^/]*)?/' || true")
+    code, out, _ = run([*shlex.split(SSH_BATCH), p["remote_host"], find], timeout=60)
+    if code != 0:
+        return
+    files = [l.strip()[2:] for l in out.decode(errors="replace").splitlines() if l.strip().startswith("./")]
+    dest = os.path.join(REMOTE_SESSIONS, p["name"])
+    os.makedirs(dest, exist_ok=True)
+    if files:
+        run(["rsync", "-tz", "--files-from=-", "-e", SSH_BATCH, f"{p['remote_host']}:~/.claude/projects/", dest + "/"],
+            timeout=300, input="\n".join(files).encode())
+    keep = {os.path.join(dest, f) for f in files}
+    for f in glob.glob(os.path.join(dest, "*", "*.jsonl")):                # older than a day there: drop the copy
+        if f not in keep:
+            os.remove(f)
+
+
+def remote_sessions(p):
+    """The project's Claude sessions on its host, from their mirrored conversations, shaped like the app's agents.
+    Working: written to in the last 5 minutes after its last finished turn. Read-only: the app can't type into them."""
+    out = []
+    for f in glob.glob(os.path.join(REMOTE_SESSIONS, p["name"], "*", "*.jsonl")):
+        mt = os.path.getmtime(f)
+        if time.time() - mt > SESSION_HOURS * 3600:
+            continue
+        sid = os.path.basename(f)[:-6]
+        end = rg_chat.last_turn_end(f)
+        end_t = rg_chat_ts(end) if end else 0
+        title = rg_chat.title_of(f) or "Claude session"
+        out.append({"pane": f"remote:{p['name']}:{sid}", "tab": None, "workspace": None, "name": None,
+                    "workspace_label": p["remote_host"], "agent": "claude",
+                    "status": "working" if time.time() - mt < 300 and mt - end_t > 20 else "idle",
+                    "title": title, "tab_label": title, "role": "", "map": "", "session": sid, "cwd": None, "transcript": True,
+                    "safeguard": rg_chat.last_safeguard(f), "session_id": sid, "turn_end": end, "loop": rg_chat.loop_state(f),
+                    "api_error": rg_chat.last_api_error(f), "model": rg_chat.last_model(f), "remote": p["remote_host"],
+                    "last_active": mt})
+    return sorted(out, key=lambda a: -a["last_active"])
 
 
 def remote_info(p):
@@ -459,7 +507,7 @@ def project_state(p, with_agents=True):
     problems, frontier = tracker.analyse(maps) if maps else ([], {})
     by_id = {k.get("id"): k for m in maps for k in m["_archived"]}
     by_id.update({k.get("id"): k for m in maps for k in m["_tickets"]})
-    agents, herdr_err = project_agents(p) if with_agents and not p.get("remote_host") else ([], None)   # remote: its agents run there
+    agents, herdr_err = (remote_sessions(p), None) if p.get("remote_host") else project_agents(p) if with_agents else ([], None)
     driven = live_driver_maps(agents, maps)
     mark_workers(agents, maps, driven)
     codex = mark_codex(p, agents, maps)
@@ -1188,6 +1236,17 @@ def skills():
 def chat(pane, after, session, want_screen=False, around=None):
     if (pane or "").startswith("session:"):
         return archive(pane.split(":", 1)[1], around)
+    if (pane or "").startswith("remote:"):          # a session on a remote project's host: its mirrored conversation
+        _, name, sid = pane.split(":", 2)
+        p = project(name)
+        a = next((x for x in remote_sessions(p) if x["session_id"] == sid), None)
+        path = rg_chat.transcript_path(sid)
+        if not path:
+            raise ApiError(404, f"no mirrored conversation {sid}")
+        items, offset, cut, reset = rg_chat.read(path, after)
+        return {"pane": pane, "agent": "claude", "status": a["status"] if a else "idle", "remote": p["remote_host"],
+                "title": (a or {}).get("title") or "", "session": sid, "items": items, "offset": offset, "cut": cut,
+                "reset": reset, "transcript": path}
     try:
         a, snap = live_agent(pane)
     except ApiError as e:

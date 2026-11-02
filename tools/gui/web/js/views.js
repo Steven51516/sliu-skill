@@ -58,8 +58,8 @@ export function renderOverview() {
       <div class="sec"><h2>Maps</h2><span class="meta">${open.length} open · ${closed.length} closed</span></div>
       <div class="grid">${open.map(mapCard).join("") || `<div class="card empty">No open map. Chart one with “New map from an idea”.</div>`}</div>
     </div><div>
-      <div class="sec"><h2>${d.team ? "Team" : "Sessions"}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
-      <div class="card rows">${d.remote ? `<div class="empty">Its agents run on ${esc(d.remote.host)}, out of the app's sight; maps and tickets here are its records, mirrored every minute. <a id="ov-ssh2">Open a terminal there</a>.</div>`
+      <div class="sec"><h2>${d.remote ? `Sessions on ${esc(d.remote.host)}` : d.team ? "Team" : "Sessions"}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
+      <div class="card rows">${d.remote ? (d.agents.length ? teamRows(d.agents) : "") + `<div class="empty" style="font-size:12px">Sessions on ${esc(d.remote.host)} active in the last day, read from their conversations (mirrored every minute): read-only here. To talk to one, <a id="ov-ssh2">open a terminal there</a>.</div>`
         : teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
       ${d.remote ? "" : `<div class="sec"><h2>GPUs</h2><span class="grow"></span><a href="#/gpus" class="meta">every node</a></div><div class="card pad" id="ov-gpus">${gpuCache.all || `<div class="spin"></div>`}</div>`}
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
@@ -148,7 +148,7 @@ function agentRow(a, sub = false) {
   return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${modelTag(a)}</div>
     <div class="t2 ${loopDead(a) ? "err" : ""}">${esc(a.status === "blocked" ? "waiting for your answer" : [loopNote(a), codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>
     ${loopDead(a) && a.status !== "working" ? `<button class="btn sm primary" data-restart="${esc(a.pane)}" title="Send ${esc(a.loop.prompt)}">Restart loop</button>` : ""}${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
-    <button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button></div>`;
+    ${a.remote ? `<span class="meta muted" style="font-size:11.5px;white-space:nowrap">${esc(ago(a.last_active))}</span>` : `<button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button>`}</div>`;
 }
 function teamRows(agents) {
   // desk, each driver followed by the workers it opened, then the rest
