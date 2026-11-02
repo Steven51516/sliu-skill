@@ -56,15 +56,24 @@ def token():
     return r.stdout.strip() if r.returncode == 0 else None
 
 
+def submit(name, pane, text):
+    """Type a prompt and see it submitted: a prompt left typed in the input box (T11-69, 2026-11-02: 13 min) looks like a
+    started worker. herdr reports a prompt that started no turn within 5 s as stalled; then press Enter once."""
+    r = herdr("agent", "prompt", name, text, "--wait", "--until", "working", "--timeout", "60000")
+    if r.returncode != 0 and "stalled" in (r.stdout + r.stderr):
+        herdr("pane", "send-keys", pane, "Enter")
+
+
 def started(name):
-    """The worker took its prompt and is not stuck on a login screen."""
+    """The worker took its prompt (it is working, not idle with the prompt unsent) and is not stuck on a login screen."""
     time.sleep(6)
     screen = herdr("agent", "read", name).stdout
     if DEAD.search(screen):
         return False, "the worker is not logged in (its screen asks for a login)"
     res = json.loads(herdr("agent", "get", name).stdout or "{}").get("result", {})
     status = (res.get("agent") or res).get("agent_status")
-    return (status in ("working", "blocked", "idle", "done")), f"worker status: {status}"
+    why = "its prompt sits unsubmitted (idle)" if status == "idle" else f"worker status: {status}"
+    return (status in ("working", "blocked", "done")), why
 
 
 def caller_kind():
@@ -108,7 +117,7 @@ def open_worker(path):
     prompt = (f"{first} You are a worker: when you finish, stop or need the user, send the driver one line with "
               f"herdr agent prompt {driver} 'done|running|ask|blocked {tid}: <path of the file that holds the result or "
               f"question>', or 'handback {tid}: <request>' for a request beyond your ticket.")
-    herdr("agent", "prompt", name, prompt)
+    submit(name, pane, prompt)
     ok, why = started(name)
     if not ok:
         fail(f"{tid} in {pane} did not start: {why}")
@@ -131,10 +140,10 @@ def rescue(tid):
               "--", "--resume", session, "--model", RESCUE_MODEL, "--effort", RESCUE_EFFORT)
     if r.returncode != 0:
         fail(f"could not resume {tid}: {r.stderr.strip()[:200]}")
-    herdr("agent", "prompt", name, "continue: this session was resumed on Sonnet 5.5 after Claude's safeguards stopped "
-                                   "it. Pick up where you stopped, but before repeating any launch or other outside "
-                                   "action, check the ticket's Log and the server for what already ran; no summary; hand "
-                                   "biology steps to their delegate by pointer; report to the driver as before.")
+    submit(name, pane, "continue: this session was resumed on Sonnet 5.5 after Claude's safeguards stopped it. Pick up "
+                       "where you stopped, but before repeating any launch or other outside action, check the ticket's "
+                       "Log and the server for what already ran; no summary; hand biology steps to their delegate by "
+                       "pointer; report to the driver as before.")
     ok, why = started(name)
     if not ok:
         fail(f"{tid} did not resume: {why}")

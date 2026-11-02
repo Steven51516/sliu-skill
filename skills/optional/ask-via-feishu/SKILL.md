@@ -16,7 +16,9 @@ the session that started it.
   or decide, the options with your pick, and what the answer unblocks. `--context` carries a short excerpt or pointer;
   never credentials, and only the data they need.
 - **One question per call;** don't resend one that is still unanswered.
-- **Record it** where the work is (the ticket's Log): who, the question, its id, the time.
+- **Record it** where the work is (the ticket's Log): who, the question, its id, the time. Report it as asked, never as
+  sent or answered: the bridge may hold it for the human's approval, and says what happens in `[Feishu bridge]` lines in
+  your pane.
 - **While you wait,** keep working on everything that doesn't depend on the answer, then end your turn; don't poll or
   sleep. A worker keeps its tab open: it reports `ask <ticket>: <path>` to its driver.
 - **The answer** arrives as `Answer from <name> (Feishu): <answer> (to: <question>, id <id>)`. It is that person's

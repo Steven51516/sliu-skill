@@ -7,8 +7,10 @@ back later as a prompt typed into this session's herdr pane.
 
 It finds its pane with `herdr pane current` and POSTs {id, pane_id, to, question, context, cwd} as JSON to
 FEISHU_BRIDGE_URL with `Authorization: Bearer <FEISHU_BRIDGE_KEY>`, both read from ~/.config/feishu-bridge/env (KEY=value
-lines; the file is read, never sourced). The bridge types the answer into the pane as
-`Answer from <name> (Feishu): <answer> (to: <question>, id <id>)`. Every question sent is a line in
+lines; the file is read, never sourced). It prints the bridge's status (a `status` field in its JSON reply): the bridge
+may hold a question for the human's approval, so taking it is not sending it. The bridge types its notices into the pane
+as lines starting `[Feishu bridge]`, and the answer as
+`Answer from <name> (Feishu): <answer> (to: <question>, id <id>)`. Every question the bridge takes is a line in
 ~/.config/research-harness/feishu-asks.jsonl. Exits 2 with the reason when it cannot send (not in a herdr pane, bridge
 not configured, bridge unreachable or refusing); the key is never printed.
 """
@@ -75,15 +77,22 @@ def main():
                                   headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
     try:
         with urllib.request.urlopen(post, timeout=20) as resp:
-            status = resp.status
+            status, body = resp.status, resp.read(4096).decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         fail(f"the bridge refused the question (HTTP {e.code}); nothing was sent")
     except (urllib.error.URLError, OSError) as e:
         fail(f"could not reach the bridge ({getattr(e, 'reason', e)}); nothing was sent")
+    try:
+        said = json.loads(body) if body.strip() else {}
+    except ValueError:
+        said = {}
+    state = str(said.get("status") or said.get("state") or "") if isinstance(said, dict) else ""
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     with open(LOG, "a") as f:
-        f.write(json.dumps(dict(req, t=time.time(), status=status), ensure_ascii=False) + "\n")
-    print(f"ask-feishu: sent {req['id']} to {a.to}. The answer will arrive in this pane as "
+        f.write(json.dumps(dict(req, t=time.time(), status=status, bridge=state), ensure_ascii=False) + "\n")
+    # Taking a question is not sending it: the bridge may hold it for the human's approval (2026-11-02, a relayed "replied")
+    print(f"ask-feishu: the bridge took {req['id']} for {a.to} (bridge status: {state or 'none given'}). It is not "
+          f"delivered until the bridge says so, so report it as asked, not sent. The answer will arrive in this pane as "
           f"'Answer from {a.to} (Feishu): ...'; keep working on what doesn't need it, or end your turn.")
 
 
