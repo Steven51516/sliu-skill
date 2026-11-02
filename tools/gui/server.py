@@ -165,26 +165,117 @@ def sync_remote_sessions(p):
             os.remove(f)
 
 
+REMOTE_HERDR = 'H=$(command -v herdr || echo ~/.local/bin/herdr); "$H"'
+_rsnap = {}        # host -> {"t", "agents", "snap", "error"}: its herdr, every few seconds
+
+
+def remote_herdr(host, *args, timeout=30):
+    """Run herdr on a remote host over the shared ssh connection; its JSON result."""
+    code, out, err = run([*shlex.split(SSH_BATCH), host, REMOTE_HERDR + " " + " ".join(shlex.quote(a) for a in args)], timeout=timeout)
+    try:
+        d = json.loads(out or err)                  # herdr prints its errors as JSON on stderr
+    except ValueError:
+        raise ApiError(502, f"herdr on {host}: {(err or out.decode(errors='replace')).strip()[:200] or f'exit {code}'}")
+    if "error" in d:
+        raise ApiError(502, f"herdr on {host}: {d['error'].get('message')}")
+    return d.get("result", d)
+
+
+def refresh_remote_herdr(host):
+    try:
+        names = remote_herdr(host, "agent", "list", timeout=20).get("agents", [])
+        snap = remote_herdr(host, "api", "snapshot", timeout=20).get("snapshot", {})
+        _rsnap[host] = {"t": time.time(), "agents": names, "snap": snap, "error": None}
+    except ApiError as e:
+        _rsnap[host] = dict(_rsnap.get(host) or {}, t=time.time(), error=str(e))
+
+
+def remote_herdr_loop():
+    while True:
+        for host in {p["remote_host"] for p in load_config()["projects"].values() if p.get("remote_host")}:
+            refresh_remote_herdr(host)
+        time.sleep(8)
+
+
+def remote_agent(p, pane, sid, path, **kw):
+    """A remote session shaped like the app's agents (agent_view), its conversation read from the mirror."""
+    return {"pane": f"remote:{p['name']}:{pane}", "tab": None, "workspace": None, "workspace_label": p["remote_host"],
+            "agent": "claude", "cwd": None, "transcript": bool(path), "session_id": sid, "session": "", "map": "",
+            "safeguard": rg_chat.last_safeguard(path) if path else None, "turn_end": rg_chat.last_turn_end(path) if path else None,
+            "loop": rg_chat.loop_state(path) if path else None, "api_error": rg_chat.last_api_error(path) if path else None,
+            "model": rg_chat.last_model(path) if path else None, "remote": p["remote_host"],
+            "last_active": os.path.getmtime(path) if path else None, **kw}
+
+
 def remote_sessions(p):
-    """The project's Claude sessions on its host, from their mirrored conversations, shaped like the app's agents.
-    Working: written to in the last 5 minutes after its last finished turn. Read-only: the app can't type into them."""
+    """The project's sessions on its host. With its herdr reachable: the live ones, with their real status, and the app
+    can type into them (remote_send). Otherwise the conversations written to in the last day, read-only."""
+    mirrored = {os.path.basename(f)[:-6]: f for f in glob.glob(os.path.join(REMOTE_SESSIONS, p["name"], "*", "*.jsonl"))}
+    rs = _rsnap.get(p["remote_host"]) or {}
+    if rs.get("agents") is not None and not rs.get("error"):
+        tail = "/" + "/".join(p["remote_path"].rstrip("/").split("/")[-2:]) + "/"
+        ros = roster(p)
+        tabs = {t["tab_id"]: t for t in (rs.get("snap") or {}).get("tabs", [])}
+        out = []
+        for a in rs["agents"]:
+            if tail not in (a.get("cwd") or "") + "/" and a["pane_id"] not in ros:
+                continue
+            sid = (a.get("agent_session") or {}).get("value")
+            path = mirrored.get(sid)
+            name, label = a.get("name") or "", tabs.get(a.get("tab_id"), {}).get("label", "")
+            r = ros.get(a["pane_id"], {})
+            role = r.get("role") or next((w for w in ("desk", "driver", "worker") if w in f"{label} {name}".lower()), "")
+            out.append(remote_agent(p, a["pane_id"], sid, path, status=a.get("agent_status"), live=True, name=name,
+                                    title=(rg_chat.title_of(path) if path else None) or a.get("terminal_title_stripped") or name,
+                                    tab_label=label or name, role=role, map=r.get("map", ""), session=r.get("session", ""),
+                                    remote_pane=a["pane_id"]))
+        order = {"desk": 0, "driver": 1, "worker": 2}
+        return sorted(out, key=lambda a: (order.get(a["role"], 3), a["tab_label"]))
     out = []
-    for f in glob.glob(os.path.join(REMOTE_SESSIONS, p["name"], "*", "*.jsonl")):
+    for sid, f in mirrored.items():
         mt = os.path.getmtime(f)
         if time.time() - mt > SESSION_HOURS * 3600:
             continue
-        sid = os.path.basename(f)[:-6]
         end = rg_chat.last_turn_end(f)
-        end_t = rg_chat_ts(end) if end else 0
         title = rg_chat.title_of(f) or "Claude session"
-        out.append({"pane": f"remote:{p['name']}:{sid}", "tab": None, "workspace": None, "name": None,
-                    "workspace_label": p["remote_host"], "agent": "claude",
-                    "status": "working" if time.time() - mt < 300 and mt - end_t > 20 else "idle",
-                    "title": title, "tab_label": title, "role": "", "map": "", "session": sid, "cwd": None, "transcript": True,
-                    "safeguard": rg_chat.last_safeguard(f), "session_id": sid, "turn_end": end, "loop": rg_chat.loop_state(f),
-                    "api_error": rg_chat.last_api_error(f), "model": rg_chat.last_model(f), "remote": p["remote_host"],
-                    "last_active": mt})
+        out.append(remote_agent(p, sid, sid, f, status="working" if time.time() - mt < 300 and mt - (rg_chat_ts(end) if end else 0) > 20 else "idle",
+                                live=False, name=None, title=title, tab_label=title, role=""))
     return sorted(out, key=lambda a: -a["last_active"])
+
+
+_pulled = {}
+
+
+def pull_session(p, sid):
+    """Fetch one remote conversation now (the one open in the chat), at most every 3 s; its local path."""
+    if time.time() - _pulled.get(sid, 0) < 3:
+        return rg_chat.transcript_path(sid)
+    _pulled[sid] = time.time()
+    if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", sid or ""):
+        return None
+    code, out, _ = run([*shlex.split(SSH_BATCH), p["remote_host"], f"cd ~/.claude/projects 2>/dev/null && ls -1 */{sid}.jsonl 2>/dev/null | head -1"], timeout=20)
+    rel = out.decode(errors="replace").strip()
+    if code != 0 or not rel or ".." in rel:
+        return rg_chat.transcript_path(sid)
+    dest = os.path.join(REMOTE_SESSIONS, p["name"], rel)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    run(["rsync", "-tz", "-e", SSH_BATCH, f"{p['remote_host']}:~/.claude/projects/{rel}", dest], timeout=60)
+    return dest if os.path.exists(dest) else None
+
+
+def remote_send(b):
+    """Type a message into a live session on a remote host, through its herdr."""
+    _, name, rpane = b["pane"].split(":", 2)
+    p = project(name)
+    a = next((x for x in remote_sessions(p) if x.get("remote_pane") == rpane), None)
+    if not a or not a.get("live"):
+        raise ApiError(404, f"no live session {rpane} on {p['remote_host']} (its herdr isn't reachable, or it ended)")
+    if a["status"] == "blocked":
+        raise ApiError(409, f"it is waiting at a prompt on {p['remote_host']}: answer it in its terminal there")
+    remote_herdr(p["remote_host"], "agent", "prompt", rpane, (b.get("text") or "").strip(), timeout=40)
+    _pulled.pop(a.get("session_id"), None)
+    refresh_remote_herdr(p["remote_host"])
+    return {"ok": True, "cleared": ""}
 
 
 def remote_info(p):
@@ -1237,10 +1328,11 @@ def chat(pane, after, session, want_screen=False, around=None):
     if (pane or "").startswith("session:"):
         return archive(pane.split(":", 1)[1], around)
     if (pane or "").startswith("remote:"):          # a session on a remote project's host: its mirrored conversation
-        _, name, sid = pane.split(":", 2)
+        _, name, rpane = pane.split(":", 2)
         p = project(name)
-        a = next((x for x in remote_sessions(p) if x["session_id"] == sid), None)
-        path = rg_chat.transcript_path(sid)
+        a = next((x for x in remote_sessions(p) if x["pane"] == pane), None)
+        sid = (a or {}).get("session_id") or rpane
+        path = pull_session(p, sid) or rg_chat.transcript_path(sid)
         if not path:
             raise ApiError(404, f"no mirrored conversation {sid}")
         items, offset, cut, reset = rg_chat.read(path, after)
@@ -1320,6 +1412,8 @@ def chat_send(b):
     pane, text = b.get("pane"), (b.get("text") or "").strip()
     if not text:
         raise ApiError(400, "empty message")
+    if (pane or "").startswith("remote:"):
+        return remote_send(b)
     a, _ = live_agent(pane)
     if a.get("agent_status") == "blocked":
         raise ApiError(409, "the agent is waiting at a prompt: answer it first")
@@ -2144,6 +2238,7 @@ def main():
     rg_notify.QUIET = ARGS.dry_run
     threading.Thread(target=monitor, daemon=True).start()
     threading.Thread(target=remote_sync_loop, daemon=True).start()
+    threading.Thread(target=remote_herdr_loop, daemon=True).start()
     print(f"research-gui at {url}{'  (dry run: Start buttons send nothing)' if ARGS.dry_run else ''}"
           f"  [{dt.datetime.now():%H:%M}]", flush=True)
     if not (ARGS.no_open or ARGS.serve):

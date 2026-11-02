@@ -141,7 +141,7 @@ export function allAgents() {
 export const agentByPane = (pane) => allAgents().find((a) => a.pane === pane);
 export function agentLabel(a) {
   if (!a) return "agent";
-  if (a.remote) return a.title || "Claude session";          // a session on a remote host: its conversation's title
+  if (a.remote && !a.role) return a.title || "Claude session";   // a session on a remote host: its conversation's title
   if (a.role === "worker" && a.ticket) return `Worker · ${a.ticket}`;
   if (a.role === "driver" && a.drives) return `Driver · ${a.drives}`;
   const role = a.role ? a.role[0].toUpperCase() + a.role.slice(1) : (a.agent || "agent");
