@@ -94,6 +94,19 @@ idea ──wayfinder / to-map──▶ MAP: destination, Contract, decisions so 
               destination reached, or measured unreachable ─▶ map closes; its outcome is a milestone
 ```
 
+**Projects and maps.** A project is the whole research effort, often months long (say, "a protein language model that
+folds well"). A map is one line of work inside it with one measurable finish line: "a 2B model with discrete tokens
+reaches TM-score 0.7 on our benchmark", or "continuous tokens beat that". A project has several maps over its life, often
+a few at once, much as a thesis has chapters and each chapter one claim. A map is what makes a line of work tractable:
+- **a finish line:** it closes when its destination is reached, or when a measured answer says it can't be. That outcome
+  is a milestone, not an open-ended exploration;
+- **comparable results:** its Contract fixes the benchmark, baselines and recipe, so every ticket on it compares like with
+  like; changing the benchmark is a deliberate re-chart, never a drift;
+- **a bounded scope:** what belongs, what is fog for later, what is out of scope;
+- **a stated autonomy:** what the agent may do on this map without asking;
+- **parallel lines of work:** one driver per map, so two maps run side by side without mixing their context, claims or
+  numbers.
+
 - A **map** charts the way to one **destination**: Decisions so far, the **fog** not yet sharp enough to ticket, and
   what is Out of scope. Its **Contract** names the benchmark every ticket is scored on, the reference recipe, and what
   may be done without asking. Only you change it.
