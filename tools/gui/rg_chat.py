@@ -312,7 +312,7 @@ def last_safeguard(path):
     st = _guards.get(path)
     if not st or size < st["size"]:
         st = _guards[path] = {"size": max(0, size - (4 << 20)), "last": None, "resolved": False, "turn_end": None,
-                              "wake": None, "fired": None, "api_error": None, "model": None}
+                              "wake": None, "fired": None, "api_error": None, "model": None, "effort": None}
     if size > st["size"]:
         with open(path, "rb") as f:
             f.seek(st["size"])
@@ -328,6 +328,14 @@ def last_safeguard(path):
                     mm = _SETMODEL.search(line)
                     if mm:
                         st["model"] = mm.group(1).decode()
+                if line.startswith(b'{"type":"api-request"') and b'"querySource":"repl_main_thread"' in line:
+                    me = _EFFORT.search(line)                    # the effort the main conversation's requests ask for
+                    if me:
+                        st["effort"] = me.group(1).decode()
+                elif b"<local-command-stdout>Set effort level to" in line:
+                    me = _SETEFFORT.search(line)
+                    if me:
+                        st["effort"] = me.group(1).decode()
                 if b'"isApiErrorMessage":true' in line:          # Claude Code's own "API Error: ..." reply
                     try:
                         d = json.loads(line)
@@ -379,6 +387,8 @@ def last_safeguard(path):
 
 _MODEL = re.compile(rb'"message":\{"model":"([^"]+)"')
 _SETMODEL = re.compile(rb"<local-command-stdout>Set model to `([^`]+)`")
+_EFFORT = re.compile(rb'"effort":"([a-z]+)"')
+_SETEFFORT = re.compile(rb"<local-command-stdout>Set effort level to ([a-z]+)")
 
 
 def pretty_model(m):
@@ -392,6 +402,13 @@ def last_model(path):
     last_safeguard(path)
     st = _guards.get(path)
     return pretty_model(st["model"]) if st else None
+
+
+def last_effort(path):
+    """The reasoning effort of the session's latest request (or the one /effort set since), e.g. "xhigh"."""
+    last_safeguard(path)
+    st = _guards.get(path)
+    return st["effort"] if st else None
 
 
 def last_api_error(path):

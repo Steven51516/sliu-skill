@@ -85,7 +85,7 @@ export const modelOff = (a) => {
   const v = opusVer(a.model), top = Math.max(0, ...allAgents().map((x) => opusVer(x.model) || 0));
   return v === null || v < top;
 };
-export const modelTag = (a) => a?.model ? `<span class="mtag ${modelOff(a) ? "alt" : ""}" title="answering with ${esc(a.model)}">${esc(a.model.replace(/\s*\(.*\)$/, ""))}</span>` : "";
+export const modelTag = (a) => a?.model ? `<span class="mtag ${modelOff(a) ? "alt" : ""}" title="answering with ${esc(a.model)}${a.effort ? ` at ${esc(a.effort)} effort` : ""}">${esc(a.model.replace(/\s*\(.*\)$/, ""))}${a.effort ? ` · ${esc(a.effort)}` : ""}</span>` : "";
 // Claude Code's own "API Error: ..." reply, until a real reply follows (an account block stops every loop)
 export const apiNote = (a) => a?.api_error ? `⚠ API error: ${(a.api_error.text || "").replace(/^API Error:\s*/i, "").split(/\. /)[0]}` : "";
 export const guardNote = (a) => {

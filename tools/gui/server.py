@@ -203,7 +203,8 @@ def remote_agent(p, pane, sid, path, **kw):
             "agent": "claude", "cwd": None, "transcript": bool(path), "session_id": sid, "session": "", "map": "",
             "safeguard": rg_chat.last_safeguard(path) if path else None, "turn_end": rg_chat.last_turn_end(path) if path else None,
             "loop": rg_chat.loop_state(path) if path else None, "api_error": rg_chat.last_api_error(path) if path else None,
-            "model": rg_chat.last_model(path) if path else None, "remote": p["remote_host"],
+            "model": rg_chat.last_model(path) if path else None, "effort": rg_chat.last_effort(path) if path else None,
+            "remote": p["remote_host"],
             "last_active": os.path.getmtime(path) if path else None, **kw}
 
 
@@ -426,6 +427,7 @@ def agent_view(a, snap, ros):
             "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None,
             "api_error": rg_chat.last_api_error(transcript_of(a)) if transcript_of(a) else None,
             "model": rg_chat.last_model(transcript_of(a)) if transcript_of(a) else None,
+            "effort": rg_chat.last_effort(transcript_of(a)) if transcript_of(a) else None,
             **btw_fields(a["pane_id"])}
 
 
