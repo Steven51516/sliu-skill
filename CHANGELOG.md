@@ -16,6 +16,6 @@ First public release.
   `team-roster-hook`); a team is all Claude Code or all Codex.
 - **Codex:** skills linked into `~/.agents/skills`; `codex-run` for delegating from Claude Code; `codex-team.args`.
 - **Helpers:** `away`, `ketchup`, `retro`, `wait-what`, `writing-for-agents`; `ask-human` (phone buttons through Moshi);
-  `ask-feishu` with the `ask-via-feishu` skill; run cards and diagnosis cards.
+  `ask-feishu` with the `ask-via-feishu` skill; run cards.
 - **Research Desk**, a macOS app over the same files and herdr.
 - **Repository:** MIT license, `CONTRIBUTING.md`, `AGENTS.md`, `GLOSSARY.md`, `.out-of-scope/`, `scripts/check.py` run in CI.

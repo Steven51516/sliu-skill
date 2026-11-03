@@ -34,7 +34,10 @@ def frontmatter(text):
 
 
 def files(pattern):
-    return [p for p in ROOT.glob(pattern) if not SKIP & set(p.relative_to(ROOT).parts)]
+    """Files git tracks that match the pattern: local-only skills (gitignored) and untracked scratch are skipped."""
+    out = subprocess.run(["git", "-C", str(ROOT), "ls-files"], capture_output=True, text=True).stdout.split("\n")
+    tracked = {ROOT / p for p in out if p}
+    return [p for p in ROOT.glob(pattern) if p in tracked and not SKIP & set(p.relative_to(ROOT).parts)]
 
 
 def main():

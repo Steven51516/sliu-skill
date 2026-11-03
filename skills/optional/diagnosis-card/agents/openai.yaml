@@ -1,5 +1,0 @@
-interface:
-  display_name: "diagnosis-card"
-  short_description: "Diagnose a model's existing evaluation results (failed, suspicious or regressed..."
-policy:
-  allow_implicit_invocation: true

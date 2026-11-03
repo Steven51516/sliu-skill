@@ -233,15 +233,14 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 
 **personal/**: everyday helpers: `away` (you step away; maps keep moving, what needs you waits prepared, one brief when
 you are back), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
-call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
+call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs),
+`ask-via-feishu` (a session asks someone other than you on Feishu through your own bridge bot, `ask-feishu`; setup is in
+`tools/ask-feishu.py`).
 
 **optional/**: none in Matt's repo.
 - `team`: run a project as a desk, a driver per map, and a worker session per ticket ([Team mode](#team-mode-with-herdr-optional)).
-- `run-card` and `diagnosis-card`: records for people outside the session (a reproduction record of an important run; a
-  diagnosis of evaluation results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for
-  improving a model in rounds, with a diagnosis card after every evaluation.
-- `ask-via-feishu`: a session asks someone other than you on Feishu through a bridge bot (`ask-feishu`); the answer comes
-  back into its pane. Needs your own bridge; setup is in `tools/ask-feishu.py`.
+- `run-card`: a one-page reproduction record of a run that affects a milestone, for people outside the session; a project
+  opts in through its AGENTS.md.
 
 Helpers on PATH besides the skills: `ask-human` puts a question with fixed answers on your phone as buttons (with Moshi;
 otherwise the session asks in plain text), and `research-status` generates `STATUS.md`, lists the frontier
@@ -285,12 +284,12 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
 - `wait-what`: also defines each project term on first use.
 
-**Run cards and diagnosis cards.** A run that affects a milestone gets a one-page reproduction record (`run-card`); diagnosing evaluation results gets a structured record (`diagnosis-card`).
+**Run cards.** A run that affects a milestone gets a one-page reproduction record (`run-card`).
 
 ## Layout
 
 ```
-skills/      core/ (the research loop), personal/ (everyday helpers, away), optional/ (team, records, Feishu)
+skills/      core/ (the research loop), personal/ (everyday helpers, away, Feishu), optional/ (team, run cards)
 STYLE.md     your rules for every project (honesty, what always needs your OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md

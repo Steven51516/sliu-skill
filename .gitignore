@@ -3,3 +3,7 @@ archive/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Local-only skills: kept on this machine, never pushed
+skills/optional/diagnosis-card/
+skills/optional/to-diagnosis-map/

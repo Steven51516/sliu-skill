@@ -21,7 +21,7 @@ You are the human's partner for this project for the rest of the session: the on
   minutes old), tell the human to start it in a spare tab
   (`caffeinate -dimsu team-watch`) before leaving the team unattended: it restarts a stuck driver, and a Codex driver
   runs only when it ticks.
-- Then, on every turn: discuss with the human from the files (STATUS, maps, tickets, run cards, diagnosis cards): what a
+- Then, on every turn: discuss with the human from the files (STATUS, maps, tickets, run cards and other records): what a
   result means, what to diagnose next, whether the route still holds. Name tickets by their question. Turn each decision
   into one driver instruction from the protocol (`hold`, `release`, `reopen`, `new`, `rechart`, `pause`, `resume`, `stop`)
   and confirm what you sent. Relay a driver's `needs-you`, `closed` and `stopped` messages and any launch or kill at once,
