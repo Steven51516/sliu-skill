@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk:** when Claude Code compacts a session, its summary shows folded under a "context compacted" note
+  (with the tokens before and after), not as a message from the human.
+
 ## 0.1.0 (2026-11-03)
 
 First public release.

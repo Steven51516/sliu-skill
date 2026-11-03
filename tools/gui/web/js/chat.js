@@ -242,6 +242,11 @@ function appendItems(items, initial = false) {
     if (it.k === "user") d.innerHTML = `<div class="bubble">${esc(it.text)}</div>`;
     else if (it.k === "cmd") d.innerHTML = `<code>${esc(it.text)}</code>`;
     else if (it.k === "note") d.textContent = it.text;
+    else if (it.k === "compact") {                       // Claude Code's summary at a compaction: folded, rendered on open
+      d.innerHTML = `<details><summary>The summary Claude Code wrote when it compacted the conversation</summary><div class="md"></div></details>`;
+      const det = d.querySelector("details");
+      det.ontoggle = () => { if (det.open && !det.dataset.done) { det.dataset.done = 1; md(det.querySelector(".md"), it.text); } };
+    }
     else if (it.k === "safeguard") {
       d.innerHTML = `<div class="who">⚠ ${it.kind === "fallback" ? "Model switched by safeguards" : "Reply stopped by safeguards"}</div><div>${esc(it.text)}
         This is often a false positive on biology work.</div><div class="actions" style="margin-top:6px">

@@ -189,9 +189,16 @@ def entry_items(d):
     if d.get("isSidechain") or d.get("isMeta"):
         return []
     t, uid, ts = d.get("type"), d.get("uuid"), d.get("timestamp")
+    if t == "user" and d.get("isCompactSummary"):      # the summary Claude Code wrote when it compacted: folded
+        c = (d.get("message") or {}).get("content")
+        text = c if isinstance(c, str) else "".join(b.get("text", "") for b in c or [] if isinstance(b, dict))
+        return [{"k": "compact", "id": uid, "ts": ts, "text": text}]
     if t == "system":
         if d.get("subtype") == "compact_boundary":
-            return [{"k": "note", "id": uid, "ts": ts, "text": "context compacted"}]
+            m = d.get("compactMetadata") or {}
+            k = lambda n: f"{round(n / 1000):,}k" if isinstance(n, (int, float)) else "?"
+            how = f" ({m.get('trigger', '')}, {k(m.get('preTokens'))} → {k(m.get('postTokens'))} tokens)" if m else ""
+            return [{"k": "note", "id": uid, "ts": ts, "text": "context compacted" + how}]
         if d.get("subtype") == "turn_duration":            # the end of a turn: drawn as a divider
             return [{"k": "turn", "id": uid, "ts": ts, "ms": d.get("durationMs")}]
         ev = safeguard_event(d)
