@@ -1,6 +1,6 @@
 // Chat with any live agent: its Claude Code transcript rendered, prompts answered from the exact screen, messages sent
 // through herdr. Polls fast while the agent works or waits, slowly while it is idle.
-import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent, modelTag } from "./core.js";
+import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent, modelTag, canBtw } from "./core.js";
 
 const C = S.chat;
 Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0, turnFiles: new Set() });
@@ -146,6 +146,8 @@ function render() {
         <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : (C.pane || "").startsWith("session:") ? (C.label || "Saved conversation") + " · saved" : C.label ? C.label + " (ended)" : "No agent")}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
         <span class="muted" style="font-size:10px">▾</span></div>
       <span class="grow"></span>
+      ${a?.role === "btw" ? `<button class="btn sm" id="ch-btw-close" title="Close this side chat and delete its conversation">${icon("trash")} Close &amp; delete</button>`
+        : canBtw(a) ? `<button class="btn ghost sm icon" id="ch-btw" title="btw: fork a side chat with this session (read-only, deleted when you close it)">${icon("plus")}</button>` : ""}
       <button class="btn ghost sm icon" id="ch-verbose" title="${S.prefs.verbose ? "Fold tool calls" : "Show every tool call"}">${icon(S.prefs.verbose ? "eye" : "code")}</button>
       <button class="btn ghost sm icon" id="ch-term" title="Open its terminal here">${icon("term")}</button>
       <button class="btn ghost sm icon" id="ch-more" title="More">${icon("more")}</button>
@@ -162,6 +164,8 @@ function render() {
   if ($("#ch-live-open")) $("#ch-live-open").onclick = () => openChat(C.livePane);
   $("#ch-term").onclick = () => C.pane && hooks.openTerminal({ kind: "attach", pane: C.pane, label: agentLabel(a) });
   $("#ch-verbose").onclick = () => { S.prefs.verbose = !S.prefs.verbose; savePrefs(); render(); };
+  if ($("#ch-btw")) $("#ch-btw").onclick = () => startBtw(C.pane);
+  if ($("#ch-btw-close")) $("#ch-btw-close").onclick = () => closeBtw(C.pane);
   $("#ch-more").onclick = (e) => popMenu(e.currentTarget, [
     { label: "Focus in herdr", icon: "ext", run: () => post("/api/focus", { pane: C.pane }).then(() => toast("Focused in herdr")).catch((x) => toast(x.message, "err")) },
     { label: "Interrupt (Esc)", icon: "stop", run: () => keys(["esc"]) },
@@ -288,6 +292,20 @@ function updateTool(t) {
   const i = t.el.querySelector(".ti");
   i.className = "ti " + (t.result ? (t.result.error ? "err" : "ok") : "wait");
   i.textContent = t.result ? (t.result.error ? "✕" : "✓") : "●";
+}
+
+// btw: fork a session into a side chat beside it (its conversation so far; read-only tools; deleted when closed)
+export async function startBtw(pane) {
+  const a = agentByPane(pane);
+  if (!canBtw(a)) return toast("Only a live Claude Code session can be forked", "err");
+  toast(`Forking ${agentLabel(a)} into a btw chat…`, "", 6000);
+  try { const r = await post("/api/btw", { pane, label: agentLabel(a) }); hooks.refresh(); setTimeout(() => openChat(r.pane), 800); }
+  catch (e) { toast(e.message, "err", 7000); }
+}
+export async function closeBtw(pane) {
+  if (!window.confirm("Close this btw chat and delete its conversation?")) return;
+  try { const r = await post("/api/btw-close", { pane }); toast(r.deleted ? "btw chat closed and deleted" : "btw chat closed"); hooks.refresh(); if (r.parent) openChat(r.parent); }
+  catch (e) { toast(e.message, "err", 7000); }
 }
 
 function renderLive() {

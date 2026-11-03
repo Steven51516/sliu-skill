@@ -616,3 +616,7 @@ body.remote-project [data-driver] { display: none !important; }
 .l2 .mtag { margin-left: 0; }
 .mtag.alt { color: #8a5a00; background: color-mix(in srgb, #f0a400 22%, transparent); }
 @media (prefers-color-scheme: dark) { .mtag.alt { color: #ffc861; } }
+/* btw: the + that forks a session into a side chat shows on hover */
+.agent-row .btw-add { width: 20px; height: 20px; padding: 0; opacity: 0; transition: opacity .12s; flex: none; }
+.agent-row:hover .btw-add, .agent-row:focus-within .btw-add { opacity: 1; }
+.agent-row .btw-add svg { width: 13px; height: 13px; }

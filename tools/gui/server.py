@@ -225,10 +225,11 @@ def remote_sessions(p):
             name, label = a.get("name") or "", tabs.get(a.get("tab_id"), {}).get("label", "")
             r = ros.get(a["pane_id"], {})
             role = r.get("role") or next((w for w in ("desk", "driver", "worker") if w in f"{label} {name}".lower()), "")
-            out.append(remote_agent(p, a["pane_id"], sid, path, status=a.get("agent_status"), live=True, name=name,
-                                    title=(rg_chat.title_of(path) if path else None) or a.get("terminal_title_stripped") or name,
-                                    tab_label=label or name, role=role, map=r.get("map", ""), session=r.get("session", ""),
-                                    remote_pane=a["pane_id"]))
+            kw = dict(status=a.get("agent_status"), live=True, name=name, role=role, map=r.get("map", ""),
+                      title=(rg_chat.title_of(path) if path else None) or a.get("terminal_title_stripped") or name,
+                      tab_label=label or name, session=r.get("session", ""), remote_pane=a["pane_id"])
+            kw.update(btw_fields(f"remote:{p['name']}:{a['pane_id']}"))
+            out.append(remote_agent(p, a["pane_id"], sid, path, **kw))
         order = {"desk": 0, "driver": 1, "worker": 2}
         return sorted(out, key=lambda a: (order.get(a["role"], 3), a["tab_label"]))
     out = []
@@ -424,7 +425,13 @@ def agent_view(a, snap, ros):
             "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None,
             "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None,
             "api_error": rg_chat.last_api_error(transcript_of(a)) if transcript_of(a) else None,
-            "model": rg_chat.last_model(transcript_of(a)) if transcript_of(a) else None}
+            "model": rg_chat.last_model(transcript_of(a)) if transcript_of(a) else None,
+            **btw_fields(a["pane_id"])}
+
+
+def btw_fields(app_pane):
+    rec = btw_of(app_pane)
+    return {"role": "btw", "btw_of": rec["label"], "btw_parent": rec["parent"]} if rec else {}
 
 
 def transcript_of(a):
@@ -808,6 +815,140 @@ def set_inbox(b):
         body.insert(0, "inbox = false   # muted in Research Desk: its tickets stay out of the Inbox and alerts")
     save_config("\n".join(lines[:start + 1] + body + lines[end:]))
     return {"ok": True, "muted": bool(b.get("muted"))}
+
+
+# ---------- btw: a side chat forked from a session, read-only, deleted when closed ----------
+
+BTW_FILE = os.path.expanduser("~/.config/research-gui/btw.json")
+BTW_DENY = ("Bash,Edit,Write,NotebookEdit,SendMessage,ScheduleWakeup,CronCreate,CronDelete,Agent,Skill,Monitor,TaskStop,"
+            "RemoteTrigger,PushNotification,Workflow,Artifact,ArtifactData,ArtifactComments,EnterWorktree,ExitWorktree,DesignSync")
+BTW_NOTE = ("This is a side conversation (a 'btw') that the human forked from the session above to talk something over. "
+            "Nothing said here reaches the team or changes the project: you can read files and search, but you cannot edit, "
+            "run commands, message other sessions or schedule anything, and you should not try. Just talk with the human. "
+            "This chat is deleted when they close it.")
+SID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
+
+def btw_load():
+    try:
+        with open(BTW_FILE) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def btw_save(d):
+    os.makedirs(os.path.dirname(BTW_FILE), exist_ok=True)
+    with open(BTW_FILE + ".tmp", "w") as f:
+        json.dump(d, f, indent=1)
+    os.replace(BTW_FILE + ".tmp", BTW_FILE)
+
+
+def btw_runner(pane):
+    """(herdr command, host or None, the session's herdr record, app pane prefix) for a local or remote session."""
+    if (pane or "").startswith("remote:"):
+        _, name, rpane = pane.split(":", 2)
+        p = project(name)
+        host = p["remote_host"]
+        refresh_remote_herdr(host)
+        a = next((x for x in (_rsnap.get(host) or {}).get("agents") or [] if x["pane_id"] == rpane), None)
+        return (lambda *args, timeout=60: remote_herdr(host, *args, timeout=timeout)), host, a, f"remote:{name}:"
+    snap, err = herdr_snapshot()
+    a = next((x for x in (snap or {}).get("agents", []) if x["pane_id"] == pane), None)
+    return (lambda *args, timeout=60: herdr(*args, timeout=timeout)), None, a, ""
+
+
+def btw_start(b):
+    """Fork a Claude session into a new tab beside it: same conversation so far, new session id, tools that change
+    anything denied, a system note that this is a side chat. Returns the app pane of the fork."""
+    pane = b.get("pane") or ""
+    run_herdr, host, a, prefix = btw_runner(pane)
+    sid = ((a or {}).get("agent_session") or {}).get("value")
+    if not a or a.get("agent") != "claude" or not SID.fullmatch(sid or ""):
+        raise ApiError(400, "Only a live Claude Code session can be forked")
+    label = (b.get("label") or a.get("name") or a.get("terminal_title_stripped") or "session")[:40]
+    key = uuid.uuid4().hex[:6]
+    tab = run_herdr("tab", "create", "--workspace", a["workspace_id"], "--cwd", a.get("cwd") or "~", "--label", f"btw {label}"[:48], "--no-focus")
+    new, tab_id = tab["root_pane"]["pane_id"], tab["tab"]["tab_id"]
+    for _ in range(40):                         # the tab's shell takes a moment
+        try:
+            run_herdr("agent", "start", f"btw-{key}", "--kind", "claude", "--pane", new, "--timeout", "120000", "--",
+                      "--resume", sid, "--fork-session", "--disallowedTools", BTW_DENY, "--append-system-prompt", BTW_NOTE,
+                      "-n", f"btw · {label}", timeout=150)
+            break
+        except (HerdrError, ApiError) as e:
+            msg = str(e)
+            if "busy" in msg or "not an available shell" in msg:
+                time.sleep(1)
+                continue
+            if "not_ready" in msg or "not ready" in msg:   # stopped at a startup question: answer it in the chat
+                break
+            run_herdr("tab", "close", tab_id)
+            raise
+    reg = btw_load()
+    reg[prefix + new] = {"host": host, "pane": new, "tab": tab_id, "parent": pane, "parent_sid": sid, "label": label,
+                         "at": time.time()}
+    btw_save(reg)
+    if host:
+        refresh_remote_herdr(host)
+    return {"pane": prefix + new}
+
+
+def btw_close(b):
+    """Close a btw fork and delete its conversation: the session's files there, the app's copy and search index."""
+    reg = btw_load()
+    rec = reg.get(b.get("pane") or "")
+    if not rec:
+        raise ApiError(404, "not a btw chat")
+    run_herdr, host, a, _ = btw_runner(b["pane"])
+    sid = ((a or {}).get("agent_session") or {}).get("value") or rec.get("sid")
+    try:
+        run_herdr("tab", "close", rec["tab"], timeout=20)
+    except (HerdrError, ApiError):
+        pass                                     # already closed
+    deleted = False
+    if SID.fullmatch(sid or "") and sid != rec["parent_sid"]:   # never the session it was forked from
+        time.sleep(1.5)                          # let Claude Code finish writing as it exits
+        paths = [f"projects/*/{sid}.jsonl", f"projects/*/{sid}", f"file-history/{sid}", f"session-env/{sid}", f"todos/{sid}*"]
+        if host:
+            script = (f"cd ~/.claude && rm -rf {' '.join(paths)}; "
+                      f"[ -f history.jsonl ] && grep -v '\"sessionId\":\"{sid}\"' history.jsonl > history.jsonl.btw; "
+                      f"[ -f history.jsonl.btw ] && cat history.jsonl.btw > history.jsonl && rm -f history.jsonl.btw")
+            run([*shlex.split(SSH_BATCH), host, script], timeout=30)
+            for f in glob.glob(os.path.join(REMOTE_SESSIONS, "*", "*", f"{sid}.jsonl")):
+                os.remove(f)
+        else:
+            root = os.path.expanduser("~/.claude")
+            for pat in paths:
+                for f in glob.glob(os.path.join(root, pat)):
+                    if os.path.isfile(f) and f.endswith(".jsonl"):
+                        ix = rg_chat.index_path(f)
+                        for x in (ix, ix + ".pos"):
+                            if os.path.exists(x):
+                                os.remove(x)
+                    shutil.rmtree(f) if os.path.isdir(f) else os.remove(f)
+            hist = os.path.join(root, "history.jsonl")
+            if os.path.exists(hist):              # the prompts typed into it (up-arrow history)
+                with open(hist) as f:
+                    lines = f.readlines()
+                keep = [l for l in lines if f'"sessionId":"{sid}"' not in l]
+                if len(keep) != len(lines):
+                    with open(hist, "r+") as f:   # rewrite in place, then keep anything appended meanwhile
+                        rest = f.read()[sum(map(len, lines)):]
+                        f.seek(0)
+                        f.write("".join(keep) + rest)
+                        f.truncate()
+        deleted = True
+    reg.pop(b["pane"], None)
+    btw_save(reg)
+    if host:
+        refresh_remote_herdr(host)
+    return {"ok": True, "deleted": deleted, "parent": rec["parent"]}
+
+
+def btw_of(app_pane):
+    """The btw record of an app pane (a fork), if any."""
+    return btw_load().get(app_pane)
 
 
 # ---------- what changed since the human last looked ----------
@@ -2132,6 +2273,10 @@ class Handler(BaseHTTPRequestHandler):
             return r
         if path == "/api/project-inbox":
             return set_inbox(b)
+        if path == "/api/btw":
+            return btw_start(b)
+        if path == "/api/btw-close":
+            return btw_close(b)
         if path == "/api/remote-sync":
             p = project(b.get("project"))
             if not p.get("remote_host"):

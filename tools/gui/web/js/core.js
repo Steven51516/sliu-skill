@@ -139,8 +139,12 @@ export function allAgents() {
   return out;
 }
 export const agentByPane = (pane) => allAgents().find((a) => a.pane === pane);
+// a session can be forked into a "btw" side chat (read-only, deleted when closed): live Claude sessions only
+export const canBtw = (a) => !!a && a.agent === "claude" && !!a.session_id && a.role !== "btw" && (!a.remote || a.live);
+
 export function agentLabel(a) {
   if (!a) return "agent";
+  if (a.role === "btw") return `btw · ${a.btw_of || "session"}`;     // a side chat forked from a session
   if (a.remote && !a.role) return a.title || "Claude session";   // a session on a remote host: its conversation's title
   if (a.role === "worker" && a.ticket) return `Worker · ${a.ticket}`;
   if (a.role === "driver" && a.drives) return `Driver · ${a.drives}`;
@@ -224,6 +228,7 @@ const P = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   play: '<path d="M7 5v14l11-7z"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
   send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
   stop: '<rect x="7" y="7" width="10" height="10" rx="1.5"/>',
   ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',

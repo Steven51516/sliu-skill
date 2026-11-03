@@ -2,7 +2,7 @@
 import { S, $, get, post, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
-import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive } from "./chat.js";
+import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive, startBtw } from "./chat.js";
 import { initDock, toggleDock, typeIntoTerminal } from "./term.js";
 import { startTeam, newSession, addProject, newProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
@@ -23,7 +23,7 @@ Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam: localOnly(startTeam), newSession: localOnly(newSession), addProject, newProject, shortcuts, palette, deskPane, peekJob,
   askProject: localOnly(askProject), askLabel, openArchive,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
-  nextAttention,
+  nextAttention, btw: startBtw,
   setMoshiMode: async (on) => {
     try { await post("/api/moshi-mode", { on }); toast(on ? "Moshi mode on: yes/no and multiple-choice questions go to your phone" : "Moshi mode off: agents ask in the chat"); }
     catch (e) { toast(e.message, "err"); }

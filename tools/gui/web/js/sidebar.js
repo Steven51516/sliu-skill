@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu, modelTag, modelOff } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu, modelTag, modelOff, canBtw } from "./core.js";
 
 export function inboxCount() {
   if (!S.summary) return 0;
@@ -67,6 +67,7 @@ export function renderSidebar() {
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
       ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${modelOff(a) ? modelTag(a) : ""}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
+      ${canBtw(a) ? `<button class="btn ghost sm icon btw-add" data-btw="${esc(a.pane)}" title="btw: fork a side chat with this session (read-only, deleted when you close it)">${icon("plus")}</button>` : ""}
       ${S.unread.has(a.pane) ? `<span class="dot unread" title="replied to you: not read yet"></span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
   if (tree) {
     // the team as a tree: desk, then each driver with the workers it opened, then everything else
@@ -122,6 +123,7 @@ export function renderSidebar() {
   if ($("#sb-herdr")) $("#sb-herdr").onclick = () => window.desk.showHerdr();
   el.querySelectorAll("[data-add]").forEach((a) => a.onclick = () => hooks.addProject({ name: a.dataset.add, path: a.dataset.path }));
   el.querySelectorAll(".agent-row").forEach((row) => row.onclick = () => hooks.openChat(row.dataset.pane));
+  el.querySelectorAll("[data-btw]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); hooks.btw(b.dataset.btw); });
 }
 
 export function initSidebarResize() {
