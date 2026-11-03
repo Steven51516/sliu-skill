@@ -103,7 +103,7 @@ async function poll() {
     else {
       const fresh = ingest(r.items);
       if (fresh.length) appendItems(fresh);
-      if (C.menu && fresh.some((it) => it.k !== "cmd" && it.ts && Date.parse(it.ts) > C.menu.at + 1500)) C.menu = null;
+      if (C.menu && C.menu.cmd !== "/btw" && fresh.some((it) => it.k !== "cmd" && it.ts && Date.parse(it.ts) > C.menu.at + 1500)) C.menu = null;
       if (statusChanged || fresh.length) renderLive();
     }
   } catch (e) {
@@ -308,6 +308,25 @@ export async function closeBtw(pane) {
   catch (e) { toast(e.message, "err", 7000); }
 }
 
+// Claude Code's /btw shows its answer in a box on the screen ("/btw <question>", the answer indented, then
+// "… Esc to close"); it never reaches the conversation file, so the app reads it from the screen
+function btwAnswer(scr) {
+  const lines = (scr || "").split("\n");
+  let i = -1;
+  lines.forEach((l, j) => { if (/^\s*\/btw\s/.test(l)) i = j; });
+  if (i < 0) return null;
+  let end = lines.findIndex((l, j) => j > i && /Esc to (close|cancel|dismiss)/i.test(l));
+  const body = lines.slice(i + 1, end < 0 ? undefined : end).filter((l, j, all) => l.trim() || (j > 0 && j < all.length - 1));
+  const ind = Math.min(...body.filter((l) => l.trim()).map((l) => l.match(/^\s*/)[0].length), 99);
+  const text = body.map((l) => l.slice(ind === 99 ? 0 : ind)).join("\n").trim();
+  return { q: lines[i].trim().replace(/^\/btw\s+/, ""), text, done: end >= 0 && !!text && !/^(thinking|answering)/i.test(text) };
+}
+const btwCard = (b) => `<div class="btwcard"><div class="bh">${icon("chat")}<b>btw</b><span class="muted">${esc(b.q)}</span></div>
+  <div class="bb md">${b.text ? "" : `<span class="dots"><span></span><span></span><span></span></span>`}</div>
+  <div class="bf"><span class="muted">Not kept in the conversation</span><span class="grow"></span>
+    ${canBtw(agentByPane(C.pane)) ? `<button class="btn sm" id="btw-keep" title="Fork this session into a btw chat to keep talking">${icon("plus")} Keep talking</button>` : ""}
+    <button class="btn sm" id="btw-copy">Copy</button><button class="btn sm primary" id="btw-close">Dismiss</button></div></div>`;
+
 function renderLive() {
   const live = $("#ch-live"), body = $("#ch-body");
   if (!live) return;
@@ -323,6 +342,22 @@ function renderLive() {
   else if (codex) body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>Waiting on Codex (${esc(codex.replace("Codex running · ", ""))}); it reports back when the job ends</div>`);
   if (stick) body.scrollTop = body.scrollHeight;
   // a prompt the agent waits at
+  if (menuOn() && C.menu.cmd === "/btw" && C.status !== "blocked") {   // a /btw answer: a card, not the raw screen
+    const b = btwAnswer(C.screen);
+    const key = C.pane + "\nbtw\n" + (b ? b.q + "\n" + b.text : "");
+    if (key !== (live.dataset.screen || "")) {
+      const pane = C.pane;
+      live.innerHTML = btwCard(b || { q: C.menu.q || "", text: "" });
+      if (b?.text) md(live.querySelector(".bb"), b.text, { breaks: true });
+      live.dataset.screen = key;
+      const done = () => { keys(["esc"], pane); C.menu = null; live.dataset.screen = ""; setTimeout(renderLive, 300); };
+      live.querySelector("#btw-close").onclick = done;
+      live.querySelector("#btw-copy").onclick = () => { navigator.clipboard.writeText(b?.text || ""); toast("Copied"); };
+      const kt = live.querySelector("#btw-keep");
+      if (kt) kt.onclick = () => { done(); startBtw(pane); };
+    }
+    return;
+  }
   const asking = C.status === "blocked" || menuOn();
   const want = asking && C.screen ? C.pane + "\n" + (menuOn() && C.status !== "blocked" ? "menu" : "ask") + "\n" + C.screen : "";
   if (want !== (live.dataset.screen || "")) {          // rebuild only when the question changed: keeps a typed answer
@@ -493,7 +528,7 @@ function wireComposer() {
       const res = await post("/api/chat/send", { pane: C.pane, text });
       if (res.cleared) toast(`Cleared what was waiting in Claude's input box first: “${res.cleared.slice(0, 120)}”`, "", 7000);
       const cmd = text.match(/^\/([\w:-]+)/);                // a Claude Code command (not a skill): watch its screen
-      if (cmd && S.skills.some((s) => s.kind === "builtin" && s.name === cmd[1])) C.menu = { pane: C.pane, at: Date.now(), cmd: "/" + cmd[1] };
+      if (cmd && S.skills.some((s) => s.kind === "builtin" && s.name === cmd[1])) C.menu = { pane: C.pane, at: Date.now(), cmd: "/" + cmd[1], q: text.replace(/^\/btw\s*/, "") };
       markSent(C.pane);
       if (!window.desk && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
       setTimeout(poll, 400);

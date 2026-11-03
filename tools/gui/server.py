@@ -1436,7 +1436,8 @@ def raw_file(p, side, rel):
 
 # Claude Code's own commands. Many open a menu on the terminal screen rather than writing to the conversation; the chat
 # shows the live screen after any of them is sent.
-BUILTIN = [("rewind", "Go back to an earlier point in the conversation (and code)"), ("clear", "Start a fresh conversation"),
+BUILTIN = [("btw", "Ask a quick side question; the answer is shown, not kept in the conversation"),
+           ("rewind", "Go back to an earlier point in the conversation (and code)"), ("clear", "Start a fresh conversation"),
            ("compact", "Summarize the conversation to free context"), ("resume", "Resume an earlier conversation"),
            ("model", "Switch the model"), ("effort", "Set the reasoning effort"), ("context", "Show context usage"),
            ("cost", "Show this session's cost and duration"), ("usage", "Show plan usage limits"),
@@ -1474,9 +1475,13 @@ def chat(pane, after, session, want_screen=False, around=None):
         a = next((x for x in remote_sessions(p) if x["pane"] == pane), None)
         sid = (a or {}).get("session_id") or rpane
         path = pull_session(p, sid) or rg_chat.transcript_path(sid)
+        rec = btw_of(pane)
+        if not path and rec:                        # a btw fork before its first message: what it starts from
+            sid = rec["parent_sid"] + "#btw"
+            path = pull_session(p, rec["parent_sid"]) or rg_chat.transcript_path(rec["parent_sid"])
         if not path:
             raise ApiError(404, f"no mirrored conversation {sid}")
-        items, offset, cut, reset = rg_chat.read(path, after)
+        items, offset, cut, reset = rg_chat.read(path, after if session == sid else None)
         return {"pane": pane, "agent": "claude", "status": a["status"] if a else "idle", "remote": p["remote_host"],
                 "title": (a or {}).get("title") or "", "session": sid, "items": items, "offset": offset, "cut": cut,
                 "reset": reset, "transcript": path}
@@ -1500,6 +1505,12 @@ def chat(pane, after, session, want_screen=False, around=None):
         items, offset, cut, reset = rg_chat.read(path, after)
         name_role(items, a.get("cwd"))
         out.update({"items": items, "offset": offset, "cut": cut, "reset": reset, "transcript": path})
+    elif (rec := btw_of(pane)) and (ppath := rg_chat.transcript_path(rec["parent_sid"])):
+        # a btw fork writes its own conversation only at its first message: until then show what it starts from
+        key = rec["parent_sid"] + "#btw"
+        items, offset, cut, reset = rg_chat.read(ppath, after if session == key else None)
+        name_role(items, a.get("cwd"))
+        out.update({"items": items, "offset": offset, "cut": cut, "reset": reset, "transcript": ppath, "session": key})
     else:
         out["items"], out["offset"] = [], 0
         out["fallback"] = screen(pane, "recent-unwrapped", 300)
