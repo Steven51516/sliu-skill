@@ -3,7 +3,7 @@ port = 8765
 terminal_app = "Terminal"              # brought to the front by "Focus in herdr"; omit to only switch herdr's tab
 keychain_service = "claude-code-oauth" # Keychain item holding CLAUDE_CODE_OAUTH_TOKEN; store it with
                                        #   security add-generic-password -a "$USER" -s claude-code-oauth -w
-roots = ["~/Documents/GitHub/scinetics"]  # folders searched for unregistered projects (a maps/ or tracks/ inside)
+roots = ["~/projects"]  # folders searched for unregistered projects (a maps/ or tracks/ inside)
 
 [defaults]
 claude_args = []                       # extra flags for every agent the GUI starts
@@ -14,8 +14,8 @@ CLAUDE_BELL = "1"
 [defaults.role_env.driver]
 
 [projects.example]
-path = "~/Documents/GitHub/scinetics/example"
-server = "node-16"                     # ssh alias
+path = "~/projects/example"
+server = "gpu-server"                 # ssh alias
 server_root = "~/code/example"         # the project's code on the server
 server_maps = "tracks"                 # where map folders live under server_root (same names as maps/ on the Mac)
 shared = ["common"]                    # server folders pinned beside every map's code

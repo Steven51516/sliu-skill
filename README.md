@@ -9,10 +9,12 @@ Built on [Matt Pocock's skills](https://github.com/mattpocock/skills): where a s
 wording follows his as closely as possible, and every difference in logic is listed under
 [Differences from Matt's skills](#differences-from-matts-skills).
 
-**Contents:** [Quick start](#quick-start) · [How it works](#how-it-works) · [Commands](#commands) ·
+**Contents:** [Quick start](#quick-start) · [Two ways to use it](#two-ways-to-use-it) · [How it works](#how-it-works) ·
+[Commands](#commands) ·
 [Using Codex](#using-codex) · [Team mode with herdr](#team-mode-with-herdr-optional) ·
 [Research Desk app](#research-desk-app-optional-macos) · [Make it yours](#make-it-yours) · [Skills](#skills) ·
-[Differences from Matt's skills](#differences-from-matts-skills) · [Layout](#layout) · [Credits](#credits)
+[Differences from Matt's skills](#differences-from-matts-skills) · [Layout](#layout) · [Credits](#credits) ·
+[License](#license)
 
 ## Quick start
 
@@ -42,6 +44,37 @@ Then, in Claude Code:
    subagents, and files the next questions when the frontier runs dry.
 5. **Check in:** `research-status --now` prints what is running, what waits on you and what is ready; `STATUS.md` lists
    milestones and open maps.
+
+## Two ways to use it
+
+**With the app and a team (easiest).** You talk to one session, the desk, and the rest runs in herdr tabs you can watch.
+
+1. Set up herdr and the Research Desk app once: [Team mode](#team-mode-with-herdr-optional) and
+   [Research Desk](#research-desk-app-optional-macos).
+2. In the app, press **New project**: it makes the folder and starts `/research-init`, which sets up the scope, tracker
+   and docs by asking you a section at a time. For an existing folder, use **Add project** and run `/research-init` once.
+3. Chart a first map: **New session → Chart a new map** runs `/wayfinder` with you.
+4. Press **Start team** and pick Claude Code or Codex. The app opens a desk, a driver for each open map, and a watch tab;
+   each driver opens a worker tab per ticket and closes it when the ticket is done.
+5. Talk to the desk in the app's chat. It reports results, puts each decision to you, and passes your answers to the
+   drivers. The app shows what waits on you and can notify your phone. Going to sleep: tell the desk (`away`).
+
+Without the app, the same team starts from a herdr pane in the project folder: `team-up <map>` (or `--codex`).
+
+**By hand, in one session.** Everything also works in a single Claude Code (or Codex) session, one command at a time:
+
+| Step | Command |
+|---|---|
+| set up the project | `/research-init <name>` |
+| open a new map for a new line of work, from what you just discussed | `/to-map` |
+| … or from a loose idea, with an interview | `/wayfinder "<idea>"` |
+| add a question to a map | `/to-tickets <map> "<question>"` |
+| work one ticket yourself | `/research-work <ticket>` |
+| let the session drive the whole map | `/loop /research-drive <map>` |
+| see where things stand | `research-status --now` |
+| change the plan or the Contract | `/wayfinder <map> --rechart` |
+
+Terms such as map, ticket, frontier and Contract are defined in [GLOSSARY.md](GLOSSARY.md).
 
 ## How it works
 
@@ -185,13 +218,12 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `research`, `grilling` | copied | the reading and interview tickets |
 
-**personal/**: everyday helpers, all user-invoked: `wait-what` (adapted: re-pitch the last message), `ketchup` (from
-pstack: catch up on a long chat and every call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents`
-(copied: writing skills and agent docs).
+**personal/**: everyday helpers: `away` (you step away; maps keep moving, what needs you waits prepared, one brief when
+you are back), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
+call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **optional/**: none in Matt's repo.
 - `team`: run a project as a desk, a driver per map, and a worker session per ticket ([Team mode](#team-mode-with-herdr-optional)).
-- `away`: you step away; maps keep moving, what needs you waits prepared, one brief when you are back.
 - `run-card` and `diagnosis-card`: records for people outside the session (a reproduction record of an important run; a
   diagnosis of evaluation results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for
   improving a model in rounds, with a diagnosis card after every evaluation.
@@ -245,7 +277,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research loop), personal/ (everyday helpers), optional/ (team, away, records, Feishu)
+skills/      core/ (the research loop), personal/ (everyday helpers, away), optional/ (team, records, Feishu)
 STYLE.md     your rules for every project (honesty, what always needs your OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md
@@ -255,9 +287,16 @@ tools/       status.py (research-status) · codex-run.sh · ask-human.py · ask-
              gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
+scripts/     check.py: the structural checks CI runs on every push (.github/workflows/check.yml)
+AGENTS.md    rules for an agent editing this repo (CLAUDE.md imports it); CONTRIBUTING.md for people
+GLOSSARY.md  the terms; CHANGELOG.md the versions; .out-of-scope/ ideas weighed and left out, with why
 FEEDBACK.md  local only (gitignored): problems found while using the harness, until fixed
 ```
 
 ## Credits
 
 From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `retro`, `wait-what`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); `ketchup` is from pstack; the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
+
+## License
+
+MIT, see [LICENSE](LICENSE). Copied and adapted third-party skills keep their own licences in `licenses/`.

@@ -5,7 +5,7 @@
 #   SCOPE_INHERITED  path of a parent CLAUDE.md that already imports the scope: CLAUDE.md then does not import it again
 #   PROJECTS_ROOT    where the project folder goes (default ~/projects)
 #   POOL_ROOT, SCRATCH_ROOT  storage roots; without them artifacts/ and scratch/ are plain folders (gitignored)
-#   CODE_LOCATION    where the code lives, e.g. "node-16:~/code/<name>" (default: this folder)
+#   CODE_LOCATION    where the code lives, e.g. "gpu-server:~/code/<name>" (default: this folder)
 #   GIT              1 (default) runs git init; 0 skips it
 #   TRACKER          issue tracker: local (default), github or gitlab; written to docs/agents/issue-tracker.md
 set -euo pipefail

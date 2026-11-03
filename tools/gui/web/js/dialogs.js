@@ -102,7 +102,7 @@ export async function newSession(project, preset = null, fill = {}) {
         <div id="ns-map-f"><label class="f">Map</label><select id="ns-map">${maps.map((m) => `<option value="${esc(m.path.replace(/\/(map|track)\.md$/, ""))}">${esc(m.id)} · ${esc(m.title)}</option>`).join("")}</select></div>
         <div id="ns-ticket-f"><label class="f">Ticket</label><select id="ns-ticket">${tickets.map((t) => `<option value="${esc(t.path.replace(/\/ticket\.md$/, ""))}">${esc(t.id)} · ${esc(t.title)}</option>`).join("")}</select></div>
         <div id="ns-text-f"><label class="f" id="ns-text-l">Text</label><textarea id="ns-text" rows="3"></textarea></div></div>
-      <div id="ns-shell" hidden><label class="f">Command (optional)</label><input id="ns-cmd" placeholder="e.g. ssh -t ${esc(data?.server || "node-16")}"></div>
+      <div id="ns-shell" hidden><label class="f">Command (optional)</label><input id="ns-cmd" placeholder="e.g. ssh -t ${esc(data?.server || "gpu-server")}"></div>
       <label class="f">Tab label (optional)</label><input id="ns-label" placeholder="shown in herdr and in the sidebar">
       <div id="ns-plan" style="margin-top:12px"></div></div>
     <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${icon("play")} Start</button></div>`, { width: 600 });
@@ -171,7 +171,7 @@ export function newProject() {
       <label class="f">Inside folder</label><input id="np-parent" value="${esc(root)}">
       <div class="muted" style="font-size:12px;margin-top:4px" id="np-where"></div>
       <label class="f">Direction in one line (optional)</label><input id="np-dir" placeholder="e.g. design binders for X with Y, beat Z on W">
-      <label class="f">Server (ssh alias, optional)</label><input id="np-server" placeholder="node-16">
+      <label class="f">Server (ssh alias, optional)</label><input id="np-server" placeholder="gpu-server">
       <label class="f">Code folder on the server</label><input id="np-root" placeholder="~/code/&lt;name&gt;">
       <div class="muted" style="font-size:12px;margin-top:10px">Creates the folder and adds it here, then starts a Claude session in it with
         <code>/research-init</code>, which sets up the scope, tracker and docs by asking you, a section at a time, in the chat.</div></div>
@@ -196,8 +196,8 @@ export function newProject() {
 export function addProject(pre = {}) {
   const d = dialog(`<div class="dh">Add an existing folder</div><div class="db">
       <label class="f">Name</label><input id="ap-name" value="${esc(pre.name || "")}" placeholder="protbench">
-      <label class="f">Folder on this Mac</label><input id="ap-path" value="${esc(pre.path || "")}" placeholder="~/Documents/GitHub/scinetics/…">
-      <label class="f">Server (ssh alias, optional)</label><input id="ap-server" placeholder="node-16">
+      <label class="f">Folder on this Mac</label><input id="ap-path" value="${esc(pre.path || "")}" placeholder="~/projects/…">
+      <label class="f">Server (ssh alias, optional)</label><input id="ap-server" placeholder="gpu-server">
       <label class="f">Code folder on the server</label><input id="ap-root" placeholder="~/code/${esc(pre.name || "project")}">
       <label class="f">Map folders on the server live under</label><input id="ap-maps" value="tracks">
       <label class="f">Shared server folders pinned beside each map (comma-separated)</label><input id="ap-shared" value="common"></div>
