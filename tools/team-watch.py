@@ -27,7 +27,6 @@ import sys
 import time
 
 EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "xhigh", 25
-WINDOW = "200k"            # a driver runs for days: compact at 200k tokens (workers keep the default)
 LOG = os.path.join("scratch", "agents", "driver.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
 
@@ -112,7 +111,7 @@ def restart(pane, name, map_ref, reason, session, n):
     herdr("agent", "prompt", pane, "/exit")
     time.sleep(8)
     start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
-                  "--", "--resume", session, "--model", MODEL, "--effort", EFFORT, "--autocompact", WINDOW)
+                  "--", "--resume", session, "--model", MODEL, "--effort", EFFORT)
     if start.returncode != 0:
         note(f"could not resume the driver: {start.stderr.strip()[:200]}; leaving it for the human")
         return False

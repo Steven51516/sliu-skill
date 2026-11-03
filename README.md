@@ -213,6 +213,11 @@ Setup, once:
    that restarts under a new name updates the roster:
    `{"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}`.
 
+5. Optional, to save tokens, in `~/.claude/settings.json`: `"autoCompactWindow": 400000`, so long sessions compact at
+   400k tokens instead of near the model's full window (every call re-reads the context); and in its `env` block,
+   `"CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5-5"` (plus `"CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"` to apply it to every
+   subagent), so subagents run on a cheaper model.
+
 Then, from a herdr pane in the project folder: `team-up <map>` (Claude Code, Opus) or `team-up --codex <map>`. It opens
 tabs **A desk**, **B driver** and **watch**; talk to the desk. The watch tab runs `team-watch`: it shows the driver's
 log, resumes a stuck Claude driver in its own session (on Sonnet, after a safeguard stop or 90 silent minutes), and is a

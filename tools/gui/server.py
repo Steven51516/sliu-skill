@@ -1703,7 +1703,7 @@ def team_plan(p, only_map=None, agent=None):
     if live and agent and agent != live:
         raise ApiError(409, f"this project's team runs on {live}: stop it before starting a {agent} team")
     kind = agent or live or "claude"
-    args = codex_team_args("medium") if kind == "codex" else [*claude_args, "--autocompact", "200k"]   # desk and drivers run for days
+    args = codex_team_args("medium") if kind == "codex" else claude_args
 
     def role_prompt(role):
         return f"Read ~/.agents/skills/team/SKILL.md and follow it as `team {role}`." if kind == "codex" else f"/team {role}"
