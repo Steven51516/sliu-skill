@@ -334,7 +334,7 @@ licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 scripts/     check.py: the structural checks CI runs on every push (.github/workflows/check.yml)
 AGENTS.md    rules for an agent editing this repo (CLAUDE.md imports it); CONTRIBUTING.md for people
-GLOSSARY.md  the terms; CHANGELOG.md the versions; .out-of-scope/ ideas weighed and left out, with why
+GLOSSARY.md  the terms; CHANGELOG.md the versions
 FEEDBACK.md  local only (gitignored): problems found while using the harness, until fixed
 ```
 

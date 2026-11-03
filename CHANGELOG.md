@@ -18,4 +18,4 @@ First public release.
 - **Helpers:** `away`, `ketchup`, `retro`, `wait-what`, `writing-for-agents`; `ask-human` (phone buttons through Moshi);
   `ask-feishu` with the `ask-via-feishu` skill; run cards.
 - **Research Desk**, a macOS app over the same files and herdr.
-- **Repository:** MIT license, `CONTRIBUTING.md`, `AGENTS.md`, `GLOSSARY.md`, `.out-of-scope/`, `scripts/check.py` run in CI.
+- **Repository:** MIT license, `CONTRIBUTING.md`, `AGENTS.md`, `GLOSSARY.md`, `scripts/check.py` run in CI.

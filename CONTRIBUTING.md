@@ -1,9 +1,8 @@
 # Contributing
 
 Issues are welcome: a bug in a skill or tool, a step that confused you, or an idea. Describe the problem and how to
-reproduce it; the fix is easier to design from the problem than from a finished rewrite. Read
-[`.out-of-scope/`](./.out-of-scope) before proposing a new mechanism: some ideas were tried or weighed and left out on
-purpose.
+reproduce it; the fix is easier to design from the problem than from a finished rewrite. Some mechanisms were tried or
+weighed and left out on purpose; an issue that proposes one may get a short answer saying why.
 
 ## How a change is made
 
