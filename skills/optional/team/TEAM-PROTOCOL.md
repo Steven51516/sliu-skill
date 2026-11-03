@@ -84,6 +84,8 @@ sessions of a team run on the same machine.
 - A team is all Claude Code (`team-up <map>`) or all Codex (`team-up --codex <map>`); Research Desk's Start team offers
   both. Workers run on their driver's agent. In a Codex team, a delegation rule that sends work to Codex is the session's
   own work, and one that names a Claude subagent goes to a fresh Codex session (`codex-run`) instead.
+- Desks and drivers run for days, so `team-up`, Research Desk and `team-watch` start them with `--autocompact 200k`
+  (Claude Code compacts at 200k tokens instead of near the full window); workers keep the model's default.
 - The driver's schedule: in Claude Code, `/loop` (the `team` skill starts it). Codex has no loop command: `team-watch`
   types `tick` into an idle Codex driver every 25 minutes.
 - The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS).
