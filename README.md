@@ -110,9 +110,18 @@ a few at once, much as a thesis has chapters and each chapter one claim. A map i
 - A **map** charts the way to one **destination**: Decisions so far, the **fog** not yet sharp enough to ticket, and
   what is Out of scope. Its **Contract** names the benchmark every ticket is scored on, the reference recipe, and what
   may be done without asking. Only you change it.
-- A **ticket** is one question, sized to one agent session. An `experiment` ticket resolves by measurement against a
-  **pre-registration**: success and stop criteria written and approved before anything runs, never edited after. Runs,
-  arms and smoke tests are **assets** of a ticket, never tickets.
+- A **ticket** is one question, sized to one agent session. Its type says how the question gets answered:
+
+  | Type | Answered by | When |
+  |---|---|---|
+  | `experiment` | the agent, with a run | the decision waits on a number: train, evaluate or analyse against a **pre-registration** (success and stop criteria written and approved before anything runs, never edited after) |
+  | `task` | the agent, or you | something must be done or built first (a dataset, access, a tool), with a check that says it is done |
+  | `research` | the agent, reading | a fact from papers, docs or code that a decision waits on |
+  | `grilling` | you, in conversation | a decision only you can make; the agent interviews you and records the answer |
+  | `prototype` | you and the agent | "how should it look or behave": a cheap rough version to react to |
+
+  Runs, arms and smoke tests are **assets** of their ticket, never tickets of their own: a new question gets a new
+  ticket, a new run does not.
 - **`rigor`** is the rule set for a trustworthy answer (verify the measurement, same benchmark, numbers from files with
   the full denominator, no leakage, every difference recorded). **`review`** checks an answer before it enters the map.
 - **The driver does no ticket work**, so its context stays small and any fresh session can take over from the files. It
