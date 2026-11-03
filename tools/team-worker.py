@@ -2,7 +2,7 @@
 """team-worker: open a worker for one ticket, or rescue a stopped one, and check that it really started.
 
   team-worker <ticket path>          a new tab labelled with the ticket id, on the driver's own agent: Claude Code on Opus
-                                     5.5, logged in (macOS: from the Keychain), with an explicit --model so a /model
+                                     5.5 at medium effort, logged in (macOS: from the Keychain), with an explicit --model so a /model
                                      elsewhere cannot change it; or Codex with the flags in codex-team.args at xhigh. It is
                                      told to work the ticket and to report to the calling driver with one line:
                                      `done|running|ask|blocked <id>: <path of the file that holds the result>`,
@@ -21,7 +21,7 @@ import subprocess
 import sys
 import time
 
-MODEL, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "sonnet", "xhigh"
+MODEL, EFFORT, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "medium", "sonnet", "xhigh"   # the driver already planned the ticket
 DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)|"
                   r"sign in with chatgpt|run codex login", re.I)
 
@@ -103,7 +103,7 @@ def open_worker(path):
     if kind == "codex":
         flags, first, what = codex_args("xhigh"), f"Use the research-work skill (~/.agents/skills/research-work/SKILL.md) on {path}.", "Codex, xhigh"
     else:
-        flags, first, what = ["--model", MODEL], f"/research-work {path}.", MODEL
+        flags, first, what = ["--model", MODEL, "--effort", EFFORT], f"/research-work {path}.", f"{MODEL}, {EFFORT}"
     for _ in range(10):                # a new tab's shell may still be starting
         r = herdr("agent", "start", name, "--kind", kind, "--pane", pane, "--timeout", "120000", "--", *flags)
         if r.returncode == 0 or "not an available shell" not in (r.stderr + r.stdout):

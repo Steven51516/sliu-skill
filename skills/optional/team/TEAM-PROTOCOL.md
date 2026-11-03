@@ -24,7 +24,7 @@ the map.
 
 ## Workers
 - **Open** one per ticket, at most as many as `research-drive` allows at once: `team-worker <ticket path>`. It opens
-  a tab labelled with the ticket id on the driver's own agent (Claude Code on Opus 5.5, logged in, or Codex), tells it
+  a tab labelled with the ticket id on the driver's own agent (Claude Code on Opus 5.5 at medium effort, logged in, or Codex), tells it
   to work the ticket and report back to you, and fails loudly if the worker did not start.
 - **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker
   (`herdr agent prompt <ticket id> "/exit"`, then `herdr tab close <tab>`). First check that no job depends on that
