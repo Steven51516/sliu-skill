@@ -8,7 +8,7 @@
                                      `done|running|ask|blocked <id>: <path of the file that holds the result>`,
                                      or `handback <id>: <request>` for a request beyond its ticket
   team-worker --rescue <ticket id>   the worker in the tab labelled <id>: exited and its own session resumed on Sonnet 5.5
-                                     at xhigh effort, keeping its chat, then told to continue (after a safeguard stop)
+                                     at high effort, keeping its chat, then told to continue (after a safeguard stop)
 
 Run by the driver inside herdr, from the project folder. Exits non-zero with the reason when the worker did not start:
 no login, no tab, or a prompt that never began. The login token is read from the Keychain item `claude-code-oauth` and
@@ -21,7 +21,7 @@ import subprocess
 import sys
 import time
 
-MODEL, EFFORT, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "medium", "sonnet", "xhigh"   # the driver already planned the ticket
+MODEL, EFFORT, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "medium", "sonnet", "high"   # the driver already planned the ticket
 DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)|"
                   r"sign in with chatgpt|run codex login", re.I)
 

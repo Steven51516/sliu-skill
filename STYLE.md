@@ -28,6 +28,11 @@
 - Stopping a process you did not start. Stop your own by PID, never by a name pattern.
 
 
+## Models and effort
+- Desks and drivers: Opus 5.5 at xhigh. Workers and subagents: Opus 5.5 at medium; start a subagent with `effort: medium`.
+- A driver or worker stopped by a false-positive biology safeguard resumes on Sonnet 5.5 at high (`team-watch`,
+  `team-worker --rescue`). A Codex review or re-check always runs at xhigh.
+
 ## Communication
 - Lead with the result or the decision you need, then the evidence, then the details.
 - A question for the human with fixed answers (yes/no, or one of 2-4 options) goes through

@@ -26,8 +26,8 @@ only the change. A long report goes to `report.md` in pieces of at most ~80 line
 a ticket (`rigor`).
 - **Codex:** `codex-run <run dir>`; a follow-up: write `followup.md`, then `codex-run <run dir> --resume`. It fixes model,
   effort and sandbox on every call, strips secrets, adds a scope preamble, and fails loudly on a wrong header, a non-zero
-  exit or an empty answer. Effort: `xhigh` (default) for reviews and complex tasks; `CODEX_EFFORT=medium` for a simple
-  task or a re-check.
+  exit or an empty answer. Effort: `xhigh` (default), always for a review or a re-check; `CODEX_EFFORT=medium` only for a simple
+  task that is not a review.
 - **Claude:** a background subagent (the Agent tool, with the model and effort a rule names). From another agent:
   `claude -p --model <m> --effort <e> --permission-mode auto --output-format json "$(cat brief.md)"`, with every secret
   in the environment unset except `CLAUDE_CODE_OAUTH_TOKEN`.

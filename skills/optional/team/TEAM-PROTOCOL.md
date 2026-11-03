@@ -34,7 +34,7 @@ the map.
   human's request: a trivial edit it does itself, anything else becomes a ticket draft (`to-tickets`).
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
   (often a false positive on biology wording), `team-worker --rescue <ticket id>` resumes its own session on Sonnet 5.5
-  at xhigh effort, keeping its chat. New workers still start on Opus 5.5.
+  at high effort, keeping its chat. New workers still start on Opus 5.5.
 
 ## Control
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a

@@ -10,7 +10,7 @@ Every 5 minutes it looks at the driver's pane. The driver is stuck when it is id
 safeguard stop (Claude Code then waits for a human to retry or switch model), or no pass has been logged in
 scratch/agents/driver.log for 90 minutes (longer than the driver's longest sleep, an hour). A driver waiting on a
 permission prompt (`blocked`) needs the human and is left alone. A stuck driver is exited and its own session resumed
-in the same pane on Sonnet 5.5 at xhigh effort (`claude --resume <session> --model sonnet --effort xhigh`), keeping its whole chat, then told to
+in the same pane on Sonnet 5.5 at high effort (`claude --resume <session> --model sonnet --effort high`), keeping its whole chat, then told to
 continue. It stays on Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run; every action is
 logged to driver.log.
 
@@ -26,7 +26,7 @@ import subprocess
 import sys
 import time
 
-EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "xhigh", 25
+EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "high", 25
 LOG = os.path.join("scratch", "agents", "driver.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
 
