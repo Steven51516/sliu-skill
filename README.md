@@ -9,12 +9,36 @@ Built on [Matt Pocock's skills](https://github.com/mattpocock/skills): where a s
 wording follows his as closely as possible, and every difference in logic is listed under
 [Differences from Matt's skills](#differences-from-matts-skills).
 
-**Contents:** [Quick start](#quick-start) · [Two ways to use it](#two-ways-to-use-it) · [How it works](#how-it-works) ·
+**Contents:** [What it looks like](#what-it-looks-like) · [Quick start](#quick-start) · [Two ways to use it](#two-ways-to-use-it) · [How it works](#how-it-works) ·
 [Commands](#commands) ·
 [Using Codex](#using-codex) · [Team mode with herdr](#team-mode-with-herdr-optional) ·
 [Research Desk app](#research-desk-app-optional-macos) · [Make it yours](#make-it-yours) · [Skills](#skills) ·
 [Differences from Matt's skills](#differences-from-matts-skills) · [Layout](#layout) · [Credits](#credits) ·
 [License](#license)
+
+## What it looks like
+
+A made-up demo project, `tiny-lm`, in the Research Desk app (optional; everything also works from a terminal).
+
+<img src="docs/images/overview.png" alt="Project page" width="820">
+
+**The project page.** What needs you first (here, a decision only you can make), what is running, each open map with its
+progress, and the milestones: closed maps with their one-line outcomes.
+
+<img src="docs/images/map.png" alt="A map as a graph" width="820">
+
+**A map, drawn as a graph.** Each box is a ticket (one question), each arrow a blocking edge, each colour a state
+(resolved, running, ready, blocked, needs you, held); the dashed box is fog, a question not yet sharp enough to ticket.
+Everything flows to the destination on the right.
+
+<img src="docs/images/ticket.png" alt="A ticket" width="820">
+
+**A ticket.** Its question, its pre-registration (fixed before anything ran), and its assets: the runs, with their progress.
+
+<img src="docs/images/start-team.png" alt="Start the team" width="820">
+
+**Start the team.** One click opens a desk and a driver per open map in herdr tabs, all Claude Code or all Codex; the
+drivers open a worker tab per ticket as they go. You then talk to the desk.
 
 ## Quick start
 
