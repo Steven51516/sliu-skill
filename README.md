@@ -1,23 +1,82 @@
 # sliu-skill
 
-Agent skills for running research projects with Claude Code (and Codex), built on [Matt Pocock's skills](https://github.com/mattpocock/skills). Where a skill has a counterpart in Matt's repo, its wording follows his as closely as possible; every place it differs **in logic** is listed under [Differences from Matt's skills](#differences-from-matts-skills).
+Agent skills for running research projects with coding agents: Claude Code first, Codex supported. You give a project a
+destination ("beat baseline X on benchmark Y"); the agent keeps a map of the questions between here and there, works them
+one ticket at a time with pre-registered criteria, reviews every answer before it counts, and asks you only for the
+decisions that are yours.
 
-## Install
+Built on [Matt Pocock's skills](https://github.com/mattpocock/skills): where a skill has a counterpart in his repo, its
+wording follows his as closely as possible, and every difference in logic is listed under
+[Differences from Matt's skills](#differences-from-matts-skills).
+
+**Contents:** [Quick start](#quick-start) · [How it works](#how-it-works) · [Commands](#commands) ·
+[Using Codex](#using-codex) · [Team mode with herdr](#team-mode-with-herdr-optional) ·
+[Research Desk app](#research-desk-app-optional-macos) · [Make it yours](#make-it-yours) · [Skills](#skills) ·
+[Differences from Matt's skills](#differences-from-matts-skills) · [Layout](#layout) · [Credits](#credits)
+
+## Quick start
+
+You need Claude Code (or Codex, see [Using Codex](#using-codex)), git and Python 3.10+. Nothing else is required: one
+session in one terminal runs the whole loop.
 
 ```bash
 git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 ~/research-harness/install.sh
 ```
 
-`install.sh` links every skill into `~/.claude/skills` and `~/.agents/skills` (Codex), puts its commands on your PATH (`research-status`, `codex-run`, `team-up`, `team-worker`, `team-watch`, `research-gui`), and removes links left by skills that were removed or renamed. Edit a file here and the change reaches every project at once; nothing is copied.
+`install.sh` links every skill into `~/.claude/skills` (Claude Code) and `~/.agents/skills` (Codex), puts the commands on
+your PATH (`research-status`, `codex-run`, `team-up`, `team-worker`, `team-watch`, `ask-human`, `ask-feishu`,
+`research-gui`), and removes links left by skills that were removed or renamed. Nothing is copied: edit a file here and
+every project sees it. Safe to rerun.
 
-## How it fits together
+Then, in Claude Code:
 
-Research is a search, not a build, so the plan never stops changing. The vocabulary is Matt's:
+1. **Read `STYLE.md` and make it yours.** It is the author's standing rules for every project: scientific honesty, what
+   always needs your OK (GPU-hour thresholds, deleting data, posting externally), code and docs habits. Every session
+   reads it.
+2. **Set up a project:** in its folder, `/research-init <name>`. It writes `AGENTS.md`, `CLAUDE.md`, the issue tracker doc,
+   the delegation doc and a scope file pointer (where the project runs; see [Make it yours](#make-it-yours)).
+3. **Chart a map:** `/wayfinder "<a loose idea>"` interviews you and charts it; `/to-map` turns what you already
+   discussed into one.
+4. **Drive it:** `/loop /research-drive <map>`. Each pass merges finished tickets, dispatches the ready ones to fresh
+   subagents, and files the next questions when the frontier runs dry.
+5. **Check in:** `research-status --now` prints what is running, what waits on you and what is ready; `STATUS.md` lists
+   milestones and open maps.
 
-- A **map** charts the way to one **destination**: the decisions made so far, the **fog** not yet sharp enough to ticket (*Not yet specified*), and what is *Out of scope*. Its **Notes** hold the domain and standing preferences; its **Contract** names the benchmark every ticket is scored on (or `none`), the reference recipe, and what may be done without asking.
-- A **ticket** is one question on the map, sized to one agent session. An `experiment` ticket resolves by measurement against a **pre-registration**, its success and stop criteria written before anything runs. Runs, arms and smoke tests are **assets** of a ticket, never tickets.
-- Maps and tickets live in the project's **issue tracker** (`docs/agents/issue-tracker.md`): GitHub, GitLab, or local markdown under `maps/`.
+## How it works
+
+Research is a search, not a build: each answer changes the next question. So the plan is a map that keeps growing, not a
+fixed task list.
+
+```
+idea ──wayfinder / to-map──▶ MAP: destination, Contract, decisions so far, fog
+                               │
+                               ├─to-tickets─▶ TICKETS: one question each, blocking edges, pre-registration
+                               │
+   research-drive, one pass ───┤  dispatch the frontier ─▶ research-work (a fresh session per ticket)
+   (repeat with /loop)         │                              runs jobs, follows rigor, writes the answer
+                               │  merge ◀── review (one fresh reviewer: Fair, Spec, Code) ◀──┘
+                               │  frontier empty: new tickets from the fog
+                               ▼
+              destination reached, or measured unreachable ─▶ map closes; its outcome is a milestone
+```
+
+- A **map** charts the way to one **destination**: Decisions so far, the **fog** not yet sharp enough to ticket, and
+  what is Out of scope. Its **Contract** names the benchmark every ticket is scored on, the reference recipe, and what
+  may be done without asking. Only you change it.
+- A **ticket** is one question, sized to one agent session. An `experiment` ticket resolves by measurement against a
+  **pre-registration**: success and stop criteria written and approved before anything runs, never edited after. Runs,
+  arms and smoke tests are **assets** of a ticket, never tickets.
+- **`rigor`** is the rule set for a trustworthy answer (verify the measurement, same benchmark, numbers from files with
+  the full denominator, no leakage, every difference recorded). **`review`** checks an answer before it enters the map.
+- **The driver does no ticket work**, so its context stays small and any fresh session can take over from the files. It
+  may do a small chore itself (a check, a count, a trivial edit); anything with a run or a number is a ticket.
+- **What reaches you:** anything on STYLE's always-ask list, a change to a destination or Contract, a decision ticket
+  (`grilling`), and a failure. Everything else keeps moving. Going to sleep: `/away`, and you get one brief when back.
+- **State lives in files** (maps, tickets, `STATUS.md`, `scratch/agents/driver.log`), never only in a chat, so sessions
+  can stop, compact or be replaced without losing anything.
+
+## Commands
 
 | You want to… | Run |
 |---|---|
@@ -30,8 +89,83 @@ Research is a search, not a build, so the plan never stops changing. The vocabul
 | **default:** work a map in one session, a fresh subagent per ticket | `/loop /research-drive <map>` |
 | leave it running while you sleep or travel | `/away` |
 | re-plan a map | `/wayfinder <map> --rechart` |
-| optional: a team (a desk you talk to, a driver per map in its own tab, worker tabs) | `team-up <map>` in a herdr pane, or `/team <role>` |
-| work from one desktop app: every project, maps as DAGs, tickets, Mac and server files, chat with any agent, terminals, GPUs, teams by click | the **Research Desk** app (`research-gui` opens it; build once with `cd tools/gui/app && npm install && npm run pack`; projects in `~/.config/research-gui/projects.toml`) |
+| review a ticket's answer yourself | `/review <ticket>` |
+| catch up on a long chat and every call waiting on you | `/ketchup` |
+| optional: a team in herdr tabs (a desk you talk to, a driver per map, worker tabs) | `team-up <map>` ([Team mode](#team-mode-with-herdr-optional)) |
+| optional: everything in one desktop app | `research-gui` ([Research Desk](#research-desk-app-optional-macos)) |
+
+## Using Codex
+
+The skills are plain markdown and work in Codex too: `install.sh` links them into `~/.agents/skills`, and
+`/research-init` writes both `AGENTS.md` (Codex reads this) and `CLAUDE.md` (which imports it). What differs:
+
+| In Claude Code | In Codex |
+|---|---|
+| `/research-drive <map>`, `/team desk` … | ask for a skill by name: "use the research-drive skill on maps/T1-x". Skills marked user-only (`research-init`, `wayfinder`, `to-map`, `team`, `retro`, …) are hidden from Codex's model: point it at the file, "read ~/.agents/skills/team/SKILL.md and follow it as `team desk`" |
+| `/loop` repeats a driver's pass on a schedule | no loop: prompt each pass yourself, or run an all-Codex team, where `team-watch` types `tick` into an idle driver every 25 min |
+| a fresh subagent per ticket | a Codex worker per ticket in team mode; in a single session, Codex works tickets itself |
+| `ask-human` (phone buttons through Moshi), `team-roster-hook`, `team-worker --rescue` | Claude-only helpers; Codex asks in plain text and is not hit by Claude's safeguard stops |
+
+**Mixing the two:** a Claude Code session can hand work to Codex with `codex-run` (every call carries the same model,
+effort and sandbox, checks its exit code and answer, and strips tokens from the environment); which work goes there is a
+per-project rule in `docs/agents/delegation.md` (the author sends biology-heavy coding, analysis and reviews to Codex).
+A **team** is all Claude Code or all Codex, never mixed: `team-up --codex <map>`, or pick Codex in the Research Desk's
+Start team. The flags every Codex team session starts with are in `tools/codex-team.args` (model, workspace-write sandbox
+with network, never ask for approval; medium effort for the desk and driver, xhigh for workers).
+
+## Team mode with herdr (optional)
+
+One session per map is the default and enough for most work. A team helps when several maps run at once and you want
+to watch or answer each worker: a **desk** you talk to, a **driver** per map in its own tab, and a **worker** tab per
+ticket that the driver opens and closes. They run the same skills; `skills/optional/team/TEAM-PROTOCOL.md` has the
+roster and the one-line messages between them.
+
+Teams run in [herdr](https://herdr.dev), a terminal workspace manager that can start, read and prompt agents in tabs.
+Setup, once:
+
+1. Install herdr, then let it see each agent's state: `herdr integration install claude` (and `codex`).
+2. **Claude Code on macOS:** new herdr tabs cannot read Claude Code's login from the Keychain on their own, so store a
+   long-lived token where `team-up` and `team-worker` look for it:
+   `claude setup-token`, then `security add-generic-password -a "$USER" -s claude-code-oauth -w "<token>"`.
+   On Linux, Claude Code reads its own login file and this step is not needed.
+3. Open `claude` (or `codex`) once in each project folder and accept its folder-trust prompt, or the first worker stops
+   there.
+4. Optional, Claude Code: add the roster hook to `~/.claude/settings.json` under `hooks.SessionStart`, so a team session
+   that restarts under a new name updates the roster:
+   `{"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}`.
+
+Then, from a herdr pane in the project folder: `team-up <map>` (Claude Code, Opus) or `team-up --codex <map>`. It opens
+tabs **A desk**, **B driver** and **watch**; talk to the desk. The watch tab runs `team-watch`: it shows the driver's
+log, resumes a stuck Claude driver in its own session (on Sonnet, after a safeguard stop or 90 silent minutes), and is a
+Codex driver's schedule. Keep the machine awake while a team runs (`team-up` wraps the watch in `caffeinate` on macOS).
+
+## Research Desk app (optional, macOS)
+
+A desktop app over the same files and herdr: every project, maps as graphs, tickets, local and server files, chat with
+any agent (Claude Code or Codex), terminals, GPUs, and Start team with a click (Claude Code or Codex). Build once:
+`cd ~/research-harness/tools/gui/app && npm install && npm run pack`, then `research-gui` opens it. Projects live in
+`~/.config/research-gui/projects.toml` (template: `tools/gui/projects.example.toml`). Notifications go to Mac banners,
+sounds or a Moshi phone push. `tools/gui/README.md` has the details. It is built for macOS (Keychain logins, banners);
+other systems are untested.
+
+## Make it yours
+
+The harness never names a machine, a person or a field; those live in a few files you edit.
+
+| I want to… | Edit |
+|---|---|
+| change how the agent writes code, commits, reports, or what always needs my OK | `STYLE.md` |
+| describe where a project runs (scheduler, storage, GPUs, network) | a scope file: copy `scopes/engaging.md` (MIT's Slurm cluster) and answer `skills/core/research-init/SCOPE-FORMAT.md` |
+| change where one project's maps live (local markdown, GitHub, GitLab) | that project's `docs/agents/issue-tracker.md` |
+| change where delegated work and reviews go in one project | that project's `docs/agents/delegation.md` |
+| add a rule for one project only | that project's `AGENTS.md`, under "Project notes" |
+| add a skill | `skills/<group>/<name>/SKILL.md`, then `./install.sh` |
+
+A mistake that recurs is fixed with a check that fails (a `research-status --check` rule, a `codex-run` guard, an assert
+in the project's code) before another sentence: pstack's *Encode Lessons in Structure*. Instructions are for judgment
+calls. `FEEDBACK.md` (local, not in git) collects problems found while using the harness, one line each, until a harness
+session fixes them. Skill descriptions load when a session starts, so a new skill or a changed `description:` needs a
+new session; a changed body applies the next time it is read.
 
 ## Skills
 
@@ -46,21 +180,27 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `to-map` | adapted from `to-spec` | turn the conversation into a map, without an interview |
 | `to-tickets` | adapted from `to-tickets` | question tickets with blocking edges and pre-registrations |
 | `research-work` | counterpart of `implement` | work one ticket end to end |
-| `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving with parallel implementer subagents |
+| `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving, a fresh implementer per ticket |
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `research`, `grilling` | copied | the reading and interview tickets |
 
 **personal/**: everyday helpers, all user-invoked: `wait-what` (adapted: re-pitch the last message), `ketchup` (from
-pstack: catch up on a long chat and every call waiting on you), `retro` (adapted:
-retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
+pstack: catch up on a long chat and every call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents`
+(copied: writing skills and agent docs).
 
-**optional/**: none in Matt's repo. `team`: run a project as a desk, a driver per map, and a worker session per ticket. `run-card` and `diagnosis-card`:
-records for people outside the session (a reproduction record of an important run; a diagnosis of evaluation
-results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for improving a model in rounds,
-with a diagnosis card after every evaluation. `away`: the human steps away; maps keep moving, what needs them waits
-prepared, and one brief greets them on return. `ask-via-feishu`: a session asks someone other than the human on Feishu, through a
-bridge bot (`ask-feishu`); the answer comes back into its pane.
+**optional/**: none in Matt's repo.
+- `team`: run a project as a desk, a driver per map, and a worker session per ticket ([Team mode](#team-mode-with-herdr-optional)).
+- `away`: you step away; maps keep moving, what needs you waits prepared, one brief when you are back.
+- `run-card` and `diagnosis-card`: records for people outside the session (a reproduction record of an important run; a
+  diagnosis of evaluation results); a project opts in through its AGENTS.md. `to-diagnosis-map`: a `to-map` preset for
+  improving a model in rounds, with a diagnosis card after every evaluation.
+- `ask-via-feishu`: a session asks someone other than you on Feishu through a bridge bot (`ask-feishu`); the answer comes
+  back into its pane. Needs your own bridge; setup is in `tools/ask-feishu.py`.
+
+Helpers on PATH besides the skills: `ask-human` puts a question with fixed answers on your phone as buttons (with Moshi;
+otherwise the session asks in plain text), and `research-status` generates `STATUS.md`, lists the frontier
+(`--frontier`) and checks the maps (`--check`).
 
 ## Differences from Matt's skills
 
@@ -86,7 +226,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (`scopes/`), so the skills never name a machine.
 
-**Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the delegate a rule names fails, the session waits or asks; it never hands the work to someone else. `codex-run` makes every Codex call, resumes included, carry the same model, effort and sandbox.
+**Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the delegate a rule names fails, the session waits or asks; it never hands the work to someone else.
 
 **Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, and a driver per active map running `research-drive` under `/loop`, with a roster and short messages (`skills/optional/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team: implementer subagents become **workers**, a fresh session per ticket that the driver opens in a tab and closes when the ticket is done, so a worker can open subagents of its own (a subagent cannot) and the human can watch or answer it; and asking the user goes through the desk, which relays the human's words and never decides for them (Matt's HITL rule). The core skills never mention the team, and the team layer only depends on them.
 
@@ -105,34 +245,19 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research harness), personal/ (everyday helpers), optional/ (team, records, away)
-STYLE.md     your rules for every project (honesty, what always needs the human's OK, code, docs)
+skills/      core/ (the research loop), personal/ (everyday helpers), optional/ (team, away, records, Feishu)
+STYLE.md     your rules for every project (honesty, what always needs your OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
-templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status), codex-run.sh, ask-human.py, ask-feishu.py, team-up.sh, team-worker.py,
-             codex-team.args (the flags every Codex team session starts with), team-roster-hook.py (a SessionStart
-             hook, installed in your settings: a team session refreshes its roster line after a restart),
-             team-watch.py (team-watch: the watch tab's supervisor; resumes a stuck driver's own session on Sonnet 5.5), gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
+templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md
+             (seeds for docs/agents/ live in skills/core/research-init/)
+tools/       status.py (research-status) · codex-run.sh · ask-human.py · ask-feishu.py
+             team-up.sh · team-worker.py · team-watch.py · codex-team.args · team-roster-hook.py (team mode)
+             gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
+FEEDBACK.md  local only (gitignored): problems found while using the harness, until fixed
 ```
-
-## How to change things
-
-A mistake that recurs is fixed with a check that fails (a `research-status --check` rule, a `codex-run` guard, an assert in
-the project's code) before another sentence: pstack's *Encode Lessons in Structure*. Instructions are for judgment calls.
-
-| I want to… | Edit |
-|---|---|
-| change a machine's rules (scheduler, storage, GPU sharing, network) | that scope file, e.g. `scopes/engaging.md` |
-| change how the agent writes code, commits, reports, or what always needs my OK | `STYLE.md` |
-| change where one project's maps live | that project's `docs/agents/issue-tracker.md` |
-| change where delegated work and reviews go in one project | that project's `docs/agents/delegation.md` |
-| add a rule for one project only | that project's `AGENTS.md`, under "Project notes" |
-| add a skill | `skills/<group>/<name>/SKILL.md`, then `./install.sh` |
-
-Skill descriptions load when a session starts, so a new skill or a changed `description:` needs a new session; a changed body applies the next time it is read.
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `retro`, `wait-what`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `retro`, `wait-what`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); `ketchup` is from pstack; the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
