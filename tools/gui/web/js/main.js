@@ -188,6 +188,7 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && e.target.matches?.(".agent-row, .trow")) { e.preventDefault(); e.target.click(); return; }
   if (e.key === "Escape") {
     if (!$("#overlay").hidden) { closeDialog(); e.preventDefault(); }
+    else if ($("#btw-close") && !e.target.closest?.("#composer")) { $("#btw-close").click(); e.preventDefault(); }   // a /btw answer
     else if (S.route.view === "settings" && !e.target.closest?.("textarea, input")) leaveSettings();
     closeMenus(); return;
   }

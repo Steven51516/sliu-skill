@@ -318,7 +318,8 @@ function btwAnswer(scr) {
   let end = lines.findIndex((l, j) => j > i && /Esc to (close|cancel|dismiss)/i.test(l));
   const body = lines.slice(i + 1, end < 0 ? undefined : end).filter((l, j, all) => l.trim() || (j > 0 && j < all.length - 1));
   const ind = Math.min(...body.filter((l) => l.trim()).map((l) => l.match(/^\s*/)[0].length), 99);
-  const text = body.map((l) => l.slice(ind === 99 ? 0 : ind)).join("\n").trim();
+  let text = body.map((l) => l.slice(ind === 99 ? 0 : ind)).join("\n").trim();
+  if (/^\W{0,3}\s*(answering|thinking)\W*$/i.test(text)) text = "";       // still thinking: the card shows dots
   return { q: lines[i].trim().replace(/^\/btw\s+/, ""), text, done: end >= 0 && !!text && !/^(thinking|answering)/i.test(text) };
 }
 const btwCard = (b) => `<div class="btwcard"><div class="bh">${icon("chat")}<b>btw</b><span class="muted">${esc(b.q)}</span></div>
@@ -344,13 +345,15 @@ function renderLive() {
   // a prompt the agent waits at
   if (menuOn() && C.menu.cmd === "/btw" && C.status !== "blocked") {   // a /btw answer: a card, not the raw screen
     const b = btwAnswer(C.screen);
+    if (b?.text) C.menu.seen = true;
+    if (!b && C.menu.seen) { C.menu = null; live.innerHTML = ""; live.dataset.screen = ""; return; }   // closed in its terminal
     const key = C.pane + "\nbtw\n" + (b ? b.q + "\n" + b.text : "");
     if (key !== (live.dataset.screen || "")) {
       const pane = C.pane;
       live.innerHTML = btwCard(b || { q: C.menu.q || "", text: "" });
       if (b?.text) md(live.querySelector(".bb"), b.text, { breaks: true });
       live.dataset.screen = key;
-      const done = () => { keys(["esc"], pane); C.menu = null; live.dataset.screen = ""; setTimeout(renderLive, 300); };
+      const done = () => { keys(["esc"], pane); C.menu = null; live.innerHTML = ""; live.dataset.screen = ""; };
       live.querySelector("#btw-close").onclick = done;
       live.querySelector("#btw-copy").onclick = () => { navigator.clipboard.writeText(b?.text || ""); toast("Copied"); };
       const kt = live.querySelector("#btw-keep");
@@ -514,6 +517,7 @@ function wireComposer() {
       if (e.key === "Escape") { e.preventDefault(); return closeMenu(); }
     }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); submit(); }
+    if (e.key === "Escape" && !t.value && $("#btw-close")) { e.preventDefault(); return $("#btw-close").click(); }   // Esc closes a /btw answer
     if (e.key === "Escape" && C.status === "working" && !t.value) { e.preventDefault(); keys(["esc"]); }
   };
   send.onclick = () => (C.status === "working" && !t.value.trim() ? keys(["esc"]) : submit());
