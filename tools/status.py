@@ -31,6 +31,7 @@ ACTIVE = {"claimed", "running"}
 HITL = {"grilling", "prototype"}
 TYPES = {"experiment", "research", "prototype", "grilling", "task"}
 STALE_HOURS = 36
+MAX_MAP_LINES = 80                    # STYLE.md: each map.md is rewritten to stay within 80 lines
 MAX_WAITING = 8
 # older words for the same states and types, read as the canonical ones
 STATUS_ALIASES = {"done": "resolved", "final": "resolved", "planned": "open", "stale": "open", "approved": "open",
@@ -190,6 +191,8 @@ def load(project):
             kmeta["_path"] = os.path.relpath(kpath, project)
             archived.append(kmeta)
         meta["_path"] = os.path.relpath(mpath, project)
+        with open(mpath, errors="replace") as f:
+            meta["_lines"] = sum(1 for _ in f)
         meta["_legacy"] = mpath.endswith("track.md")
         meta["_destination"] = destination(body)
         meta["_needs"] = legacy_needs(body)
@@ -261,6 +264,9 @@ def analyse(maps):
             problems.append(f"{m['_path']}: closed without an `outcome:` line")
         if bad_claim_date(claim_text(m)):
             problems.append(f"{m['_path']}: claim has an invalid date: {claim_text(m)}")
+        if m["_lines"] > MAX_MAP_LINES:                 # STYLE: a map stays short; detail lives in its tickets
+            problems.append(f"{m['_path']}: {m['_lines']} lines (max {MAX_MAP_LINES}): move detail into its tickets, keep "
+                            f"one line and a link per finding")
         fr = []
         for k in m["_tickets"]:
             for f in ("id", "title", "type", "status"):
