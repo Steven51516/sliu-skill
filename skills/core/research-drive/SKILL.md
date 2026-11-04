@@ -32,6 +32,6 @@ Each pass:
    that the destination or Contract should change) becomes a `grilling` ticket and one line to them. Past ~10 closed
    tickets, consolidate as `wayfinder --rechart` says.
 6. **Log:** one line in `scratch/agents/driver.log` (time, what changed), and end the pass with that line. Under `/loop`,
-   wake at the next thing worth seeing (a job's milestone), else in 20-30 min, hourly when everything waits on the user.
+   wake when the next thing is expected (a job's estimated finish or milestone), at most an hour away.
    The destination reached, or measured unreachable: close the map as the tracker doc says and end the loop; also end it
    when the user says stop.

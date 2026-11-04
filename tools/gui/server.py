@@ -1705,7 +1705,7 @@ def team_plan(p, only_map=None, agent=None):
     if live and agent and agent != live:
         raise ApiError(409, f"this project's team runs on {live}: stop it before starting a {agent} team")
     kind = agent or live or "claude"
-    args = codex_team_args("medium") if kind == "codex" else claude_args
+    args = codex_team_args("medium") if kind == "codex" else [*claude_args, "--model", "claude-opus-5-5", "--effort", "xhigh"]   # pinned: a saved /model or /effort never reaches the team
 
     def role_prompt(role):
         return f"Read ~/.agents/skills/team/SKILL.md and follow it as `team {role}`." if kind == "codex" else f"/team {role}"

@@ -29,7 +29,8 @@
 
 
 ## Models and effort
-- Desks and drivers: Opus 5.5 at xhigh. Workers and subagents: Opus 5.5 at medium; start a subagent with `effort: medium`.
+- Desks and drivers: Opus 5.5 at xhigh. Workers: Opus 5.5 at medium. Subagents: Sonnet 5.5 at high. The launchers pin
+  these; a model or effort changed by hand in one session is not a new default.
 - A driver or worker stopped by a false-positive biology safeguard resumes on Sonnet 5.5 at high (`team-watch`,
   `team-worker --rescue`). A Codex review or re-check always runs at xhigh.
 
