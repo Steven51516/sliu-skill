@@ -264,7 +264,7 @@ def analyse(maps):
             problems.append(f"{m['_path']}: closed without an `outcome:` line")
         if bad_claim_date(claim_text(m)):
             problems.append(f"{m['_path']}: claim has an invalid date: {claim_text(m)}")
-        if m["_lines"] > MAX_MAP_LINES:                 # STYLE: a map stays short; detail lives in its tickets
+        if m["_lines"] > MAX_MAP_LINES and status_of(m) != "closed":   # STYLE: a live map stays short; detail lives in its tickets
             problems.append(f"{m['_path']}: {m['_lines']} lines (max {MAX_MAP_LINES}): move detail into its tickets, keep "
                             f"one line and a link per finding")
         fr = []
