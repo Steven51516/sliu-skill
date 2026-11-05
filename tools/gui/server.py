@@ -953,6 +953,46 @@ def btw_of(app_pane):
     return btw_load().get(app_pane)
 
 
+# ---------- pasted files: the message box is text, so a pasted image becomes a file and its path is typed ----------
+
+PASTE_DIR = os.path.expanduser("~/Library/Caches/research-gui/paste")
+PASTE_EXT = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp", "application/pdf": ".pdf"}
+
+
+def paste_file(b):
+    """Save pasted bytes (a screenshot, an image copied from a page) and return a path the agent can read: on this Mac,
+    or, for a remote project's session, uploaded to ~/.cache/research-desk-paste on its host."""
+    try:
+        data = base64.b64decode(b.get("b64") or "", validate=True)
+    except ValueError:
+        raise ApiError(400, "bad file data")
+    if not data or len(data) > 25 << 20:
+        raise ApiError(413, "a pasted file must be 1 B to 25 MB")
+    name = re.sub(r"[^A-Za-z0-9._-]+", "_", os.path.basename(b.get("name") or "")).strip("._") or "pasted"
+    if "." not in name:
+        name += PASTE_EXT.get(b.get("type") or "", "")
+    fname = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:4]}-{name}"
+    os.makedirs(PASTE_DIR, exist_ok=True)
+    for old in glob.glob(os.path.join(PASTE_DIR, "*")):            # a week is plenty for a pasted screenshot
+        if time.time() - os.path.getmtime(old) > 7 * 86400:
+            os.remove(old)
+    local = os.path.join(PASTE_DIR, fname)
+    with open(local, "wb") as f:
+        f.write(data)
+    pane = b.get("pane") or ""
+    if not pane.startswith("remote:"):
+        return {"path": local}
+    host = project(pane.split(":")[1])["remote_host"]
+    code, out, err = run([*shlex.split(SSH_BATCH), host, "mkdir -p ~/.cache/research-desk-paste && cd ~/.cache/research-desk-paste && pwd"], timeout=30)
+    rdir = out.decode(errors="replace").strip()
+    if code != 0 or not rdir.startswith("/"):
+        raise ApiError(502, f"couldn't reach {host} to upload it: {err.strip()[:150]}")
+    code, _, err = run(["rsync", "-t", "-e", SSH_BATCH, local, f"{host}:{rdir}/"], timeout=120)
+    if code != 0:
+        raise ApiError(502, f"upload to {host} failed: {err.strip()[:150]}")
+    return {"path": f"{rdir}/{fname}"}
+
+
 # ---------- what changed since the human last looked ----------
 
 _state_lock = threading.Lock()
@@ -2286,6 +2326,8 @@ class Handler(BaseHTTPRequestHandler):
             return r
         if path == "/api/project-inbox":
             return set_inbox(b)
+        if path == "/api/paste":
+            return paste_file(b)
         if path == "/api/btw":
             return btw_start(b)
         if path == "/api/btw-close":

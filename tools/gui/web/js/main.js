@@ -217,7 +217,31 @@ if (isApp) window.desk.onCommand((cmd, arg) => {
   (COMMANDS[cmd] || (() => {}))();
 });
 
-// ---------- dropping files: their paths are typed where they land, as in Terminal ----------
+// ---------- dropping or pasting files: their paths are typed where they land, as in Terminal ----------
+// A file from Finder keeps its own path; bytes with no file (a screenshot, an image copied from a page) are saved first
+// (/api/paste). For a session on a remote host every file is uploaded there and its path there is typed.
+
+async function filePaths(files, pane) {
+  const remote = (pane || "").startsWith("remote:"), out = [];
+  for (const f of files) {
+    const local = window.desk?.pathForFile ? window.desk.pathForFile(f) : "";
+    if (local && !remote) { out.push(shellPath(local)); continue; }
+    if (f.size > 25 << 20) { toast(`${f.name || "That file"} is over 25 MB`, "err"); continue; }
+    const b64 = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(",")[1] || ""); r.onerror = () => res(""); r.readAsDataURL(f); });
+    try { const r = await post("/api/paste", { pane, name: f.name || "", type: f.type || "", b64 }); out.push(shellPath(r.path)); }
+    catch (err) { toast(err.message, "err", 6000); }
+  }
+  return out;
+}
+
+document.addEventListener("paste", async (e) => {
+  const files = [...(e.clipboardData?.files || [])];
+  const field = e.target.closest?.("textarea, input:not([type]), input[type=text], input[type=search]");
+  if (!files.length || !field || field.disabled) return;          // text pastes as usual
+  e.preventDefault();
+  const paths = await filePaths(files, field.id === "composer" ? S.chat.pane : null);
+  if (paths.length) insertAt(field, paths.join(" ") + " ");
+});
 
 const shellPath = (p) => p.replace(/([\s'"()&;|<>$`\\!*?[\]{}#~^])/g, "\\$1");
 const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
@@ -239,16 +263,20 @@ document.addEventListener("dragover", (e) => {
   document.body.classList.add("dragging");
 });
 document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) document.body.classList.remove("dragging"); });
-document.addEventListener("drop", (e) => {
+document.addEventListener("drop", async (e) => {
   if (!hasFiles(e)) return;
   e.preventDefault();
   document.body.classList.remove("dragging");
-  const paths = [...e.dataTransfer.files].map((f) => (window.desk?.pathForFile ? window.desk.pathForFile(f) : "")).filter(Boolean);
-  if (!paths.length) return toast(isApp ? "Couldn't read the dropped file's path" : "Dropped files give their path only in the app (a browser hides it)", "err", 5000);
-  const text = paths.map(shellPath).join(" ") + " ";
+  const files = [...e.dataTransfer.files];
   const term = e.target.closest?.(".term");
-  if (term && typeIntoTerminal(term, text)) return;
+  if (term) {                                                      // a terminal on this Mac: the files' own paths
+    const local = files.map((f) => (window.desk?.pathForFile ? window.desk.pathForFile(f) : "")).filter(Boolean);
+    if (local.length && typeIntoTerminal(term, local.map(shellPath).join(" ") + " ")) return;
+  }
   const field = e.target.closest?.("textarea, input:not([type]), input[type=text], input[type=search]");
+  const paths = await filePaths(files, !field || field.id === "composer" ? S.chat.pane : null);
+  if (!paths.length) return toast("Couldn't read the dropped file", "err", 5000);
+  const text = paths.join(" ") + " ";
   if (field && !field.disabled) return insertAt(field, text);
   if (!S.chat.open || !$("#composer")) openChat(S.chat.pane, { focus: false });
   setTimeout(() => { const c = $("#composer"); if (c && !c.disabled) insertAt(c, text); else toast("No agent to drop the path into: open a chat first", "err"); }, 60);

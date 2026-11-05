@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk:** pasting an image (⌘V of a screenshot or a copied image) saves it and types its path, which the
+  agent reads; a file copied in Finder pastes its path. For a session on a remote host the file is uploaded there first.
 - **Research Desk:** each session's tag shows its reasoning effort beside the model ("Opus 5.5 · xhigh"), read from
   its requests or the last `/effort`.
 - **Research Desk:** when Claude Code compacts a session, its summary shows folded under a "context compacted" note
