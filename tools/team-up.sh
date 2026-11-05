@@ -38,7 +38,7 @@ go() {  # go <agent name> <pane> <team role, e.g. "driver maps/T8-x">
 }
 
 ID="$(basename "$T" | cut -d- -f1)"
-if [[ $ONLY_DRIVER == 1 ]]; then   # the same pinned model and effort as a full team-up; a watch already running sees it via the roster
+if [[ $ONLY_DRIVER == 1 ]]; then   # same pinned model and effort as a full team-up; only a team-watch run with no arguments (it reads the roster) watches it
   B="$(tab "B driver $ID")"; go "$P-driver-$(echo "$ID" | tr A-Z a-z)" "$B" "driver $T"
   echo "driver for $T ($AGENT) in $B"; exit 0
 fi
