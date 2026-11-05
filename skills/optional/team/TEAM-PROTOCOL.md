@@ -80,7 +80,8 @@ sessions of a team run on the same machine.
 
 ## Running it
 - One tab (or tmux window) for the desk and one per driver, every session started in the project folder
-  (`cd <project> && claude`); a second active map gets a second driver tab. Worker tabs open and close with their tickets.
+  (`cd <project> && claude`); a second active map gets a second driver tab, opened with
+  `team-up --driver <map>` (never a bare `claude`, which takes whatever model and effort are saved as defaults). Worker tabs open and close with their tickets.
 - A team is all Claude Code (`team-up <map>`) or all Codex (`team-up --codex <map>`); Research Desk's Start team offers
   both. Workers run on their driver's agent. In a Codex team, a delegation rule that sends work to Codex is the session's
   own work, and one that names a Claude subagent goes to a fresh Codex session (`codex-run`) instead.

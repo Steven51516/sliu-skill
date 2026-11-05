@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# team-up [--codex] <map, e.g. T8>
+# team-up [--codex] [--driver] <map, e.g. T8>
 # Run inside herdr from the project folder. Adds tabs A desk, B driver and watch to the current workspace; each agent tab
 # starts its team role (TEAM-PROTOCOL.md). Worker tabs open and close as the driver starts and finishes tickets, on the
 # driver's own agent. Claude Code (default): sessions start logged in (Keychain item claude-code-oauth) and on an explicit
@@ -9,8 +9,9 @@
 # is the driver's schedule, since Codex has no /loop.
 set -euo pipefail
 [[ "${HERDR_ENV:-}" == 1 ]] || { echo "run team-up inside herdr"; exit 1; }
-AGENT=claude; if [[ "${1:-}" == --codex ]]; then AGENT=codex; shift; fi
-T="${1:?usage: team-up [--codex] <map, e.g. T8>}"
+AGENT=claude; ONLY_DRIVER=0   # --driver: only a driver tab for one more map, for a team already running
+while [[ "${1:-}" == --* ]]; do case "$1" in --codex) AGENT=codex;; --driver) ONLY_DRIVER=1;; *) echo "unknown option $1"; exit 1;; esac; shift; done
+T="${1:?usage: team-up [--codex] [--driver] <map, e.g. T8>}"
 if [[ ! -d "$T" ]]; then for d in maps/"$T"-* tracks/"$T"-*; do [[ -d "$d" ]] && { T="$d"; break; }; done; fi
 [[ -f "$T/map.md" || -f "$T/track.md" ]] || { echo "no map '$1' in $PWD/maps"; exit 1; }
 P="$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | cut -c1-20)"   # agent-name prefix
@@ -36,7 +37,12 @@ go() {  # go <agent name> <pane> <team role, e.g. "driver maps/T8-x">
   fi
 }
 
-A="$(tab "A desk")"; B="$(tab "B driver $(basename "$T" | cut -d- -f1)")"; W="$(tab watch)"
+ID="$(basename "$T" | cut -d- -f1)"
+if [[ $ONLY_DRIVER == 1 ]]; then   # the same pinned model and effort as a full team-up; a watch already running sees it via the roster
+  B="$(tab "B driver $ID")"; go "$P-driver-$(echo "$ID" | tr A-Z a-z)" "$B" "driver $T"
+  echo "driver for $T ($AGENT) in $B"; exit 0
+fi
+A="$(tab "A desk")"; B="$(tab "B driver $ID")"; W="$(tab watch)"
 go "$P-driver" "$B" "driver $T"
 sleep 20   # the driver joins the roster first, so the desk finds it
 go "$P-desk" "$A" "desk"
