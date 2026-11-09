@@ -1,36 +1,20 @@
 ---
 name: away
-description: "The user is stepping away (sleep, a meeting, a trip): keep the maps moving without them and park what needs them, prepared, until their next message. Use when the user says they are going away, going to sleep, or leaving it running."
+description: "The user is stepping away (sleep, a meeting, a trip) until their next message: keep the maps moving and park what needs them, prepared. Use when the user says they are going away, going to sleep, or leaving it running."
 ---
 
-The user is stepping away until their next message. Work keeps going on everything that does not need them; what needs
-them waits, prepared.
+The user is away until their next message, whatever it says.
 
-## When they go
+**When they go:** check that the machine stays awake and, in a team, that `team-watch` runs. Write one line to
+`scratch/agents/away.md`, `<UTC time> (human: "<their words>")`, and nothing else; in a team, send each driver `away`.
+Reply in one line: what keeps running, what will wait.
 
-Don't plan with them: carry on with the current maps as they stand. Make sure nothing will stall unattended work: the
-machine stays awake, and in a team `team-watch` is running. Record the start as one dated line in each map's Decisions so
-far, `(human, <UTC time>: "away")`, and in `scratch/agents/away.md`. Reply in one line: what keeps running and what will
-wait for them.
+**While away**, drive each map as usual (`research-drive` under `/loop`), with three changes:
+- A decision only they can make waits as a `grilling` ticket with your pick. Only the work that depends on it waits;
+  where it is cheap, prepare both answers.
+- After 2 hours, go ahead on your pick if the decision can be undone, sits inside the Contract and is off the always-ask
+  list in `STYLE.md`. Record it in the ticket: `(driver, <UTC time>: took the recommended answer, the human away)`.
+- Log each decision you take without them as an `away:` line in `scratch/agents/driver.log`.
 
-## While they are away
-
-Work each map with `research-drive` under `/loop`; in a team, send each driver `away` (it reads `scratch/agents/away.md`).
-
-- Never block on reversible work inside the Contract: do it.
-- **Push right**: a decision only the user can make (the always-ask list in `STYLE.md`, anything outside the Contract)
-  becomes a `grilling` ticket with your recommended answer and what it unblocks. Only what depends on it waits; keep
-  everything else moving.
-- Prepare both sides of a waiting decision where that is cheap, so the user's answer takes effect at once.
-- **Go ahead on your pick** when such a decision has waited 2 hours and can be undone: inside the Contract, not on the
-  always-ask list (a Contract change, an over-budget run and deleted data are never yours to take). Record it in the
-  ticket as `(driver, <UTC time>: took the recommended answer, the human away)` and keep it easy to reverse.
-- New questions the results raise become tickets inside the Contract (`to-tickets`), and are worked like the rest.
-- Results enter a map as `[tentative]` until reviewed, as always.
-- Log each decision you take without the user as one dated `away:` line in `scratch/agents/driver.log`.
-
-## When they write again
-
-Their next message, whatever it says, ends away mode: delete `scratch/agents/away.md`; in a team, send each driver
-`back`. Then answer the message as usual, adding one line that names any decision you went ahead on, so they can
-undo it. No brief unless they ask for one (`/ketchup`).
+**When they write again:** delete `scratch/agents/away.md`; in a team, send each driver `back`. Answer their message as
+usual, with one line naming any decision you went ahead on. No brief unless they ask (`/ketchup`).

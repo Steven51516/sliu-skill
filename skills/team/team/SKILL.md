@@ -52,7 +52,7 @@ never answers for them.
   human's words, then `open` again); `reopen` (open again, its Decisions-so-far line tagged
   `[challenged]` until it closes again); `new` (`to-tickets`); `rechart` (`wayfinder --rechart`); `pause` (the map's
   status becomes `paused (human, …)`) / `resume`; `stop` (end the loop and say why); `away` / `back` (work as the
-  `away` skill's "While they are away" says, until `back` or the human writes in your tab).
+  `away` skill's "While away" says, until `back` or the human writes in your tab).
 - You own this map: when the human comes to you to plan (`wayfinder` on this map, new questions, the route), do
   it with them here, then tell the desk `map: <what changed>`. A new destination is a new map with its own driver.
 

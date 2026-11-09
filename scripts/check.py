@@ -3,7 +3,7 @@
 
   python3 scripts/check.py
 
-- every skill sits at skills/<core|personal|optional>/<name>/SKILL.md, with frontmatter whose `name` is the folder name
+- every skill sits at skills/<core|personal|team>/<name>/SKILL.md, with frontmatter whose `name` is the folder name
   and whose `description` is set (at most 1024 characters)
 - every relative link in a skill's markdown files points to a file that exists (template placeholders, `[<...>](...)`,
   are skipped)
@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-GROUPS = {"core", "personal", "optional"}
+GROUPS = {"core", "personal", "team"}   # skills/local/ is gitignored
 LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]+)\)")
 SKIP = {"node_modules", "archive", "__pycache__", ".git"}
 

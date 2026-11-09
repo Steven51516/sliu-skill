@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Skill groups:** `run-card` moved to `core/`; `team` has its own `team/`; `optional/` is gone. Local-only skills
+  (`ask-via-feishu`, `diagnosis-card`, `to-diagnosis-map`) live in `skills/local/`, gitignored as a whole.
+- **away** is shorter: only what differs from a normal driver pass; the away file is one line.
 - **ask-via-feishu** is local only (gitignored), like `diagnosis-card`.
 - **away** lasts until the user's next message, whatever it says; no "back" and no brief on return (`/ketchup` gives
   one when asked). While away, a decision that has waited 2 hours, sits inside the Contract, is off the always-ask

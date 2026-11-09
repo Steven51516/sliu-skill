@@ -196,7 +196,7 @@ with network, never ask for approval; medium effort for the desk and driver, xhi
 
 One session per map is the default and enough for most work. A team helps when several maps run at once and you want
 to watch or answer each worker: a **desk** you talk to, a **driver** per map in its own tab, and a **worker** tab per
-ticket that the driver opens and closes. They run the same skills; `skills/optional/team/TEAM-PROTOCOL.md` has the
+ticket that the driver opens and closes. They run the same skills; `skills/team/team/TEAM-PROTOCOL.md` has the
 roster and the one-line messages between them.
 
 Teams run in [herdr](https://herdr.dev), a terminal workspace manager that can start, read and prompt agents in tabs.
@@ -268,15 +268,16 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `grilling` | copied | the interview tickets |
+| `run-card` | none in Matt's repo | a one-page reproduction record of a run that affects a milestone (a reference, a result a map relies on, an artifact later work builds on) |
 
 **personal/**: everyday helpers: `away` (you step away; maps keep moving and what needs you waits prepared, until your
 next message), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
 call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
-**optional/**: none in Matt's repo.
-- `team`: run a project as a desk, a driver per map, and a worker session per ticket ([Team mode](#team-mode-with-herdr-optional)).
-- `run-card`: a one-page reproduction record of a run that affects a milestone, for people outside the session; a project
-  opts in through its AGENTS.md.
+**team/**: `team` (none in Matt's repo): run a project as a desk, a driver per map, and a worker session per ticket
+([Team mode](#team-mode-with-herdr-optional)); the only skill that needs herdr and the team tools.
+
+**local/** (gitignored): skills kept on one machine and never pushed.
 
 Helpers on PATH besides the skills: `ask-human` puts a question with fixed answers on your phone as buttons (with Moshi;
 otherwise the session asks in plain text), and `research-status` generates `STATUS.md`, lists the frontier
@@ -308,7 +309,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the delegate a rule names fails, the session waits or asks; it never hands the work to someone else.
 
-**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, and a driver per active map running `research-drive` under `/loop`, with a roster and short messages (`skills/optional/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team: implementer subagents become **workers**, a fresh session per ticket that the driver opens in a tab and closes when the ticket is done, so a worker can open subagents of its own (a subagent cannot) and the human can watch or answer it; and asking the user goes through the desk, which relays the human's words and never decides for them (Matt's HITL rule). The core skills never mention the team, and the team layer only depends on them.
+**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human talks to, and a driver per active map running `research-drive` under `/loop`, with a roster and short messages (`skills/team/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team: implementer subagents become **workers**, a fresh session per ticket that the driver opens in a tab and closes when the ticket is done, so a worker can open subagents of its own (a subagent cannot) and the human can watch or answer it; and asking the user goes through the desk, which relays the human's words and never decides for them (Matt's HITL rule). The core skills never mention the team, and the team layer only depends on them.
 
 **Per-skill differences**, beyond the vocabulary above:
 
@@ -327,7 +328,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research loop), personal/ (everyday helpers, away, Feishu), optional/ (team, run cards)
+skills/      core/ (the research loop, run cards), personal/ (everyday helpers, away), team/, local/ (gitignored)
 STYLE.md     your rules for every project (honesty, what always needs your OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md

@@ -29,5 +29,5 @@ weighed and left out on purpose; an issue that proposes one may get a short answ
 
 ## Layout
 
-`skills/core/` is the research loop every project needs; `skills/personal/` holds everyday helpers; `skills/optional/`
-holds what a project opts into. A new skill goes in one of them, then `./install.sh` links it.
+`skills/core/` is the research loop every project needs; `skills/personal/` holds everyday helpers; `skills/team/`
+holds the herdr team mode; `skills/local/` (gitignored) holds skills that stay on one machine. A new skill goes in one of them, then `./install.sh` links it.
