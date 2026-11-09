@@ -6,7 +6,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 ## Unreleased
 
 - **away** lasts until the user's next message, whatever it says; no "back" and no brief on return (`/ketchup` gives
-  one when asked).
+  one when asked). While away, a decision that has waited 2 hours, sits inside the Contract, is off the always-ask
+  list and can be undone is taken on the driver's recommended answer; the next reply names it.
 - **Removed the `research` skill.** A research ticket's subagent reads primary sources and cites each claim
   (`wayfinder`); the skill asked a subagent to start a background agent and write a file, which Claude Code refuses.
 - **team-watch** also watches worker tabs: a worker stopped by Claude's safeguards is resumed once on Sonnet 5.5

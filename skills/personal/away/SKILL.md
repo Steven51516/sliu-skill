@@ -22,6 +22,9 @@ Work each map with `research-drive` under `/loop`; in a team, send each driver `
   becomes a `grilling` ticket with your recommended answer and what it unblocks. Only what depends on it waits; keep
   everything else moving.
 - Prepare both sides of a waiting decision where that is cheap, so the user's answer takes effect at once.
+- **Go ahead on your pick** when such a decision has waited 2 hours and can be undone: inside the Contract, not on the
+  always-ask list (a Contract change, an over-budget run and deleted data are never yours to take). Record it in the
+  ticket as `(driver, <UTC time>: took the recommended answer, the human away)` and keep it easy to reverse.
 - New questions the results raise become tickets inside the Contract (`to-tickets`), and are worked like the rest.
 - Results enter a map as `[tentative]` until reviewed, as always.
 - Log each decision you take without the user as one dated `away:` line in `scratch/agents/driver.log`.
@@ -29,4 +32,5 @@ Work each map with `research-drive` under `/loop`; in a team, send each driver `
 ## When they write again
 
 Their next message, whatever it says, ends away mode: delete `scratch/agents/away.md`; in a team, send each driver
-`back`. Then answer the message as usual. No brief unless they ask for one (`/ketchup`).
+`back`. Then answer the message as usual, adding one line that names any decision you went ahead on, so they can
+undo it. No brief unless they ask for one (`/ketchup`).
