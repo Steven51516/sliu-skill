@@ -27,7 +27,7 @@ OTHER = {"find -delete": re.compile(r"\bfind\b[^;&|\n]*\s-delete\b"),
          "shutil.rmtree": re.compile(r"\bshutil\.rmtree\b"),
          "trash --empty": re.compile(r"\btrash(?:\.py)?\s+--empty\b")}
 TOLD = ("delete-guard: your recursive delete waited {m:g} min for the human and was declined. Move what you meant to "
-        "delete with `trash <path>` (it can be undone and prints where it went). If it must really be deleted, record "
+        "delete with `trash <path>` (it can be undone and prints where it went; over ssh, where ~/.local/bin is often not on PATH, call it as ~/.local/bin/trash). If it must really be deleted, record "
         "that in the ticket for the human, and carry on with other work.")
 
 
