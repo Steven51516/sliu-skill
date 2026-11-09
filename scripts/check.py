@@ -9,6 +9,7 @@
   are skipped)
 - every Python tool compiles and every shell script parses (`bash -n`)
 - the README names every skill
+- Research Desk never floods a remote host with ssh (tools/gui/tests/remote_calls_test.py, ~20 s)
 - every skill another file calls by name (`Skill tool with "x"`, "the `x` skill", `/x` in a code span or a prompt string)
   exists in git: a removed, renamed or local-only skill fails here instead of in a user's session
 """
@@ -99,6 +100,12 @@ def main():
         for line, n in skill_refs(f.read_text(errors="replace"), code=f not in docs):
             if n not in names and n not in BUILTIN:
                 problems.append(f"{f.relative_to(ROOT)}:{line}: calls skill `{n}`, which is not in skills/ (removed, renamed or local only)")
+    test = ROOT / "tools/gui/tests/remote_calls_test.py"
+    if test.exists():
+        r = subprocess.run([sys.executable, str(test)], capture_output=True, text=True, timeout=180, stdin=subprocess.DEVNULL)
+        if r.returncode:
+            problems += [l for l in r.stdout.splitlines() if l.startswith("remote_calls_test:") and "FAILED" not in l] \
+                or [f"remote_calls_test: exit {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"]
     for p in problems:
         print(p)
     print(f"check: {len(names)} skills, {len(problems)} problem(s)")

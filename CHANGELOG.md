@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk:** never floods a remote host with ssh (it took down Engaging's login008): one call at a time per
+  host, only over a connection a person opened, a hard deadline that kills the call's hop too, and back-off after a
+  failure; the project page says "not connected" or "unreachable". `tools/gui/tests/remote_calls_test.py`, run by
+  `scripts/check.py`, fails if it ever floods again.
 - **`scripts/check.py`** fails when a file calls a skill that is not in git (removed, renamed or local only), as
   DARE's CI does for its skill graph. It found Research Desk's "Diagnosis card" start option, which called a local-only
   skill; the option is gone (type `/diagnosis-card` where that skill is installed).

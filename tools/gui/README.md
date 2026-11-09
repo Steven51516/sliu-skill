@@ -24,3 +24,11 @@ Projects: `~/.config/research-gui/projects.toml` (template `projects.example.tom
 Testing without touching live agents: `research-gui --serve --port 8799 --dry-run`, then drive the page offscreen with
 `app/node_modules/.bin/electron app/shoot.js spec.json` (navigate, run JS, save screenshots). For a live test, point a
 second backend at a scratch project with `--config` and start sessions there.
+
+Remote projects (`host = "<ssh alias>"` in a project block) are reached only through `host_call` in `server.py`: one call
+at a time per host, only over the shared connection a person opened (`ssh -O check` first; the app never opens one, since
+Engaging needs Duo), a hard deadline that kills the call's whole process group (a ProxyCommand hop included), and back-off
+after a failure (30 s, then 1, 2, 4, 8, 15 min). Records sync every 5 minutes and when a project is opened; live sessions
+are checked every 20 s only while a page or chat of that host is open. `tests/remote_calls_test.py` (run by
+`scripts/check.py`) points the app at a host that never answers and fails if it ever floods it; it was written after
+the app took down Engaging's login008 that way.

@@ -94,12 +94,102 @@ REMOTE_CACHE = os.path.expanduser("~/Library/Caches/research-gui/remote")
 REMOTE_SKIP = [".git/", "artifacts/", "data/", "checkpoints/", "unsloth_compiled_cache/", "wandb/", "lit/", "node_modules/",
                "__pycache__/", ".venv/", "envs/", "outputs/", "results/raw/"]
 REMOTE_KEEP = ["*.md", "*.json", "*.jsonl", "*.csv", "*.tsv", "*.yaml", "*.yml", "*.toml", "*.txt", "*.log", "*.png", "*.svg"]
-REMOTE_EVERY = 60
 REMOTE_SESSIONS = os.path.join(REMOTE_CACHE, ".sessions")   # <project>/<encoded dir>/<session>.jsonl, read-only
 SESSION_HOURS = 24                                          # conversations written to in the last day are shown
-SSH_BATCH = "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ClearAllForwardings=yes"
 rg_chat.EXTRA_DIRS.append(REMOTE_SESSIONS)
+
+# How the app reaches a remote host. It once flooded Engaging's login008: a check every few seconds, each a new ssh
+# through a ProxyCommand hop, none waiting for the last, a timeout that didn't cover the hop, abandoned hops left
+# running; when the link stalled, connections piled up until sshd refused everyone. Now every call goes through
+# host_call: one at a time per host, only over the shared connection (ssh's ControlMaster, opened by a person, since
+# Engaging needs Duo), a hard deadline that kills the call's whole process group, and back-off after a failure.
+# tests/remote_calls_test.py holds it to that (run by scripts/check.py).
+REMOTE_EVERY = 300          # records and conversations: every 5 min, and on opening a project or Sync now
+HERDR_EVERY = 20            # live sessions' status: only while a project or chat of that host was open lately
+DEMAND = 180                # "open lately": the last 3 minutes
+PULL_EVERY = 15             # the conversation open in the chat
+CALL_LIMIT = 30             # seconds for an ssh call, whatever it went through
+RSYNC_LIMIT = 120           # seconds for an rsync (a first mirror of a project's records)
+BACKOFF = [30, 60, 120, 240, 480, 900]
+SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ClearAllForwardings=yes",
+            "-o", "ControlMaster=no", "-o", "ControlPersist=no"]   # use the shared connection, never become one
+SSH_BATCH = "ssh " + " ".join(SSH_OPTS)
+LINK_FAIL = re.compile(r"Permission denied|Connection (refused|reset|closed|timed out)|timed out|Broken pipe|Could not "
+                       r"resolve|No route|kex_exchange|banner exchange|Control socket|mux_client|no answer within")
+_hosts, _hosts_lock = {}, threading.Lock()
 _remote = {}
+
+
+def host_state(host):
+    with _hosts_lock:
+        return _hosts.setdefault(host, {"lock": threading.Lock(), "fails": 0, "until": 0.0, "state": "unknown",
+                                        "error": None, "demand": 0.0, "calls": 0})
+
+
+def run_group(cmd, timeout, input=None):
+    """Run argv in a process group of its own; at the deadline kill the whole group (ssh, a ProxyCommand hop, rsync's
+    ssh), so a call that never gets an answer leaves nothing behind. (code, stdout bytes, stderr text); 124 on timeout."""
+    p = subprocess.Popen(cmd, stdin=subprocess.PIPE if input is not None else subprocess.DEVNULL, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, start_new_session=True)
+    try:
+        out, err = p.communicate(input, timeout=timeout)
+        return p.returncode, out, err.decode(errors="replace")
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        p.communicate()
+        return 124, b"", f"no answer within {timeout} s"
+
+
+def link_up(host):
+    """Is the host's shared connection open? A local question to ssh's control socket; nothing goes on the network."""
+    return run_group(["ssh", "-O", "check", host], 5)[0] == 0
+
+
+def host_call(host, cmd, timeout=None, input=None, wait=0.0, force=False):
+    """The one way the app reaches a remote host (ssh or rsync over ssh). A background check skips when a call to the
+    host is running (wait=0); a person's action waits up to `wait` s and goes even in back-off (force). Raises ApiError
+    when it can't call: 409 busy, 503 not connected or unreachable (then nothing is tried for 30 s, 1, 2, 4, 8, 15 min)."""
+    st, timeout = host_state(host), timeout or CALL_LIMIT
+    left = st["until"] - time.time()
+    if left > 0 and not force:
+        raise ApiError(503, f"{host} unreachable ({st['error']}); next try in {int(left)} s")
+    if not (st["lock"].acquire(timeout=wait) if wait else st["lock"].acquire(blocking=False)):
+        raise ApiError(409, f"{host} is busy with another call; try again in a moment")
+    try:
+        if not link_up(host):
+            st.update(state="no-link", error=f"not connected: log in to {host} once in a terminal (Duo), then Sync now")
+            raise ApiError(503, st["error"])
+        st["calls"] += 1
+        code, out, err = run_group(cmd, timeout, input)
+        if code == 124 or (code != 0 and LINK_FAIL.search(err or "")):
+            st["fails"] += 1
+            lines = [l for l in (err or "").strip().splitlines() if l.strip()]
+            st.update(state="down", error=(lines[-1] if lines else f"exit {code}")[:200],
+                      until=time.time() + BACKOFF[min(st["fails"], len(BACKOFF)) - 1])
+            raise ApiError(503, f"{host} unreachable: {st['error']}")
+        st.update(state="ok", fails=0, until=0.0, error=None)
+        return code, out, err
+    finally:
+        st["lock"].release()
+
+
+def remote_ssh(host, command, **kw):
+    return host_call(host, ["ssh", *SSH_OPTS, host, command], **kw)
+
+
+def want(host):
+    host_state(host)["demand"] = time.time()
+
+
+def wanted(host):
+    return time.time() - host_state(host)["demand"] < DEMAND
+
+
+def remote_hosts():
+    return sorted({p["remote_host"] for p in load_config()["projects"].values() if p.get("remote_host")})
 
 
 def synced_at(p):
@@ -114,51 +204,51 @@ def synced_at(p):
         return None
 
 
-def sync_remote(p):
-    """Mirror a remote project's records (text and small figures, under 2 MB each) with rsync over the shared ssh
-    connection; agents and code stay there. Returns {at, error}: the last good sync and the last failure."""
-    st = _remote.setdefault(p["name"], {"at": 0, "error": None, "lock": threading.Lock()})
+def sync_remote(p, wait=0.0, force=False):
+    """Mirror a remote project's records (text and small figures, under 2 MB each) and its recent conversations over the
+    shared connection; agents and code stay there. Returns {at, error}: the last good sync and the last failure."""
+    st = _remote.setdefault(p["name"], {"at": 0, "error": None})
     if not os.path.realpath(p["path"]).startswith(os.path.realpath(REMOTE_CACHE) + os.sep):
         raise ApiError(500, "remote mirror outside the cache")             # --delete must never touch anything else
-    if not st["lock"].acquire(blocking=False):
-        return st                                                          # a sync is already running
+    os.makedirs(p["path"], exist_ok=True)
+    cmd = ["rsync", "-rtzm", "--delete", "--max-size=2m", "-e", SSH_BATCH]
+    cmd += [f"--exclude={x}" for x in REMOTE_SKIP] + ["--include=*/"] + [f"--include={x}" for x in REMOTE_KEEP]
+    cmd += ["--exclude=*", f"{p['remote_host']}:{p['remote_path'].rstrip('/')}/", p["path"] + "/"]
     try:
-        os.makedirs(p["path"], exist_ok=True)
-        cmd = ["rsync", "-rtzm", "--delete", "--max-size=2m",
-               "-e", "ssh -o BatchMode=yes -o ConnectTimeout=10 -o ClearAllForwardings=yes"]
-        cmd += [f"--exclude={x}" for x in REMOTE_SKIP] + ["--include=*/"] + [f"--include={x}" for x in REMOTE_KEEP]
-        cmd += ["--exclude=*", f"{p['remote_host']}:{p['remote_path'].rstrip('/')}/", p["path"] + "/"]
-        code, _, err = run(cmd, timeout=240)
-        if code == 0:
-            st.update(at=time.time(), error=None)
-            with open(os.path.join(REMOTE_CACHE, f".{p['name']}.synced"), "w") as f:   # outside the mirror: --delete keeps off it
-                f.write(str(st["at"]))
-            sync_remote_sessions(p)
-        else:
-            lines = [l for l in err.strip().splitlines() if l.strip()]
-            st["error"] = (lines[-1] if lines else f"rsync exit {code}")[:300]
-            if "Permission denied" in err or "BatchMode" in err or code == 255:
-                st["error"] = f"can't reach {p['remote_host']} without a login: ssh to it once in a terminal (Duo), then Sync now"
-    finally:
-        st["lock"].release()
+        code, _, err = host_call(p["remote_host"], cmd, RSYNC_LIMIT, wait=wait, force=force)
+    except ApiError as e:
+        if e.code != 409:
+            st["error"] = str(e)
+        return st
+    if code != 0:
+        lines = [l for l in err.strip().splitlines() if l.strip()]
+        st["error"] = (lines[-1] if lines else f"rsync exit {code}")[:300]
+        return st
+    st.update(at=time.time(), error=None)
+    with open(os.path.join(REMOTE_CACHE, f".{p['name']}.synced"), "w") as f:   # outside the mirror: --delete keeps off it
+        f.write(str(st["at"]))
+    try:
+        sync_remote_sessions(p, wait=wait)
+    except ApiError:
+        pass
     return st
 
 
-def sync_remote_sessions(p):
+def sync_remote_sessions(p, wait=0.0):
     """Copy the project's Claude conversations written to in the last day (from ~/.claude/projects there, any folder
     whose name ends in the project's) beside the mirror, so the app can list and show them; rsync sends only what grew."""
     enc = re.sub(r"[^A-Za-z0-9]", "-", "/".join(p["remote_path"].rstrip("/").split("/")[-2:]))
     find = (f"cd ~/.claude/projects 2>/dev/null && find . -maxdepth 2 -name '*.jsonl' -mmin -{SESSION_HOURS * 60} -size -80M "
             f"| grep -E '^\\./[^/]*{enc}(-[^/]*)?/' || true")
-    code, out, _ = run([*shlex.split(SSH_BATCH), p["remote_host"], find], timeout=60)
+    code, out, _ = remote_ssh(p["remote_host"], find, wait=wait)
     if code != 0:
         return
     files = [l.strip()[2:] for l in out.decode(errors="replace").splitlines() if l.strip().startswith("./")]
     dest = os.path.join(REMOTE_SESSIONS, p["name"])
     os.makedirs(dest, exist_ok=True)
     if files:
-        run(["rsync", "-tz", "--files-from=-", "-e", SSH_BATCH, f"{p['remote_host']}:~/.claude/projects/", dest + "/"],
-            timeout=300, input="\n".join(files).encode())
+        host_call(p["remote_host"], ["rsync", "-tz", "--files-from=-", "-e", SSH_BATCH, f"{p['remote_host']}:~/.claude/projects/",
+                                     dest + "/"], RSYNC_LIMIT, input="\n".join(files).encode(), wait=wait)
     keep = {os.path.join(dest, f) for f in files}
     for f in glob.glob(os.path.join(dest, "*", "*.jsonl")):                # older than a day there: drop the copy
         if f not in keep:
@@ -166,12 +256,13 @@ def sync_remote_sessions(p):
 
 
 REMOTE_HERDR = 'H=$(command -v herdr || echo ~/.local/bin/herdr); "$H"'
-_rsnap = {}        # host -> {"t", "agents", "snap", "error"}: its herdr, every few seconds
+_rsnap = {}        # host -> {"t", "agents", "snap", "error"}: its herdr, while someone looks
 
 
-def remote_herdr(host, *args, timeout=30):
-    """Run herdr on a remote host over the shared ssh connection; its JSON result."""
-    code, out, err = run([*shlex.split(SSH_BATCH), host, REMOTE_HERDR + " " + " ".join(shlex.quote(a) for a in args)], timeout=timeout)
+def remote_herdr(host, *args, timeout=None, wait=20.0):
+    """Run herdr on a remote host (a person's action: it waits for a running call); its JSON result."""
+    code, out, err = remote_ssh(host, REMOTE_HERDR + " " + " ".join(shlex.quote(a) for a in args), timeout=timeout,
+                                wait=wait, force=True)
     try:
         d = json.loads(out or err)                  # herdr prints its errors as JSON on stderr
     except ValueError:
@@ -181,20 +272,29 @@ def remote_herdr(host, *args, timeout=30):
     return d.get("result", d)
 
 
-def refresh_remote_herdr(host):
+def refresh_remote_herdr(host, wait=0.0, force=False):
+    """The host's live sessions and tabs, in one call (herdr agent list, then api snapshot)."""
+    sep = "@@research-desk@@"
     try:
-        names = remote_herdr(host, "agent", "list", timeout=20).get("agents", [])
-        snap = remote_herdr(host, "api", "snapshot", timeout=20).get("snapshot", {})
+        code, out, err = remote_ssh(host, f"{REMOTE_HERDR} agent list; echo {sep}; {REMOTE_HERDR} api snapshot",
+                                    wait=wait, force=force)
+        a, _, b = out.decode(errors="replace").partition(sep)
+        names = (json.loads(a).get("result") or {}).get("agents", [])
+        snap = (json.loads(b).get("result") or {}).get("snapshot", {})
         _rsnap[host] = {"t": time.time(), "agents": names, "snap": snap, "error": None}
     except ApiError as e:
-        _rsnap[host] = dict(_rsnap.get(host) or {}, t=time.time(), error=str(e))
+        if e.code != 409:                             # busy: keep what we have
+            _rsnap[host] = dict(_rsnap.get(host) or {}, t=time.time(), error=str(e))
+    except ValueError:
+        _rsnap[host] = dict(_rsnap.get(host) or {}, t=time.time(), error=f"herdr on {host}: no readable answer")
 
 
 def remote_herdr_loop():
     while True:
-        for host in {p["remote_host"] for p in load_config()["projects"].values() if p.get("remote_host")}:
-            refresh_remote_herdr(host)
-        time.sleep(8)
+        for host in remote_hosts():
+            if wanted(host):
+                refresh_remote_herdr(host)
+        time.sleep(HERDR_EVERY)
 
 
 def remote_agent(p, pane, sid, path, **kw):
@@ -213,7 +313,7 @@ def remote_sessions(p):
     can type into them (remote_send). Otherwise the conversations written to in the last day, read-only."""
     mirrored = {os.path.basename(f)[:-6]: f for f in glob.glob(os.path.join(REMOTE_SESSIONS, p["name"], "*", "*.jsonl"))}
     rs = _rsnap.get(p["remote_host"]) or {}
-    if rs.get("agents") is not None and not rs.get("error"):
+    if rs.get("agents") is not None and not rs.get("error") and time.time() - rs.get("t", 0) < 2 * DEMAND:
         tail = "/" + "/".join(p["remote_path"].rstrip("/").split("/")[-2:]) + "/"
         ros = roster(p)
         tabs = {t["tab_id"]: t for t in (rs.get("snap") or {}).get("tabs", [])}
@@ -249,20 +349,26 @@ _pulled = {}
 
 
 def pull_session(p, sid):
-    """Fetch one remote conversation now (the one open in the chat), at most every 3 s; its local path."""
-    if time.time() - _pulled.get(sid, 0) < 3:
-        return rg_chat.transcript_path(sid)
+    """Fetch the conversation open in the chat, at most every PULL_EVERY s, skipped while another call to the host
+    runs; its local path (the last copy when the host can't be reached)."""
+    local = rg_chat.transcript_path(sid) if re.fullmatch(r"[0-9a-fA-F-]{8,64}", sid or "") else None
+    if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", sid or "") or time.time() - _pulled.get(sid, 0) < PULL_EVERY:
+        return local
     _pulled[sid] = time.time()
-    if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", sid or ""):
-        return None
-    code, out, _ = run([*shlex.split(SSH_BATCH), p["remote_host"], f"cd ~/.claude/projects 2>/dev/null && ls -1 */{sid}.jsonl 2>/dev/null | head -1"], timeout=20)
-    rel = out.decode(errors="replace").strip()
-    if code != 0 or not rel or ".." in rel:
-        return rg_chat.transcript_path(sid)
-    dest = os.path.join(REMOTE_SESSIONS, p["name"], rel)
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    run(["rsync", "-tz", "-e", SSH_BATCH, f"{p['remote_host']}:~/.claude/projects/{rel}", dest], timeout=60)
-    return dest if os.path.exists(dest) else None
+    root = os.path.join(REMOTE_SESSIONS, p["name"])
+    rel = os.path.relpath(local, root) if local and local.startswith(root + os.sep) else None
+    try:
+        if not rel:
+            code, out, _ = remote_ssh(p["remote_host"], f"cd ~/.claude/projects 2>/dev/null && ls -1 */{sid}.jsonl 2>/dev/null | head -1")
+            rel = out.decode(errors="replace").strip()
+            if code != 0 or not rel or ".." in rel:
+                return local
+        dest = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        host_call(p["remote_host"], ["rsync", "-tz", "-e", SSH_BATCH, f"{p['remote_host']}:~/.claude/projects/{rel}", dest], RSYNC_LIMIT)
+        return dest if os.path.exists(dest) else local
+    except ApiError:
+        return local
 
 
 def remote_send(b):
@@ -276,13 +382,17 @@ def remote_send(b):
         raise ApiError(409, f"it is waiting at a prompt on {p['remote_host']}: answer it in its terminal there")
     remote_herdr(p["remote_host"], "agent", "prompt", rpane, (b.get("text") or "").strip(), timeout=40)
     _pulled.pop(a.get("session_id"), None)
-    refresh_remote_herdr(p["remote_host"])
+    refresh_remote_herdr(p["remote_host"], wait=10, force=True)
     return {"ok": True, "cleared": ""}
 
 
 def remote_info(p):
-    st = _remote.get(p["name"]) or {}
-    return {"host": p["remote_host"], "path": p["remote_path"], "synced_at": synced_at(p), "error": st.get("error")}
+    st, h = _remote.get(p["name"]) or {}, host_state(p["remote_host"])
+    left = h["until"] - time.time()
+    link = h["error"] if h["state"] == "no-link" else \
+        f"{p['remote_host']} unreachable ({h['error']}); next try in {max(1, int(left // 60))} min" if h["state"] == "down" and left > 0 else None
+    return {"host": p["remote_host"], "path": p["remote_path"], "synced_at": synced_at(p), "error": link or st.get("error"),
+            "link": h["state"]}
 
 
 def remote_sync_loop():
@@ -852,7 +962,7 @@ def btw_runner(pane):
         _, name, rpane = pane.split(":", 2)
         p = project(name)
         host = p["remote_host"]
-        refresh_remote_herdr(host)
+        refresh_remote_herdr(host, wait=20, force=True)
         a = next((x for x in (_rsnap.get(host) or {}).get("agents") or [] if x["pane_id"] == rpane), None)
         return (lambda *args, timeout=60: remote_herdr(host, *args, timeout=timeout)), host, a, f"remote:{name}:"
     snap, err = herdr_snapshot()
@@ -892,7 +1002,7 @@ def btw_start(b):
                          "at": time.time()}
     btw_save(reg)
     if host:
-        refresh_remote_herdr(host)
+        refresh_remote_herdr(host, wait=20, force=True)
     return {"pane": prefix + new}
 
 
@@ -916,7 +1026,10 @@ def btw_close(b):
             script = (f"cd ~/.claude && rm -rf {' '.join(paths)}; "
                       f"[ -f history.jsonl ] && grep -v '\"sessionId\":\"{sid}\"' history.jsonl > history.jsonl.btw; "
                       f"[ -f history.jsonl.btw ] && cat history.jsonl.btw > history.jsonl && rm -f history.jsonl.btw")
-            run([*shlex.split(SSH_BATCH), host, script], timeout=30)
+            try:
+                remote_ssh(host, script, wait=20, force=True)
+            except ApiError as e:
+                raise ApiError(e.code, f"closed it, but couldn't delete its conversation on {host}: {e}")
             for f in glob.glob(os.path.join(REMOTE_SESSIONS, "*", "*", f"{sid}.jsonl")):
                 os.remove(f)
         else:
@@ -944,7 +1057,7 @@ def btw_close(b):
     reg.pop(b["pane"], None)
     btw_save(reg)
     if host:
-        refresh_remote_herdr(host)
+        refresh_remote_herdr(host, wait=10, force=True)
     return {"ok": True, "deleted": deleted, "parent": rec["parent"]}
 
 
@@ -983,11 +1096,15 @@ def paste_file(b):
     if not pane.startswith("remote:"):
         return {"path": local}
     host = project(pane.split(":")[1])["remote_host"]
-    code, out, err = run([*shlex.split(SSH_BATCH), host, "mkdir -p ~/.cache/research-desk-paste && cd ~/.cache/research-desk-paste && pwd"], timeout=30)
+    try:
+        code, out, err = remote_ssh(host, "mkdir -p ~/.cache/research-desk-paste && cd ~/.cache/research-desk-paste && pwd",
+                                    wait=20, force=True)
+    except ApiError as e:
+        raise ApiError(e.code, f"couldn't upload it to {host}: {e}")
     rdir = out.decode(errors="replace").strip()
     if code != 0 or not rdir.startswith("/"):
         raise ApiError(502, f"couldn't reach {host} to upload it: {err.strip()[:150]}")
-    code, _, err = run(["rsync", "-t", "-e", SSH_BATCH, local, f"{host}:{rdir}/"], timeout=120)
+    code, _, err = host_call(host, ["rsync", "-t", "-e", SSH_BATCH, local, f"{host}:{rdir}/"], RSYNC_LIMIT, wait=20, force=True)
     if code != 0:
         raise ApiError(502, f"upload to {host} failed: {err.strip()[:150]}")
     return {"path": f"{rdir}/{fname}"}
@@ -1514,6 +1631,7 @@ def chat(pane, after, session, want_screen=False, around=None):
     if (pane or "").startswith("remote:"):          # a session on a remote project's host: its mirrored conversation
         _, name, rpane = pane.split(":", 2)
         p = project(name)
+        want(p["remote_host"])
         a = next((x for x in remote_sessions(p) if x["pane"] == pane), None)
         sid = (a or {}).get("session_id") or rpane
         path = pull_session(p, sid) or rg_chat.transcript_path(sid)
@@ -2252,8 +2370,12 @@ class Handler(BaseHTTPRequestHandler):
             return projects_summary()
         if path == "/api/project":
             p = project(q.get("name"))
-            if p.get("remote_host") and not synced_at(p):
-                sync_remote(p)                           # never mirrored: do it now
+            if p.get("remote_host"):
+                want(p["remote_host"])                   # someone looks: its live sessions are checked while they do
+                if not synced_at(p):
+                    sync_remote(p, wait=5)               # never mirrored: do it now
+                elif time.time() - synced_at(p) > 120:   # stale: refresh behind the page
+                    threading.Thread(target=sync_remote, args=(p,), daemon=True).start()
             return project_state(p)
         if path == "/api/tree":
             p, rel = project(q.get("project")), clean_rel(q.get("path"))
@@ -2336,7 +2458,9 @@ class Handler(BaseHTTPRequestHandler):
             p = project(b.get("project"))
             if not p.get("remote_host"):
                 raise ApiError(400, "not a remote project")
-            return {k: v for k, v in sync_remote(p).items() if k != "lock"}
+            st = sync_remote(p, wait=30, force=True)             # Sync now: a person's action, even in back-off
+            refresh_remote_herdr(p["remote_host"], wait=10, force=True)
+            return {"at": st.get("at"), "error": st.get("error")}
         if path == "/api/new-project":
             return new_project(b)
         if path == "/api/moshi-mode":
