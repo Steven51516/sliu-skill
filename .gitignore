@@ -7,6 +7,7 @@ __pycache__/
 # Local-only skills: kept on this machine, never pushed
 skills/optional/diagnosis-card/
 skills/optional/to-diagnosis-map/
+skills/personal/ask-via-feishu/
 
 # Rejected ideas, kept for this machine's agents only
 .out-of-scope/

@@ -5,6 +5,7 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **ask-via-feishu** is local only (gitignored), like `diagnosis-card`.
 - **away** lasts until the user's next message, whatever it says; no "back" and no brief on return (`/ketchup` gives
   one when asked). While away, a decision that has waited 2 hours, sits inside the Contract, is off the always-ask
   list and can be undone is taken on the driver's recommended answer; the next reply names it.
@@ -34,6 +35,6 @@ First public release.
   `team-roster-hook`); a team is all Claude Code or all Codex.
 - **Codex:** skills linked into `~/.agents/skills`; `codex-run` for delegating from Claude Code; `codex-team.args`.
 - **Helpers:** `away`, `ketchup`, `retro`, `wait-what`, `writing-for-agents`; `ask-human` (phone buttons through Moshi);
-  `ask-feishu` with the `ask-via-feishu` skill; run cards.
+  `ask-feishu`; run cards.
 - **Research Desk**, a macOS app over the same files and herdr.
 - **Repository:** MIT license, `CONTRIBUTING.md`, `AGENTS.md`, `GLOSSARY.md`, `scripts/check.py` run in CI.

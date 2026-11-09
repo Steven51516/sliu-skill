@@ -271,9 +271,7 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 
 **personal/**: everyday helpers: `away` (you step away; maps keep moving and what needs you waits prepared, until your
 next message), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
-call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs),
-`ask-via-feishu` (a session asks someone other than you on Feishu through your own bridge bot, `ask-feishu`; setup is in
-`tools/ask-feishu.py`).
+call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **optional/**: none in Matt's repo.
 - `team`: run a project as a desk, a driver per map, and a worker session per ticket ([Team mode](#team-mode-with-herdr-optional)).
