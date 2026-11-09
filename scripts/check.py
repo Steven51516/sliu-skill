@@ -9,6 +9,8 @@
   are skipped)
 - every Python tool compiles and every shell script parses (`bash -n`)
 - the README names every skill
+- every skill another file calls by name (`Skill tool with "x"`, "the `x` skill", `/x` in a code span or a prompt string)
+  exists in git: a removed, renamed or local-only skill fails here instead of in a user's session
 """
 import pathlib
 import re
@@ -19,6 +21,21 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 GROUPS = {"core", "personal", "team"}   # skills/local/ is gitignored
 LINK = re.compile(r"\[([^\]]*)\]\(([^)\s]+)\)")
 SKIP = {"node_modules", "archive", "__pycache__", ".git"}
+BUILTIN = {"loop", "btw", "effort", "model", "exit", "clear", "compact", "autocompact", "config", "hooks", "resume", "login"}
+NAMED = [re.compile(r"Skill tool with [\"`]([a-z0-9-]+)[\"`]"), re.compile(r"the `([a-z0-9-]+)` skill")]
+SPAN = re.compile(r"`([^`\n]+)`")
+SLASH = re.compile(r"(?:^|\s)/([a-z][a-z0-9-]*)(?=\s|$)")            # `/name ...` in a code span, never a path
+PROMPT = re.compile(r"[\"'`]/([a-z][a-z0-9-]*)[ {]")                 # a prompt string in code: "/team $3"
+
+
+def skill_refs(text, code=False):
+    """(line, name) for each skill a file calls by name."""
+    for i, line in enumerate(text.splitlines(), 1):
+        found = PROMPT.findall(line) if code else [n for r in NAMED for n in r.findall(line)]
+        if not code:
+            found += [n for span in SPAN.findall(line) for n in SLASH.findall(span)]
+        for n in found:
+            yield i, n
 
 
 def frontmatter(text):
@@ -76,6 +93,12 @@ def main():
             problems.append(f"{sh.relative_to(ROOT)}: does not parse: {r.stderr.strip()[:200]}")
     readme = (ROOT / "README.md").read_text()
     problems += [f"README.md: skill `{n}` is not named" for n in names if f"`{n}`" not in readme]
+    docs = [f for f in files("**/*.md") if f.name != "CHANGELOG.md"]   # the changelog names removed skills on purpose
+    code = files("tools/**/*.py") + files("tools/**/*.sh") + files("tools/gui/web/js/*.js")
+    for f in sorted(docs + code):
+        for line, n in skill_refs(f.read_text(errors="replace"), code=f not in docs):
+            if n not in names and n not in BUILTIN:
+                problems.append(f"{f.relative_to(ROOT)}:{line}: calls skill `{n}`, which is not in skills/ (removed, renamed or local only)")
     for p in problems:
         print(p)
     print(f"check: {len(names)} skills, {len(problems)} problem(s)")

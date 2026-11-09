@@ -78,7 +78,6 @@ export const PRESETS = [
   { id: "tickets", label: "Add a ticket", prompt: '/to-tickets {map} "{text}"', needs: "map+text", ask: "The question", hint: "to-tickets: a question with blocking edges" },
   { id: "grill", label: "Grill a plan", prompt: "/grilling {text}", needs: "text", ask: "What to stress-test", hint: "grilling: a relentless interview" },
   { id: "research", label: "Research a question", prompt: "Research this from primary sources (official docs, source code, specs), citing each claim: {text}", needs: "text", ask: "The question", hint: "primary sources, each claim cited" },
-  { id: "diagnose", label: "Diagnosis card", prompt: "/diagnosis-card {text}", needs: "text", ask: "Which results", hint: "what failing or regressed scores mean" },
   { id: "custom", label: "Custom first message", prompt: "{text}", needs: "text", ask: "First message (a /skill or plain words)", hint: "" },
 ];
 

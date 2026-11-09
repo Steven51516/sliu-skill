@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`scripts/check.py`** fails when a file calls a skill that is not in git (removed, renamed or local only), as
+  DARE's CI does for its skill graph. It found Research Desk's "Diagnosis card" start option, which called a local-only
+  skill; the option is gone (type `/diagnosis-card` where that skill is installed).
 - **Dropped the old `tracks/` layout:** `research-status`, `team-up` and Research Desk read only `maps/*/map.md`; the
   app's default server map folder is `maps`.
 - **Removed the `away` skill.** A driver already keeps its map moving inside the Contract whether or not the human
