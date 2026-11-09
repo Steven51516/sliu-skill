@@ -19,7 +19,5 @@ A scope file answers these questions (any headings, one short file):
 7. **New project:** the environment variables for `research-init` (`PROJECTS_ROOT`, `POOL_ROOT`, `SCRATCH_ROOT`,
    `SCOPE_FILE`).
 
-| Scope | File |
-|---|---|
-| MIT ORCD Engaging (Slurm) | `scopes/engaging.md` |
-| An organisation's own servers | keep the file with the organisation's folder or repo, not here, when it holds internal hosts or credentials; import it by path |
+Keep a scope file with the workspace it describes (an organisation's servers in that organisation's folder or repo), or
+in the harness's `scopes/` folder, which git ignores; import it by path. Never put one in a public repository.

@@ -27,7 +27,7 @@ Look at the target folder to understand its starting state. Read whatever exists
 - `maps/`: a sign that the local-markdown tracker is already in use; `tracks/`: the old layout, to migrate
 - `git remote -v` and `.git/config`: is this a GitHub or GitLab repo? Which one?
 - `GLOSSARY.md` and `docs/decisions.md` at the root, and the legacy `CONTEXT.md` / `CONTEXT-MAP.md`. If a legacy file exists, offer to `git mv` it to its `GLOSSARY` name and rewrite those names in `docs/agents/domain.md`.
-- Parent folders' `CLAUDE.md` (walk up from the target): does one already import a scope file (an org's server rules)? The available scopes are in [scopes/](../../../scopes/), plus any a parent imports
+- Parent folders' `CLAUDE.md` (walk up from the target): does one already import a scope file (an org's server rules)? Your own scopes are in `~/research-harness/scopes/` (gitignored), plus any a parent imports
 - `codex --version`, `claude --version`: which agents can take a role
 
 ### 2. Present findings and ask

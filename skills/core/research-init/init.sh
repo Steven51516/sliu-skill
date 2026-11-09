@@ -39,7 +39,7 @@ link_or_dir "$SCRATCH_ROOT" scratch
 if [[ -n "$SCOPE_INHERITED" ]]; then SCOPE_IMPORT="<!-- Scope: loaded by the parent $SCOPE_INHERITED; not imported again here. -->"
 elif [[ -n "$SCOPE_FILE" ]]; then SCOPE_IMPORT="<!-- Scope: where this project runs. See ~/research-harness/skills/core/research-init/SCOPE-FORMAT.md. -->
 @$SCOPE_FILE"
-else SCOPE_IMPORT="<!-- TODO: import this project's scope file here, e.g. @~/research-harness/scopes/engaging.md -->"; fi
+else SCOPE_IMPORT="<!-- TODO: import this project's scope file here, e.g. @~/research-harness/scopes/<cluster>.md -->"; fi
 SCOPE_PATH="${SCOPE_FILE:-TODO: name the scope file}"
 
 esc() { printf '%s' "$1" | sed -e 's/[\\&|]/\\&/g' | awk 'BEGIN{ORS="\\n"} {print}' | sed -e 's/\\n$//'; }

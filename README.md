@@ -51,8 +51,8 @@ git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 ```
 
 `install.sh` links every skill into `~/.claude/skills` (Claude Code) and `~/.agents/skills` (Codex), puts the commands on
-your PATH (`research-status`, `codex-run`, `team-up`, `team-worker`, `team-watch`, `ask-human`, `ask-feishu`,
-`research-gui`), and removes links left by skills that were removed or renamed. Nothing is copied: edit a file here and
+your PATH (`research-status`, `codex-run`, `team-up`, `team-worker`, `team-watch`, `ask-human`,
+`research-gui`, and anything in `tools/local/`), and removes links left by skills that were removed or renamed. Nothing is copied: edit a file here and
 every project sees it. Safe to rerun.
 
 Then, in Claude Code:
@@ -238,7 +238,7 @@ The harness never names a machine, a person or a field; those live in a few file
 | I want to… | Edit |
 |---|---|
 | change how the agent writes code, commits, reports, or what always needs my OK | `STYLE.md` |
-| describe where a project runs (scheduler, storage, GPUs, network) | a scope file: copy `scopes/engaging.md` (MIT's Slurm cluster) and answer `skills/core/research-init/SCOPE-FORMAT.md` |
+| describe where a project runs (scheduler, storage, GPUs, network) | a scope file that answers `skills/core/research-init/SCOPE-FORMAT.md`, kept with the workspace it describes or in `scopes/` (gitignored) |
 | change where one project's maps live (local markdown, GitHub, GitLab) | that project's `docs/agents/issue-tracker.md` |
 | change where delegated work and reviews go in one project | that project's `docs/agents/delegation.md` |
 | add a rule for one project only | that project's `AGENTS.md`, under "Project notes" |
@@ -303,7 +303,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 
 **Milestones and closing maps.** A map closes when its destination is reached or a measured answer says it can't be, as Matt's map issue closes, with a one-line `outcome`. Closed maps' outcomes are the project's milestones: the local tracker's generated `STATUS.md` is a project page of milestones and open maps, regenerated only when a map opens, is re-charted or closes; what is live (waiting on the user, running, the frontier) is printed by `research-status --now`, never stored. Each ticket's and map's `status:` line also says who holds it (`claimed (<session>, <time>)`), as Matt's local `Status:` line does, so a finished ticket can't still look taken; a ticket can be `held` and a map `paused`, both only by the human and both off the frontier. `research-status --check` also catches more than one claim per session, dependency cycles, unknown statuses, prerequisites that are parked or superseded by an unfinished replacement, and resolved tickets without an answer.
 
-**Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (`scopes/`), so the skills never name a machine.
+**Scope files.** Where a project runs (scheduler, storage, GPUs, network) lives in one scope file the project imports (your own, outside git), so the skills never name a machine.
 
 **Delegation is a project setting, not a role.** The skills only use a few verbs: *delegate* a task, *spin up a subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the delegate a rule names fails, the session waits or asks; it never hands the work to someone else.
 
@@ -328,10 +328,10 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ```
 skills/      core/ (the research loop, run cards), personal/ (everyday helpers), team/, local/ (gitignored)
 STYLE.md     your rules for every project (honesty, what always needs your OK, code, docs)
-scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
+scopes/      your machine files (gitignored); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md
              (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status) · codex-run.sh · ask-human.py · ask-feishu.py
+tools/       status.py (research-status) · codex-run.sh · ask-human.py · local/ (your own, gitignored)
              team-up.sh · team-worker.py · team-watch.py · codex-team.args · team-roster-hook.py (team mode)
              gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 licenses/    licences of copied and adapted third-party skills

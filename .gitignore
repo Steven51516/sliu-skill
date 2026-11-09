@@ -6,6 +6,8 @@ __pycache__/
 
 # Local-only skills: kept on this machine, never pushed
 skills/local/
+tools/local/
+scopes/
 
 # Rejected ideas, kept for this machine's agents only
 .out-of-scope/

@@ -9,7 +9,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   is there; `/ketchup` catches them up.
 - **Skill groups:** `run-card` moved to `core/`; `team` has its own `team/`; `optional/` is gone. Local-only skills
   (`ask-via-feishu`, `diagnosis-card`, `to-diagnosis-map`) live in `skills/local/`, gitignored as a whole.
-- **ask-via-feishu** is local only (gitignored), like `diagnosis-card`.
+- **Local only (gitignored):** `ask-via-feishu` and its `ask-feishu` tool (now `tools/local/`, which `install.sh` puts on
+  PATH), and `scopes/` (a scope file describes your own machines; `SCOPE-FORMAT.md` says what it answers).
 - **Removed the `research` skill.** A research ticket's subagent reads primary sources and cites each claim
   (`wayfinder`); the skill asked a subagent to start a background agent and write a file, which Claude Code refuses.
 - **team-watch** also watches worker tabs: a worker stopped by Claude's safeguards is resumed once on Sonnet 5.5
@@ -36,6 +37,6 @@ First public release.
   `team-roster-hook`); a team is all Claude Code or all Codex.
 - **Codex:** skills linked into `~/.agents/skills`; `codex-run` for delegating from Claude Code; `codex-team.args`.
 - **Helpers:** `away`, `ketchup`, `retro`, `wait-what`, `writing-for-agents`; `ask-human` (phone buttons through Moshi);
-  `ask-feishu`; run cards.
+  run cards.
 - **Research Desk**, a macOS app over the same files and herdr.
 - **Repository:** MIT license, `CONTRIBUTING.md`, `AGENTS.md`, `GLOSSARY.md`, `scripts/check.py` run in CI.
