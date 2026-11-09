@@ -21,6 +21,9 @@ minutes despite the ticks is noted once, for the human.
 Workers (the Claude tabs team-worker opened in the watched drivers' workspaces) are checked too: one whose reply Claude's
 safeguards stopped is resumed once with `team-worker --rescue`, so it does not wait for the driver's next pass (up to an
 hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line.
+
+When it gives up on anything, it runs the command in ~/.config/research-harness/notify, if that file exists, with the
+message as its last argument: your own phone or desktop alert. Without it, give-ups go only to driver.log.
 """
 import datetime as dt
 import fcntl
@@ -28,7 +31,7 @@ import glob
 import json
 import os
 import re
-import shutil
+import shlex
 import subprocess
 import sys
 import time
@@ -80,14 +83,20 @@ def transcript(session_id):
     return max(hits, key=os.path.getmtime) if hits else None
 
 
+NOTIFY = os.path.expanduser("~/.config/research-harness/notify")   # optional: your own alert command
+
+
 def alert(text):
-    """note(), plus a push to the human's phone where Moshi's `moshi-hook` is installed (best effort): for give-ups only."""
+    """note(), plus your own alert for a give-up: the command in ~/.config/research-harness/notify, if any, with the
+    message added as its last argument (e.g. `ntfy publish <topic>`, or a phone app's notify command). Best effort."""
     note(text)
-    mh = shutil.which("moshi-hook") or os.path.expanduser("~/.local/bin/moshi-hook")
-    if os.path.exists(mh):
+    try:
+        cmd = shlex.split(open(NOTIFY).read().strip())
+    except (OSError, ValueError):
+        return
+    if cmd:
         try:
-            subprocess.run([mh, "notify", "--source", "team-watch", "--title", "team-watch: needs you", text],
-                           capture_output=True, timeout=60)
+            subprocess.run([os.path.expanduser(cmd[0]), *cmd[1:], text], capture_output=True, timeout=60)
         except (OSError, subprocess.SubprocessError):
             pass
 

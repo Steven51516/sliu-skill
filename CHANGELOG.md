@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Questions for the human are plain text** (one line, your pick first). `ask-human` moved to `tools/local/`: in a
+  month it carried one real question, and phone mode had been off since 10-31, so that one fell back to plain text too.
 - **`trash`** moves a path into a `.trash/` folder beside it (same disk, an instant rename) and logs it; `--restore`
   puts it back, `--empty --older <days>` is the human's. **`delete-guard`**, a Claude Code hook, asks the human before a
   recursive delete (any `rm -r` form, ssh quotes included, `find -delete`, `rsync --delete`, `shutil.rmtree`); unanswered
@@ -13,7 +15,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 - **`codex-run`** moves files Codex wrote into the project folder (new, and named in its log) into the run dir, and tells
   Codex where to write (7 stray reports, 10-30..11-03).
 - **`team-watch`** counts only resumes that started (a busy pane used up both drivers' resumes on 10-31), retries a
-  failed start next cycle, and pushes to the human's phone (`moshi-hook notify`) when it gives up.
+  failed start next cycle, and when it gives up runs your own alert command, if
+  `~/.config/research-harness/notify` holds one (message as its last argument).
 - **Research Desk:** project pages load again after the old tracks/ layout was dropped (the app still read its
   `_legacy` flag).
 - **Research Desk:** never floods a remote host with ssh (it took down Engaging's login008): one call at a time per
@@ -58,7 +61,6 @@ First public release.
 - **Team mode in herdr:** a desk, a driver per map and a worker tab per ticket (`team-up`, `team-worker`, `team-watch`,
   `team-roster-hook`); a team is all Claude Code or all Codex.
 - **Codex:** skills linked into `~/.agents/skills`; `codex-run` for delegating from Claude Code; `codex-team.args`.
-- **Helpers:** `away`, `ketchup`, `retro`, `wait-what`, `writing-for-agents`; `ask-human` (phone buttons through Moshi);
-  run cards.
+- **Helpers:** `away`, `ketchup`, `retro`, `wait-what`, `writing-for-agents`; run cards.
 - **Research Desk**, a macOS app over the same files and herdr.
 - **Repository:** MIT license, `CONTRIBUTING.md`, `AGENTS.md`, `GLOSSARY.md`, `scripts/check.py` run in CI.

@@ -1,6 +1,6 @@
 # Flags every Codex team session starts with (team-up --codex, team-worker, Research Desk's Start team), one per line;
 # a leading ~ is expanded. Each launcher adds the effort: medium for the desk and driver, xhigh for a worker.
-# The sandbox lets it write in the project and use the network (ssh, herdr); --add-dir is where ask-human writes.
+# The sandbox lets it write in the project and use the network (ssh, herdr); --add-dir is where the helper tools keep their logs.
 -m
 gpt-6-astra
 -s

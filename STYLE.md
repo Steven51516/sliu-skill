@@ -37,10 +37,7 @@
 
 ## Communication
 - Lead with the result or the decision you need, then the evidence, then the details.
-- A question for the human with fixed answers (yes/no, or one of 2-4 options) goes through
-  `ask-human "<question>" <your pick> <other options>` and you carry on: in Moshi mode it reaches the human's phone as
-  buttons, and the answer arrives later as a message starting `Answer from the human`. When it says to ask in plain
-  text (Moshi mode off), do that. Open questions are always plain text.
+- A question for the human: plain text at the end of your turn, one line, your pick first, so "yes" accepts it.
 - Use numbers over adjectives: "+2.1 ± 0.4 acc over baseline (3 seeds)", not "clearly better".
 - Keep it short. Link files instead of pasting their contents.
 

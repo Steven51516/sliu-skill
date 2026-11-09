@@ -804,7 +804,7 @@ def projects_summary():
             "dry_run": ARGS.dry_run, "version": VERSION, "moshi_mode": moshi_mode(), "asks": open_asks(), "roots": cfg.get("roots", [])}
 
 
-# ---------- questions on the phone: Moshi mode (../ask-human.py asks them; the app lists the open ones) ----------
+# ---------- questions on the phone: Moshi mode (tools/local/ask-human.py, where installed, asks them; the app lists the open ones) ----------
 
 ASK_DIR = os.environ.get("ASK_HUMAN_DIR") or os.path.expanduser("~/.config/research-harness")   # env: tests
 
