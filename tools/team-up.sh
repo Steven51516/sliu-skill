@@ -12,8 +12,8 @@ set -euo pipefail
 AGENT=claude; ONLY_DRIVER=0   # --driver: only a driver tab for one more map, for a team already running
 while [[ "${1:-}" == --* ]]; do case "$1" in --codex) AGENT=codex;; --driver) ONLY_DRIVER=1;; *) echo "unknown option $1"; exit 1;; esac; shift; done
 T="${1:?usage: team-up [--codex] [--driver] <map, e.g. T8>}"
-if [[ ! -d "$T" ]]; then for d in maps/"$T"-* tracks/"$T"-*; do [[ -d "$d" ]] && { T="$d"; break; }; done; fi
-[[ -f "$T/map.md" || -f "$T/track.md" ]] || { echo "no map '$1' in $PWD/maps"; exit 1; }
+if [[ ! -d "$T" ]]; then for d in maps/"$T"-*; do [[ -d "$d" ]] && { T="$d"; break; }; done; fi
+[[ -f "$T/map.md" ]] || { echo "no map '$1' in $PWD/maps"; exit 1; }
 P="$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | cut -c1-20)"   # agent-name prefix
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 

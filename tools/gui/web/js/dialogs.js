@@ -99,7 +99,7 @@ export async function newSession(project, preset = null, fill = {}) {
         <div class="opt" data-k="shell"><b>Shell</b><span>a herdr shell tab</span></div></div>
       <div id="ns-claude"><div id="ns-preset-f"><label class="f">Start with</label><select id="ns-preset">${PRESETS.map((p) => `<option value="${p.id}" ${p === pre ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select>
         <div class="muted" id="ns-hint" style="font-size:12px;margin-top:4px"></div></div>
-        <div id="ns-map-f"><label class="f">Map</label><select id="ns-map">${maps.map((m) => `<option value="${esc(m.path.replace(/\/(map|track)\.md$/, ""))}">${esc(m.id)} · ${esc(m.title)}</option>`).join("")}</select></div>
+        <div id="ns-map-f"><label class="f">Map</label><select id="ns-map">${maps.map((m) => `<option value="${esc(m.path.replace(/\/map\.md$/, ""))}">${esc(m.id)} · ${esc(m.title)}</option>`).join("")}</select></div>
         <div id="ns-ticket-f"><label class="f">Ticket</label><select id="ns-ticket">${tickets.map((t) => `<option value="${esc(t.path.replace(/\/ticket\.md$/, ""))}">${esc(t.id)} · ${esc(t.title)}</option>`).join("")}</select></div>
         <div id="ns-text-f"><label class="f" id="ns-text-l">Text</label><textarea id="ns-text" rows="3"></textarea></div></div>
       <div id="ns-shell" hidden><label class="f">Command (optional)</label><input id="ns-cmd" placeholder="e.g. ssh -t ${esc(data?.server || "gpu-server")}"></div>
@@ -199,7 +199,7 @@ export function addProject(pre = {}) {
       <label class="f">Folder on this Mac</label><input id="ap-path" value="${esc(pre.path || "")}" placeholder="~/projects/…">
       <label class="f">Server (ssh alias, optional)</label><input id="ap-server" placeholder="gpu-server">
       <label class="f">Code folder on the server</label><input id="ap-root" placeholder="~/code/${esc(pre.name || "project")}">
-      <label class="f">Map folders on the server live under</label><input id="ap-maps" value="tracks">
+      <label class="f">Map folders on the server live under</label><input id="ap-maps" value="maps">
       <label class="f">Shared server folders pinned beside each map (comma-separated)</label><input id="ap-shared" value="common"></div>
     <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">Add</button></div>`, { width: 520 });
   $("#dlg-cancel", d).onclick = closeDialog;

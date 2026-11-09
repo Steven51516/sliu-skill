@@ -186,7 +186,7 @@ export function md(el, text, opt = {}) {
     const root = proj.path + "/";
     el.querySelectorAll(":not(pre) > code").forEach((c) => {
       const t = c.textContent.trim();
-      const rel = t.startsWith(root) ? t.slice(root.length) : /^(maps|tracks|docs|resources|scratch|common|lit)\//.test(t) ? t : null;
+      const rel = t.startsWith(root) ? t.slice(root.length) : /^(maps|docs|resources|scratch|common|lit)\//.test(t) ? t : null;
       if (!rel || /\s/.test(rel)) return;
       c.classList.add("pathlink");
       c.title = "Open in the file viewer";

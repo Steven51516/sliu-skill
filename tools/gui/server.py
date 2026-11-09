@@ -665,7 +665,7 @@ def projects_summary():
         for d in sorted(glob.glob(os.path.join(os.path.expanduser(root), "*"))):
             if os.path.realpath(d) in registered or not os.path.isdir(d):
                 continue
-            if glob.glob(os.path.join(d, "maps", "*", "map.md")) or glob.glob(os.path.join(d, "tracks", "*", "track.md")):
+            if glob.glob(os.path.join(d, "maps", "*", "map.md")):
                 found.append({"name": os.path.basename(d), "path": d})
     snap, err = herdr_snapshot()
     others = []
@@ -799,7 +799,7 @@ def new_project(b):
         raise ApiError(400, f"`{name}` is already registered")
     os.makedirs(full, exist_ok=True)
     add_project({"name": name, "path": path, "server": b.get("server"), "server_root": b.get("server_root"),
-                 "server_maps": "tracks", "shared": ["common"]})
+                 "server_maps": "maps", "shared": ["common"]})
     return {"ok": True, "name": name, "path": path}
 
 

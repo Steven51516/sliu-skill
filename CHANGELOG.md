@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Dropped the old `tracks/` layout:** `research-status`, `team-up` and Research Desk read only `maps/*/map.md`; the
+  app's default server map folder is `maps`.
 - **Removed the `away` skill.** A driver already keeps its map moving inside the Contract whether or not the human
   is there; `/ketchup` catches them up.
 - **Skill groups:** `run-card` moved to `core/`; `team` has its own `team/`; `optional/` is gone. Local-only skills

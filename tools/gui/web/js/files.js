@@ -7,7 +7,7 @@ export function resetFiles() { F.trees = {}; F.viewer = F.pending || null; F.pen
 export function openPathLater(side, path) { F.pending = { side, path }; F.viewer = { side, path }; }
 
 const serverMapDir = (m) => `${S.data.server_maps}/${m.folder}`;
-export const localMapDir = (m) => m.path.replace(/\/(map|track)\.md$/, "");
+export const localMapDir = (m) => m.path.replace(/\/map\.md$/, "");
 export { serverMapDir };
 
 function roots(m) {

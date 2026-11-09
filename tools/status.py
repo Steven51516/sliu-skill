@@ -3,7 +3,6 @@
 
 The local issue tracker's view and checker (docs/agents/issue-tracker.md). STATUS.md is a VIEW: nobody edits it by hand.
 Edit the map/ticket files, then rerun, so parallel sessions never collide on one shared file.
-Projects still on the old layout (tracks/*/track.md) are read too.
 
 Usage (from the project root, or pass it):
     research-status [PROJECT] [--print] [--check] [--frontier]
@@ -165,10 +164,7 @@ def bad_claim_date(claimed):
 
 
 def map_files(project):
-    found = sorted(glob.glob(os.path.join(project, "maps", "*", "map.md")))
-    legacy = sorted(glob.glob(os.path.join(project, "tracks", "*", "track.md")))
-    seen = {os.path.realpath(os.path.dirname(p)) for p in found}
-    return found + [p for p in legacy if os.path.realpath(os.path.dirname(p)) not in seen]
+    return sorted(glob.glob(os.path.join(project, "maps", "*", "map.md")))
 
 
 def load(project):
@@ -193,7 +189,6 @@ def load(project):
         meta["_path"] = os.path.relpath(mpath, project)
         with open(mpath, errors="replace") as f:
             meta["_lines"] = sum(1 for _ in f)
-        meta["_legacy"] = mpath.endswith("track.md")
         meta["_destination"] = destination(body)
         meta["_needs"] = legacy_needs(body)
         meta["_map_links"] = map_links(body)
@@ -276,7 +271,7 @@ def analyse(maps):
                 problems.append(f"{k['_path']}: unknown status `{k.get('status')}` (one of {', '.join(sorted(STATUSES))})")
             if status_of(k) == "resolved" and not k["_answered"]:
                 problems.append(f"{k['_path']}: resolved without an answer under `## Answer`")
-            if not m["_legacy"] and k.get("type") and k.get("type") not in TYPES:
+            if k.get("type") and k.get("type") not in TYPES:
                 problems.append(f"{k['_path']}: unknown type `{k.get('type')}` (one of {', '.join(sorted(TYPES))})")
             blockers = k.get("blocked_by") or []
             if isinstance(blockers, str):
