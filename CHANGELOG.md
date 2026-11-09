@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Removed the `research` skill.** A research ticket's subagent reads primary sources and cites each claim
+  (`wayfinder`); the skill asked a subagent to start a background agent and write a file, which Claude Code refuses.
 - **team-watch** also watches worker tabs: a worker stopped by Claude's safeguards is resumed once on Sonnet 5.5
   (`team-worker --rescue`) instead of waiting for the driver's next pass; stopped again, its driver gets one line.
 - **team-watch** holds an OS file lock, so a second watch on the same project cannot start and a dead one leaves no

@@ -267,7 +267,7 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `research-drive` | counterpart of `implement-spec` | keep a map's frontier moving, a fresh implementer per ticket |
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
-| `research`, `grilling` | copied | the reading and interview tickets |
+| `grilling` | copied | the interview tickets |
 
 **personal/**: everyday helpers: `away` (you step away; maps keep moving, what needs you waits prepared, one brief when
 you are back), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
@@ -321,6 +321,8 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `research-init` (vs `setup-matt-pocock-skills`): adds the scope and delegation sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
 - `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
 - `wait-what`: also defines each project term on first use.
+- `research`: not included. A research ticket's subagent reads from primary sources and cites each claim (`wayfinder`
+  says so); the skill's "spin up a background agent" and "write a file" are what a subagent cannot do.
 
 **Run cards.** A run that affects a milestone gets a one-page reproduction record (`run-card`).
 
