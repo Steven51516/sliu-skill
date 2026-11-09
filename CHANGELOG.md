@@ -9,6 +9,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   host, only over a connection a person opened, a hard deadline that kills the call's hop too, and back-off after a
   failure; the project page says "not connected" or "unreachable". `tools/gui/tests/remote_calls_test.py`, run by
   `scripts/check.py`, fails if it ever floods again.
+- **Research Desk:** a host listed in `~/.config/research-gui/remote-paused` gets no call at all (not even the local
+  connection check) until it is removed; its projects show "paused" and their last copy.
 - **`scripts/check.py`** fails when a file calls a skill that is not in git (removed, renamed or local only), as
   DARE's CI does for its skill graph. It found Research Desk's "Diagnosis card" start option, which called a local-only
   skill; the option is gone (type `/diagnosis-card` where that skill is installed).

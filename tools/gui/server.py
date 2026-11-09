@@ -116,7 +116,17 @@ SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ClearAllFor
 SSH_BATCH = "ssh " + " ".join(SSH_OPTS)
 LINK_FAIL = re.compile(r"Permission denied|Connection (refused|reset|closed|timed out)|timed out|Broken pipe|Could not "
                        r"resolve|No route|kex_exchange|banner exchange|Control socket|mux_client|no answer within")
+PAUSE_FILE = os.path.expanduser("~/.config/research-gui/remote-paused")   # hosts the app must not contact, one per line
 _hosts, _hosts_lock = {}, threading.Lock()
+
+
+def paused(host):
+    """A host the person told the app not to contact (listed in PAUSE_FILE) gets no call at all, not even ssh -O check."""
+    try:
+        with open(PAUSE_FILE) as f:
+            return host in f.read().split()
+    except OSError:
+        return False
 _remote = {}
 
 
@@ -153,6 +163,9 @@ def host_call(host, cmd, timeout=None, input=None, wait=0.0, force=False):
     host is running (wait=0); a person's action waits up to `wait` s and goes even in back-off (force). Raises ApiError
     when it can't call: 409 busy, 503 not connected or unreachable (then nothing is tried for 30 s, 1, 2, 4, 8, 15 min)."""
     st, timeout = host_state(host), timeout or CALL_LIMIT
+    if paused(host):
+        st.update(state="paused", error=f"paused: the app doesn't contact {host} until you resume it ({PAUSE_FILE})")
+        raise ApiError(503, st["error"])
     left = st["until"] - time.time()
     if left > 0 and not force:
         raise ApiError(503, f"{host} unreachable ({st['error']}); next try in {int(left)} s")
@@ -389,7 +402,9 @@ def remote_send(b):
 def remote_info(p):
     st, h = _remote.get(p["name"]) or {}, host_state(p["remote_host"])
     left = h["until"] - time.time()
-    link = h["error"] if h["state"] == "no-link" else \
+    if paused(p["remote_host"]):
+        h.update(state="paused", error=f"paused: the app doesn't contact {p['remote_host']} until you resume it")
+    link = h["error"] if h["state"] in ("no-link", "paused") else \
         f"{p['remote_host']} unreachable ({h['error']}); next try in {max(1, int(left // 60))} min" if h["state"] == "down" and left > 0 else None
     return {"host": p["remote_host"], "path": p["remote_path"], "synced_at": synced_at(p), "error": link or st.get("error"),
             "link": h["state"]}
