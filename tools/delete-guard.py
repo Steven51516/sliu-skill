@@ -27,8 +27,8 @@ OTHER = {"find -delete": re.compile(r"\bfind\b[^;&|\n]*\s-delete\b"),
          "shutil.rmtree": re.compile(r"\bshutil\.rmtree\b"),
          "trash --empty": re.compile(r"\btrash(?:\.py)?\s+--empty\b")}
 TOLD = ("delete-guard: your recursive delete waited {m:g} min for the human and was declined. Move what you meant to "
-        "delete with `trash <path>` (it can be undone and prints where it went; over ssh, where ~/.local/bin is often not on PATH, call it as ~/.local/bin/trash). If it must really be deleted, record "
-        "that in the ticket for the human, and carry on with other work.")
+        "delete with `trash <path>` (it can be undone and prints where it went; over ssh, where ~/.local/bin is often not on PATH, call it as ~/.local/bin/trash). Don't ask the human to delete it; trash "
+        "it and carry on.")
 
 
 def note(text):
@@ -37,8 +37,16 @@ def note(text):
         f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}  {text}\n")
 
 
+FILE_HEREDOC = re.compile(                    # cat/tee writing a heredoc into a file (not piped into a shell)
+    r"^(?=[^\n]*\b(?:cat|tee)\b)(?=[^\n]*(?:(?<![0-9&])>(?!&)|\btee\b))(?![^\n]*\|\s*(?:ba|z)?sh\b)"
+    r"[^\n]*<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n.*?\n\1[ \t]*$", re.S | re.M)
+TEXT_ONLY = re.compile(r"\b(?:grep|rg|sed|echo|printf|git\s+commit)\b[^|;&\n]*")
+
+
 def recursive_delete(cmd):
-    """What makes this command a recursive delete, or None."""
+    """What makes this command a recursive delete, or None. Text that only mentions one (a file written from a heredoc,
+    a grep or sed pattern, an echo, a commit message) does not count: 43 of 383 past asks were only that."""
+    cmd = TEXT_ONLY.sub(" ", FILE_HEREDOC.sub(" ", cmd))
     for m in RM.finditer(cmd):
         if re.search(r"\bgit\s+$", cmd[:m.start() + 1]):
             continue                                                  # git rm: the files stay in git's history
