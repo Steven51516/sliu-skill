@@ -151,7 +151,7 @@ a few at once, much as a thesis has chapters and each chapter one claim. A map i
 - **The driver does no ticket work**, so its context stays small and any fresh session can take over from the files. It
   may do a small chore itself (a check, a count, a trivial edit); anything with a run or a number is a ticket.
 - **What reaches you:** anything on STYLE's always-ask list, a change to a destination or Contract, a decision ticket
-  (`grilling`), and a failure. Everything else keeps moving. Going to sleep: `/away`, and you get one brief when back.
+  (`grilling`), and a failure. Everything else keeps moving. Going to sleep: `/away`; it lasts until your next message (`/ketchup` catches you up).
 - **State lives in files** (maps, tickets, `STATUS.md`, `scratch/agents/driver.log`), never only in a chat, so sessions
   can stop, compact or be replaced without losing anything.
 
@@ -269,8 +269,8 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `grilling` | copied | the interview tickets |
 
-**personal/**: everyday helpers: `away` (you step away; maps keep moving, what needs you waits prepared, one brief when
-you are back), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
+**personal/**: everyday helpers: `away` (you step away; maps keep moving and what needs you waits prepared, until your
+next message), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
 call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs),
 `ask-via-feishu` (a session asks someone other than you on Feishu through your own bridge bot, `ask-feishu`; setup is in
 `tools/ask-feishu.py`).

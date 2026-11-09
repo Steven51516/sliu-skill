@@ -1,10 +1,10 @@
 ---
 name: away
-description: "The user is stepping away (sleep, a meeting, a trip): keep the maps moving without them, park what needs them with everything prepared, and brief them when they are back. Use when the user says they are going away, going to sleep, or leaving it running."
+description: "The user is stepping away (sleep, a meeting, a trip): keep the maps moving without them and park what needs them, prepared, until their next message. Use when the user says they are going away, going to sleep, or leaving it running."
 ---
 
-The user is stepping away. Work keeps going on everything that does not need them; what needs them waits, prepared, for
-one brief when they are back.
+The user is stepping away until their next message. Work keeps going on everything that does not need them; what needs
+them waits, prepared.
 
 ## When they go
 
@@ -26,13 +26,7 @@ Work each map with `research-drive` under `/loop`; in a team, send each driver `
 - Results enter a map as `[tentative]` until reviewed, as always.
 - Log each decision you take without the user as one dated `away:` line in `scratch/agents/driver.log`.
 
-## When they are back
+## When they write again
 
-When the user says they are back, give one **brief**: decision-ready, read in two minutes.
-
-1. What each map achieved: one line per ticket closed or run finished, with its number and the file that holds it.
-2. Decisions you took without them (the `away:` lines), so they can veto any.
-3. Their questions, numbered, each with your pick, so "yes" accepts it.
-4. What is running now.
-
-Then delete `scratch/agents/away.md`; in a team, send each driver `back`.
+Their next message, whatever it says, ends away mode: delete `scratch/agents/away.md`; in a team, send each driver
+`back`. Then answer the message as usual. No brief unless they ask for one (`/ketchup`).
