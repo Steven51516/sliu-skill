@@ -81,7 +81,7 @@ Then, in Claude Code:
 4. Press **Start team** and pick Claude Code or Codex. The app opens a desk, a driver for each open map, and a watch tab;
    each driver opens a worker tab per ticket and closes it when the ticket is done.
 5. Talk to the desk in the app's chat. It reports results, puts each decision to you, and passes your answers to the
-   drivers. The app shows what waits on you and can notify your phone. Going to sleep: tell the desk (`away`).
+   drivers. The app shows what waits on you and can notify your phone.
 
 Without the app, the same team starts from a herdr pane in the project folder: `team-up <map>` (or `--codex`).
 
@@ -151,7 +151,7 @@ a few at once, much as a thesis has chapters and each chapter one claim. A map i
 - **The driver does no ticket work**, so its context stays small and any fresh session can take over from the files. It
   may do a small chore itself (a check, a count, a trivial edit); anything with a run or a number is a ticket.
 - **What reaches you:** anything on STYLE's always-ask list, a change to a destination or Contract, a decision ticket
-  (`grilling`), and a failure. Everything else keeps moving. Going to sleep: `/away`; it lasts until your next message (`/ketchup` catches you up).
+  (`grilling`), and a failure. Everything else keeps moving, whether or not you are there; `/ketchup` catches you up.
 - **State lives in files** (maps, tickets, `STATUS.md`, `scratch/agents/driver.log`), never only in a chat, so sessions
   can stop, compact or be replaced without losing anything.
 
@@ -166,7 +166,6 @@ a few at once, much as a thesis has chapters and each chapter one claim. A map i
 | add a ticket | `/to-tickets <map> "<question>"` |
 | work one ticket | `/research-work <ticket>` |
 | **default:** work a map in one session, a fresh subagent per ticket | `/loop /research-drive <map>` |
-| leave it running while you sleep or travel | `/away` |
 | re-plan a map | `/wayfinder <map> --rechart` |
 | review a ticket's answer yourself | `/review <ticket>` |
 | catch up on a long chat and every call waiting on you | `/ketchup` |
@@ -270,8 +269,7 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `grilling` | copied | the interview tickets |
 | `run-card` | none in Matt's repo | a one-page reproduction record of a run that affects a milestone (a reference, a result a map relies on, an artifact later work builds on) |
 
-**personal/**: everyday helpers: `away` (you step away; maps keep moving and what needs you waits prepared, until your
-next message), `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
+**personal/**: everyday helpers: `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
 call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **team/**: `team` (none in Matt's repo): run a project as a desk, a driver per map, and a worker session per ticket
@@ -328,7 +326,7 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 ## Layout
 
 ```
-skills/      core/ (the research loop, run cards), personal/ (everyday helpers, away), team/, local/ (gitignored)
+skills/      core/ (the research loop, run cards), personal/ (everyday helpers), team/, local/ (gitignored)
 STYLE.md     your rules for every project (honesty, what always needs your OK, code, docs)
 scopes/      machine files kept with the harness (MIT Engaging); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md

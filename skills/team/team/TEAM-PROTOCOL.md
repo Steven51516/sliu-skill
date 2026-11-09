@@ -62,8 +62,7 @@ Communication between sessions should be sparse. Communicate primarily through *
 research notes, and result files. Don't duplicate information already available via pointers. A message is one line and
 a path, sent after the action it reports has happened, never in the same batch:
 - desk → driver: `hold <ticket>` · `release <ticket>` · `reopen <ticket>: <why>` (the human challenges a result) · `new <question>` (draft a ticket with `to-tickets`) ·
-  `rechart: <what to change>` (the `wayfinder --rechart` procedure) · `pause` · `resume` · `stop` ·
-  `away` / `back` (the human left or returned; the `away` skill)
+  `rechart: <what to change>` (the `wayfinder --rechart` procedure) · `pause` · `resume` · `stop`
 - driver → desk: `driver up for <map>` · `map: <what changed>` (after the human worked on the map with the driver) ·
   `propose <ticket>: <why next>` · `needs-you <pointer>: <one line>` · `closed <ticket name>: <answer in one line>` ·
   `progress <ticket name>: <one line>` (an Assets row got its first result) · `stopped: <why>`
