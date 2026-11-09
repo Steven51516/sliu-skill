@@ -14,6 +14,7 @@ chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.
 chmod +x "$HERE/tools/team-watch.py"; ln -sfn "$HERE/tools/team-watch.py" "$HOME/.local/bin/team-watch"
 chmod +x "$HERE/tools/team-worker.py"; ln -sfn "$HERE/tools/team-worker.py" "$HOME/.local/bin/team-worker"
 chmod +x "$HERE/tools/ask-human.py"; ln -sfn "$HERE/tools/ask-human.py" "$HOME/.local/bin/ask-human"
+chmod +x "$HERE/tools/trash.py" "$HERE/tools/delete-guard.py"; ln -sfn "$HERE/tools/trash.py" "$HOME/.local/bin/trash"
 for t in "$HERE"/tools/local/*; do   # your own tools (tools/local/, gitignored), on PATH without their extension
   [[ -f "$t" ]] || continue; chmod +x "$t"; ln -sfn "$t" "$HOME/.local/bin/$(basename "${t%.*}")"
 done

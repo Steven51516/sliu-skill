@@ -28,6 +28,7 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -79,6 +80,18 @@ def transcript(session_id):
     return max(hits, key=os.path.getmtime) if hits else None
 
 
+def alert(text):
+    """note(), plus a push to the human's phone where Moshi's `moshi-hook` is installed (best effort): for give-ups only."""
+    note(text)
+    mh = shutil.which("moshi-hook") or os.path.expanduser("~/.local/bin/moshi-hook")
+    if os.path.exists(mh):
+        try:
+            subprocess.run([mh, "notify", "--source", "team-watch", "--title", "team-watch: needs you", text],
+                           capture_output=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+
 def ended_on_safeguard_stop(session_id):
     """True when the session's transcript ends on a reply Claude's safeguards stopped (or Claude Code's retry note)."""
     path = transcript(session_id)
@@ -125,7 +138,7 @@ def restart(pane, name, map_ref, reason, session, n):
     start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
                   "--", "--resume", session, "--model", MODEL, "--effort", EFFORT)
     if start.returncode != 0:
-        note(f"could not resume the driver: {start.stderr.strip()[:200]}; leaving it for the human")
+        note(f"could not resume the driver: {(start.stderr or start.stdout).strip()[:200]}; trying again next cycle")
         return False
     herdr("agent", "prompt", name, f"continue: the watchdog resumed this session on Sonnet 5.5 ({reason}). Pick up the "
                                    f"pass for {map_ref} where you stopped, but before repeating a dispatch, launch or other "
@@ -144,7 +157,7 @@ def tick(pane, agent, ticks, warned):
         return
     silent = (time.time() - last_pass) / 60
     if last_pass and silent > STALE_MIN and pane not in warned:
-        note(f"Codex driver in {pane} has logged no pass for {silent:.0f} min despite ticks; leaving it for the human")
+        alert(f"Codex driver in {pane} has logged no pass for {silent:.0f} min despite ticks; leaving it for the human")
         warned.add(pane)
     herdr("agent", "prompt", pane, "tick")
     ticks[pane] = time.time()
@@ -190,10 +203,31 @@ def check_worker(pane, tid, agent, drivers, rescued):
         why = f"the rescue failed: {(r.stderr or r.stdout).strip()[:200]}"
     rescued[pane] = "left"
     driver = driver_of(tid, drivers)
-    note(f"worker {tid} in {pane} is stopped by Claude's safeguards ({why}); left to {'its driver ' + driver if driver else 'the human'}")
+    (note if driver else alert)(f"worker {tid} in {pane} is stopped by Claude's safeguards ({why}); left to {'its driver ' + driver if driver else 'the human'}")
     if driver:
         herdr("agent", "prompt", driver, f"watchdog: worker {tid} in {pane} was stopped by Claude's safeguards ({why}); "
                                          f"read its screen and hand that step to its delegate (docs/agents/delegation.md)")
+
+
+def handle_stuck(pane, map_ref, agent, base, restarts, fails, given_up):
+    """Resume a stuck Claude driver. Only a resume that started counts toward MAX_RESTARTS; a start that failed (the pane
+    busy, 10-31: 4 such failures used up both drivers' resumes) is tried again next cycle, at most MAX_RESTARTS times in a
+    row. Giving up pushes to the human's phone. True when it acted."""
+    reason = stuck_reason(agent)
+    if not reason or pane in given_up:
+        return False
+    session = (agent.get("agent_session") or {}).get("value")
+    done, failed = restarts.get(pane, 0), fails.get(pane, 0)
+    if done >= MAX_RESTARTS or failed >= MAX_RESTARTS or not session:
+        why = "its session id is unknown" if not session else f"{done} resumes, {failed} failed starts in a row"
+        alert(f"driver in {pane} is stuck ({reason}); {why}: leaving it for the human")
+        given_up.add(pane)
+        return True
+    if restart(pane, f"{base}-{pane.replace(':', '')}-r{done + 1}", map_ref, reason, session, done + 1):
+        restarts[pane], fails[pane] = done + 1, 0
+    else:
+        fails[pane] = failed + 1
+    return True
 
 
 LOCK = os.path.join("scratch", "agents", "team-watch.pid")   # also the heartbeat: touched every cycle
@@ -220,7 +254,8 @@ def main():
     lock = single()   # noqa: F841 (held until exit)
     fixed = {sys.argv[2]: sys.argv[1]} if len(sys.argv) >= 3 else None
     base = sys.argv[3] if len(sys.argv) > 3 else "driver"
-    restarts, ticks, warned, rescued, seen = {}, {}, set(), {}, os.path.getsize(LOG) if os.path.exists(LOG) else 0
+    restarts, fails, given_up, ticks, warned, rescued = {}, {}, set(), {}, set(), {}
+    seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
     while True:
         os.utime(LOCK)        # a session that cannot list processes (Codex's sandbox) reads this file's age instead
@@ -237,22 +272,8 @@ def main():
             if agent and agent.get("agent") == "codex":
                 tick(pane, agent, ticks, warned)
                 continue
-            reason = stuck_reason(agent)
-            if not reason or restarts.get(pane, 0) > MAX_RESTARTS:
-                continue
-            if restarts.get(pane, 0) == MAX_RESTARTS:
-                note(f"driver in {pane} is stuck ({reason}) and {MAX_RESTARTS} resumes are used up; leaving it for the human")
-                restarts[pane] += 1
-                continue
-            restarts[pane] = restarts.get(pane, 0) + 1
-            session = (agent.get("agent_session") or {}).get("value")
-            if not session:
-                note(f"driver in {pane} is stuck ({reason}) but its session id is unknown; leaving it for the human")
-                restarts[pane] = MAX_RESTARTS + 1
-                continue
-            name = f"{base}-{pane.replace(':', '')}-r{restarts[pane]}"
-            restart(pane, name, map_ref, reason, session, restarts[pane])
-            seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
+            if handle_stuck(pane, map_ref, agent, base, restarts, fails, given_up):
+                seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
         for pane, (tid, agent) in workers(spaces - {None}).items():
             check_worker(pane, tid, agent, drivers, rescued)
         time.sleep(EVERY)

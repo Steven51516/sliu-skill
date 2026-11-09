@@ -20,7 +20,8 @@
 - A single ticket over ~5 GPU-hours, a batch over ~40 GPU-hours, or one submission or sweep over **50 GPU-hours** (edit
   these), plus any limit the project's scope file adds.
 - Changing a stop criterion after the fact, or a map's destination or Contract (benchmark, baselines, what may be done without asking) once results exist.
-- Deleting or overwriting data, results, checkpoints or code outside `scratch/` (rewriting a map or ticket record is routine;
+- Deleting or overwriting data, results, checkpoints or code outside `scratch/` (`delete-guard` asks for a recursive delete;
+  unanswered for 30 min, the agent moves the files with `trash` instead, which can be undone) (rewriting a map or ticket record is routine;
   consolidating tickets is not deleting); the request names what can no
   longer be resumed or reproduced afterwards.
 - Pushing to a repository the human does not own, posting anything externally, or emailing.

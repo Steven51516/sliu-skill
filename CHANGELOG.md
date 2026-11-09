@@ -5,6 +5,15 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`trash`** moves a path into a `.trash/` folder beside it (same disk, an instant rename) and logs it; `--restore`
+  puts it back, `--empty --older <days>` is the human's. **`delete-guard`**, a Claude Code hook, asks the human before a
+  recursive delete (any `rm -r` form, ssh quotes included, `find -delete`, `rsync --delete`, `shutil.rmtree`); unanswered
+  for 30 min, it declines in the herdr pane and tells the agent to use `trash`. Agents had stalled at the delete prompt 5
+  times (one worker for ~30 min on 11-09).
+- **`codex-run`** moves files Codex wrote into the project folder (new, and named in its log) into the run dir, and tells
+  Codex where to write (7 stray reports, 10-30..11-03).
+- **`team-watch`** counts only resumes that started (a busy pane used up both drivers' resumes on 10-31), retries a
+  failed start next cycle, and pushes to the human's phone (`moshi-hook notify`) when it gives up.
 - **Research Desk:** project pages load again after the old tracks/ layout was dropped (the app still read its
   `_legacy` flag).
 - **Research Desk:** never floods a remote host with ssh (it took down Engaging's login008): one call at a time per
