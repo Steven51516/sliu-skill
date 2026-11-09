@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """delete-guard: a Claude Code PreToolUse hook for Bash. A recursive delete (rm -r in any form, find -delete,
 rsync --delete, shutil.rmtree, trash --empty), anywhere in the command, ssh quotes included, is put to the human as a
-permission prompt, as before. If nobody answers for 30 minutes (an unattended session waits forever otherwise), a timer
+permission prompt, as before. If nobody answers for 15 minutes (an unattended session waits forever otherwise), a timer
 declines it (Esc in the session's herdr pane) and tells the agent to use `trash <path>`, which can be undone.
 
 Free to run without asking: targets under /tmp or /private/tmp, and __pycache__ folders. `git rm` is left to git.
@@ -18,7 +18,7 @@ import subprocess
 import sys
 import time
 
-WAIT_MIN = float(os.environ.get("DELETE_GUARD_WAIT_MIN", "30"))       # env: tests
+WAIT_MIN = float(os.environ.get("DELETE_GUARD_WAIT_MIN", "15"))       # env: tests
 LOG = os.path.expanduser("~/.local/state/delete-guard.log")
 FREE = ("/tmp/", "/private/tmp/")
 RM = re.compile(r"(?:^|[\s;&|('\"`])rm((?:\s+-[-\w]+)+)\s+([^;&|)\n]*)")

@@ -212,7 +212,7 @@ Setup, once:
    that restarts under a new name updates the roster:
    `{"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}`.
    Recommended for unattended sessions: the delete guard under `hooks.PreToolUse`, so a recursive delete asks you and,
-   unanswered for 30 min, becomes a `trash` move instead of a session stuck at the prompt (`tools/delete-guard.py` says how):
+   unanswered for 15 min, becomes a `trash` move instead of a session stuck at the prompt (`tools/delete-guard.py` says how):
    `{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/research-harness/tools/delete-guard.py", "timeout": 10}]}`.
 
 5. Optional, to save tokens, in `~/.claude/settings.json`: `"autoCompactWindow": 400000`, so long sessions compact at

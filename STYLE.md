@@ -21,7 +21,7 @@
   these), plus any limit the project's scope file adds.
 - Changing a stop criterion after the fact, or a map's destination or Contract (benchmark, baselines, what may be done without asking) once results exist.
 - Deleting or overwriting data, results, checkpoints or code outside `scratch/` (`delete-guard` asks for a recursive delete;
-  unanswered for 30 min, the agent moves the files with `trash` instead, which can be undone) (rewriting a map or ticket record is routine;
+  unanswered for 15 min, the agent moves the files with `trash` instead, which can be undone) (rewriting a map or ticket record is routine;
   consolidating tickets is not deleting); the request names what can no
   longer be resumed or reproduced afterwards.
 - Pushing to a repository the human does not own, posting anything externally, or emailing.
