@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk:** project pages load again after the old tracks/ layout was dropped (the app still read its
+  `_legacy` flag).
 - **Research Desk:** never floods a remote host with ssh (it took down Engaging's login008): one call at a time per
   host, only over a connection a person opened, a hard deadline that kills the call's hop too, and back-off after a
   failure; the project page says "not connected" or "unreachable". `tools/gui/tests/remote_calls_test.py`, run by

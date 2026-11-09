@@ -755,7 +755,7 @@ def project_state(p, with_agents=True):
         out_maps.append({"id": m.get("id"), "title": m.get("title"), "status": tracker.status_of(m),
                          "status_text": m.get("status"), "outcome": m.get("outcome"), "updated": m.get("updated"),
                          "destination": m["_destination"], "path": m["_path"], "folder": folder,
-                         "legacy": m["_legacy"], "tickets": tickets, "fog": fog(body), "counts": counts,
+                         "tickets": tickets, "fog": fog(body), "counts": counts,
                          "driven": folder in driven, "driver": driven.get(folder), "holder": tracker.holder(m),
                          "mtime": mtime(os.path.join(p["path"], m["_path"]))})
     waiting += [{"kind": "agent", "pane": a["pane"], "role": a["role"], "label": a["tab_label"],
