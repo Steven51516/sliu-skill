@@ -17,11 +17,17 @@ logged to driver.log.
 A Codex driver has no /loop: the watchdog is its schedule. It types `tick` into the driver's pane once the driver is idle
 and neither a pass nor a tick has come for 25 minutes. A Codex driver is never resumed; one that logs no pass for 90
 minutes despite the ticks is noted once, for the human.
+
+Workers (the Claude tabs team-worker opened in the watched drivers' workspaces) are checked too: one whose reply Claude's
+safeguards stopped is resumed once with `team-worker --rescue`, so it does not wait for the driver's next pass (up to an
+hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line.
 """
 import datetime as dt
+import fcntl
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -29,6 +35,9 @@ import time
 EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "high", 25
 LOG = os.path.join("scratch", "agents", "driver.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
+TEAM_WORKER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "team-worker.py")
+WORKER_NAME = re.compile(r"^(.+)-s?\d{6}$")   # team-worker names a worker <ticket id>-HHMMSS (rescued: -sHHMMSS)
+STARTED = time.time()
 
 
 def roster_drivers():
@@ -65,14 +74,17 @@ def note(text):
     print(f"{now()}  watchdog: {text}", flush=True)
 
 
+def transcript(session_id):
+    hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{session_id}.jsonl")) if session_id else []
+    return max(hits, key=os.path.getmtime) if hits else None
+
+
 def ended_on_safeguard_stop(session_id):
     """True when the session's transcript ends on a reply Claude's safeguards stopped (or Claude Code's retry note)."""
-    if not session_id:
+    path = transcript(session_id)
+    if not path:
         return False
-    hits = glob.glob(os.path.expanduser(f"~/.claude/projects/*/{session_id}.jsonl"))
-    if not hits:
-        return False
-    with open(max(hits, key=os.path.getmtime), "rb") as f:
+    with open(path, "rb") as f:
         f.seek(max(0, f.seek(0, 2) - (256 << 10)))
         lines = f.read().split(b"\n")
     for line in reversed(lines):
@@ -138,31 +150,77 @@ def tick(pane, agent, ticks, warned):
     ticks[pane] = time.time()
 
 
+def workers(spaces):
+    """{pane: (ticket id, agent)}: the Claude workers team-worker opened in these workspaces (agent named after its tab)."""
+    try:
+        agents = json.loads(herdr("agent", "list", timeout=20).stdout or "{}").get("result", {}).get("agents", [])
+        tabs = json.loads(herdr("tab", "list", timeout=20).stdout or "{}").get("result", {}).get("tabs", [])
+    except (ValueError, subprocess.SubprocessError):
+        return {}
+    label = {t.get("tab_id"): t.get("label") or "" for t in tabs}
+    out = {}
+    for a in agents:
+        m, tid = WORKER_NAME.match(a.get("name") or ""), label.get(a.get("tab_id"), "")
+        if a.get("workspace_id") in spaces and a.get("agent") == "claude" and m and m.group(1) == tid.lower():
+            out[a["pane_id"]] = (tid, a)
+    return out
+
+
+def driver_of(tid, drivers):
+    """The driver pane whose map shares the ticket's prefix (T12 for T12-09)."""
+    prefix = tid.split("-")[0].upper()
+    return next((p for p, m in drivers.items() if os.path.basename(m.rstrip("/")).split("-")[0].upper() == prefix), None)
+
+
+def check_worker(pane, tid, agent, drivers, rescued):
+    """Rescue a worker stopped by Claude's safeguards once; after that, or for a stop older than this watch, tell its driver."""
+    session = (agent.get("agent_session") or {}).get("value")
+    if rescued.get(pane) == "left" or agent.get("agent_status") in ("working", "blocked") or not ended_on_safeguard_stop(session):
+        return
+    if pane in rescued:
+        why = "again, after its Sonnet rescue"
+    elif os.path.getmtime(transcript(session)) < STARTED:
+        why = "before this watch started"
+    else:
+        rescued[pane] = "rescued"
+        note(f"worker {tid} in {pane} was stopped by Claude's safeguards; resuming it on Sonnet 5.5 (team-worker --rescue)")
+        r = subprocess.run([sys.executable, TEAM_WORKER, "--rescue", tid], capture_output=True, text=True, timeout=300)
+        if r.returncode == 0:
+            return
+        why = f"the rescue failed: {(r.stderr or r.stdout).strip()[:200]}"
+    rescued[pane] = "left"
+    driver = driver_of(tid, drivers)
+    note(f"worker {tid} in {pane} is stopped by Claude's safeguards ({why}); left to {'its driver ' + driver if driver else 'the human'}")
+    if driver:
+        herdr("agent", "prompt", driver, f"watchdog: worker {tid} in {pane} was stopped by Claude's safeguards ({why}); "
+                                         f"read its screen and hand that step to its delegate (docs/agents/delegation.md)")
+
+
 LOCK = os.path.join("scratch", "agents", "team-watch.pid")   # also the heartbeat: touched every cycle
 
 
 def single():
-    """Only one team-watch per project: two would both restart the same driver."""
-    lock = LOCK
+    """Only one team-watch per project: two would both restart the same driver. An OS lock, not a pid check: two watches
+    starting together cannot both take it, and it is released when the process dies, so it never goes stale."""
+    os.makedirs(os.path.dirname(LOCK), exist_ok=True)
+    fd = os.open(LOCK, os.O_RDWR | os.O_CREAT, 0o644)
     try:
-        other = int(open(lock).read().strip())
-        os.kill(other, 0)
-        if other != os.getpid():
-            sys.exit(f"team-watch is already running for this project (pid {other}); stop it first or use that one")
-    except (OSError, ValueError):
-        pass
-    os.makedirs(os.path.dirname(lock), exist_ok=True)
-    with open(lock, "w") as f:
-        f.write(str(os.getpid()))
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        other = os.read(fd, 32).decode().strip() or "?"
+        sys.exit(f"team-watch is already running for this project (pid {other}); stop it first or use that one")
+    os.ftruncate(fd, 0)
+    os.write(fd, str(os.getpid()).encode())     # the pid, for Research Desk and the error above
+    return fd                                   # kept open for the process's life: closing it releases the lock
 
 
 def main():
     if len(sys.argv) == 2 or sys.argv[1:2] in (["-h"], ["--help"]):
         sys.exit(__doc__)
-    single()
+    lock = single()   # noqa: F841 (held until exit)
     fixed = {sys.argv[2]: sys.argv[1]} if len(sys.argv) >= 3 else None
     base = sys.argv[3] if len(sys.argv) > 3 else "driver"
-    restarts, ticks, warned, seen = {}, {}, set(), os.path.getsize(LOG) if os.path.exists(LOG) else 0
+    restarts, ticks, warned, rescued, seen = {}, {}, set(), {}, os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
     while True:
         os.utime(LOCK)        # a session that cannot list processes (Codex's sandbox) reads this file's age instead
@@ -172,8 +230,10 @@ def main():
                 sys.stdout.write(f.read())
                 sys.stdout.flush()
             seen = os.path.getsize(LOG)
-        for pane, map_ref in (fixed or roster_drivers()).items():
+        drivers, spaces = fixed or roster_drivers(), set()
+        for pane, map_ref in drivers.items():
             agent = agent_at(pane)
+            spaces.add((agent or {}).get("workspace_id"))
             if agent and agent.get("agent") == "codex":
                 tick(pane, agent, ticks, warned)
                 continue
@@ -193,6 +253,8 @@ def main():
             name = f"{base}-{pane.replace(':', '')}-r{restarts[pane]}"
             restart(pane, name, map_ref, reason, session, restarts[pane])
             seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
+        for pane, (tid, agent) in workers(spaces - {None}).items():
+            check_worker(pane, tid, agent, drivers, rescued)
         time.sleep(EVERY)
 
 

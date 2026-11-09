@@ -34,7 +34,8 @@ the map.
   human's request: a trivial edit it does itself, anything else becomes a ticket draft (`to-tickets`).
 - **Idle without its line**: read its screen (`herdr agent read <ticket id>`). If Claude's safeguards stopped its reply
   (often a false positive on biology wording), `team-worker --rescue <ticket id>` resumes its own session on Sonnet 5.5
-  at high effort, keeping its chat. New workers still start on Opus 5.5.
+  at high effort, keeping its chat; `team-watch` does this once by itself and tells you when a worker stops again. New
+  workers still start on Opus 5.5.
 
 ## Control
 - **A map runs on its own inside its Contract.** The driver approves each ticket's pre-registration within the Contract (a
@@ -93,5 +94,5 @@ sessions of a team run on the same machine.
 - Nobody watching (a night): `team-watch` runs in a tab of its own (`team-up` starts it; otherwise run
   `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster, shows the driver's log and resumes a stuck driver (idle, and stopped by Claude's safeguards or silent for 90 minutes) in its own
   session on Sonnet 5.5, keeping its chat, at most 3 times; a driver waiting on a permission prompt is left for
-  the human.
+  the human. A worker stopped by Claude's safeguards is rescued once the same way.
 - Long GPU jobs run detached on the server per the scope file, never inside any of these sessions.

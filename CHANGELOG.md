@@ -5,6 +5,12 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **team-watch** also watches worker tabs: a worker stopped by Claude's safeguards is resumed once on Sonnet 5.5
+  (`team-worker --rescue`) instead of waiting for the driver's next pass; stopped again, its driver gets one line.
+- **team-watch** holds an OS file lock, so a second watch on the same project cannot start and a dead one leaves no
+  stale lock (two protbench watches once ran at the same time).
+- **rigor** rule 1: the reference is ground truth or named a proxy when a model made it; a score is never normalised
+  by the evaluated model's own outputs (from ARIS's experiment audit).
 - **Research Desk:** pasting an image (⌘V of a screenshot or a copied image) saves it and types its path, which the
   agent reads; a file copied in Finder pastes its path. For a session on a remote host the file is uploaded there first.
 - **Research Desk:** each session's tag shows its reasoning effort beside the model ("Opus 5.5 · xhigh"), read from

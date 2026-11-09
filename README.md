@@ -220,8 +220,8 @@ Setup, once:
 
 Then, from a herdr pane in the project folder: `team-up <map>` (Claude Code, Opus) or `team-up --codex <map>`. It opens
 tabs **A desk**, **B driver** and **watch**; talk to the desk. The watch tab runs `team-watch`: it shows the driver's
-log, resumes a stuck Claude driver in its own session (on Sonnet, after a safeguard stop or 90 silent minutes), and is a
-Codex driver's schedule. Keep the machine awake while a team runs (`team-up` wraps the watch in `caffeinate` on macOS).
+log, resumes a stuck Claude driver in its own session (on Sonnet, after a safeguard stop or 90 silent minutes) and a
+worker stopped by a safeguard, and is a Codex driver's schedule. Keep the machine awake while a team runs (`team-up` wraps the watch in `caffeinate` on macOS).
 
 ## Research Desk app (optional, macOS)
 

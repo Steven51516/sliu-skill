@@ -126,6 +126,7 @@ def open_worker(path):
 
 def rescue(tid):
     tabs = json.loads(herdr("tab", "list").stdout or "{}").get("result", {}).get("tabs", [])
+    tabs.sort(key=lambda t: t.get("workspace_id") != os.environ.get("HERDR_WORKSPACE_ID"))   # `tab list` spans workspaces: ours first
     tab = next((t["tab_id"] for t in tabs if t.get("label") == tid), None) or fail(f"no tab labelled {tid}")
     agents = json.loads(herdr("agent", "list").stdout or "{}").get("result", {}).get("agents", [])
     a = next((a for a in agents if a.get("tab_id") == tab), None) or fail(f"no agent in the tab of {tid}")
