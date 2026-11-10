@@ -10,9 +10,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   kind: a Moshi push and a Mac sound by default), `safe-deletes` (`trash`, the `delete-guard` hook and a rule for Claude
   and Codex), `team-hooks` (the roster hook), `claude-codex` (a project's delegation rows: work in your field that
   Claude's safeguards often stop, and large reviews, go to Codex at xhigh; an option, not in `recommended`) and
-  `recommended` (alerts, safe-deletes, team-hooks). `research-init` asks: for delegation, all Claude (the default), the
-  `claude-codex` preset, or your own rules; once per machine, the machine presets not yet applied. With no rule,
-  delegated work and reviews go to a Claude subagent.
+  `recommended` (alerts, safe-deletes, team-hooks). `research-init` asks: for delegation, one agent (the default: all Claude in
+  Claude Code, all Codex in Codex), the `claude-codex` preset, or your own rules; once per machine, the machine presets not yet applied. With no rule,
+  delegated work and reviews go to a fresh session of the same agent.
 - **`team-watch`** gives each alert a kind in `RH_EVENT` (`question`, `silent`, `gave-up`), and expands `~` in every word
   of your alert command.
 - **Your own setup is kept out of the workflow:** `trash` and `delete-guard` moved to `extras/`, used by no skill (a

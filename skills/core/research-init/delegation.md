@@ -11,11 +11,12 @@ work it matches.
 
 ## When a skill says…
 - **"delegate"**, **"spin up a subagent"**, **"a background agent"**, **"parallel sub-agents"**: a matching rule decides;
-  otherwise do it yourself or hand it to a Claude subagent, as you judge.
+  otherwise do it yourself or hand it to a fresh session of the agent you run on (Claude Code: a Claude subagent; Codex:
+  `codex-run`), as you judge.
 - **"use implementer subagents"**: a fresh background subagent per ticket (a new context window, never a fork), told "Call the Skill tool with `research-work` on
   <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`." A subagent cannot open
   subagents of its own: what it would hand to a Claude subagent it does itself (a team's workers are full sessions and can).
-- **"review"**: once per ticket that `review` says needs it, plus a re-check of only what a fix changed: a fresh Claude subagent that did not do the work (never a fork of the session that did); another agent only where a rule names one. It
+- **"review"**: once per ticket that `review` says needs it, plus a re-check of only what a fix changed: a fresh session of the same agent that did not do the work (Claude Code: a Claude subagent, never a fork of the session that did; Codex: `codex-run`); another agent only where a rule names one. It
   writes only its PASS/FAIL lines under the answer.
 - **"ask the user"**, **"tell the user"**: in this session.
 
