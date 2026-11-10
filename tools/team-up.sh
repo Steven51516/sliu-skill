@@ -47,5 +47,5 @@ go "$P-driver" "$B" "driver $T"
 sleep 20   # the driver joins the roster first, so the desk finds it
 go "$P-desk" "$A" "desk"
 KEEP=$(command -v caffeinate >/dev/null && echo "caffeinate -dimsu ")   # macOS: keep the machine awake while the driver runs
-herdr pane run "$W" "${KEEP}team-watch $T $B $P-driver" >/dev/null   # driver log; restarts a stuck Claude driver, ticks a Codex one
+herdr pane run "$W" "${KEEP}team-watch $T $B $P-driver" >/dev/null   # driver log; resumes a Claude driver stopped by a safeguard, alerts once on a silent one or an open question, ticks a Codex one
 echo "team up for $T ($AGENT): talk to tab 'A desk'"

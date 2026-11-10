@@ -8,7 +8,8 @@ in a herdr pane in the project folder; workers' tabs come and go as tickets star
 The roles run the same skills as a single session, with two swaps:
 - **"use implementer subagents"** (the driver): open a worker per ticket (below). A worker runs `research-work` in a
   session of its own, so it can open subagents itself (a subagent cannot), and the human can watch or answer it in its tab.
-- **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>`; a worker sends the
+- **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>` and writes the same
+  line once in `driver.log`, from where `team-watch` sends it to the human's phone; a worker sends the
   driver `ask` and keeps working (`blocked` once nothing is left that doesn't need the answer), and the driver tells the desk. The desk puts it to the human (STYLE.md) and relays
   the answer to the driver.
 
@@ -91,7 +92,10 @@ sessions of a team run on the same machine.
   types `tick` into an idle Codex driver every 25 minutes.
 - The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS).
 - Nobody watching (a night): `team-watch` runs in a tab of its own (`team-up` starts it; otherwise run
-  `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster, shows the driver's log and resumes a stuck driver (idle, and stopped by Claude's safeguards or silent for 90 minutes) in its own
-  session on Sonnet 5.5, keeping its chat, at most 3 times; a driver waiting on a permission prompt is left for
-  the human. A worker stopped by Claude's safeguards is rescued once the same way.
+  `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster and shows the driver's log. A driver stopped by Claude's safeguards is resumed in its own
+  session on Sonnet 5.5, keeping its chat, at most 3 times; a worker is rescued once the same way. A driver waiting on
+  a permission prompt is left for the human. A driver idle with nothing written by its own session for 90 minutes has
+  lost its loop: it is not restarted, the human gets one alert (so a pass written only to look alive is never needed).
+  Each open `grilling` or `prototype` ticket and each `needs-you` line in `driver.log` goes to the human's phone once
+  (`~/.config/research-harness/notify`).
 - Long GPU jobs run detached on the server per the scope file, never inside any of these sessions.

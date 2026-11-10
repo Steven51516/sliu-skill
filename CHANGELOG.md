@@ -5,6 +5,19 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`team-watch`** reads silence per driver, from that driver's own session, and no longer restarts a silent driver:
+  the human gets one alert. All 15 resumes in its history were for "no pass logged for 90 min" on the shared
+  `driver.log`, none for a safeguard stop; each moved a waiting driver to Sonnet 5.5, one driver wrote 24 hourly
+  heartbeat passes to keep the watch off, and another, silent for 2.5 days, was never noticed behind them. Resume on
+  Sonnet 5.5 is now only for a safeguard stop. A driver on a closed map is skipped; a paused one is not reported.
+- **`team-watch`** sends what waits on the human to their phone once: each open `grilling` or `prototype` ticket and
+  each new `needs-you` line in `driver.log` (kept in `scratch/agents/team-watch.pushed`). A team blocked for 31 h on an
+  unreachable server had told only its desk. `research-drive` now files such a blocker as a `grilling` ticket.
+- **`research-status --check`** limits a live map to 12,000 characters instead of 80 lines (one map had reached 26.7 KB
+  in 63 lines), and takes `--map <id>`; `research-drive` runs it on its own map at the start of every pass (42
+  warnings had piled up unread in one project).
+- An **`experiment` answer** ends with four labelled lines (Set, Runs, Deviations, Does not show); `review`'s Spec axis
+  fails one without them. 176 of 310 Spec verdicts were FAIL, most for an answer claiming more than its numbers show.
 - **Questions for the human are plain text** (one line, your pick first). `ask-human` moved to `tools/local/`: in a
   month it carried one real question, and phone mode had been off since 10-31, so that one fell back to plain text too.
 - **`trash`** moves a path into a `.trash/` folder beside it (same disk, an instant rename) and logs it; `--restore`

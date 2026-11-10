@@ -1,29 +1,40 @@
 #!/usr/bin/env python3
-"""team-watch: the watch tab's supervisor. Prints the driver's log as it grows, and resumes a stuck driver's own session
-on Sonnet 5.5, so a map keeps moving while nobody is watching.
+"""team-watch: the watch tab's supervisor. Prints the driver's log as it grows, resumes a driver or worker stopped by
+Claude's safeguards on Sonnet 5.5, and sends what needs the human to their phone, once each.
 
 Usage (from the project folder, inside herdr):  team-watch                 every driver on scratch/agents/roster.md
                                                 team-watch <map> <driver pane> [agent name]   one driver
 team-up starts it; after starting a team any other way, run it once in a spare tab: `caffeinate -dimsu team-watch`.
 
-Every 5 minutes it looks at the driver's pane. The driver is stuck when it is idle and either its session ended on a
-safeguard stop (Claude Code then waits for a human to retry or switch model), or no pass has been logged in
-scratch/agents/driver.log for 90 minutes (longer than the driver's longest sleep, an hour). A driver waiting on a
-permission prompt (`blocked`) needs the human and is left alone. A stuck driver is exited and its own session resumed
-in the same pane on Sonnet 5.5 at high effort (`claude --resume <session> --model sonnet --effort high`), keeping its whole chat, then told to
-continue. It stays on Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run; every action is
-logged to driver.log.
+Every 5 minutes it looks at each driver's pane. A driver whose map is closed is skipped. A driver waiting on a
+permission prompt (`blocked`) needs the human and is left alone.
 
-A Codex driver has no /loop: the watchdog is its schedule. It types `tick` into the driver's pane once the driver is idle
-and neither a pass nor a tick has come for 25 minutes. A Codex driver is never resumed; one that logs no pass for 90
-minutes despite the ticks is noted once, for the human.
+Stopped by a safeguard: the driver is idle and its session ended on a safeguard stop (Claude Code then waits for a human
+to retry or switch model). It is exited and its own session resumed in the same pane on Sonnet 5.5 at high effort
+(`claude --resume <session> --model sonnet --effort high`), keeping its whole chat, then told to continue. It stays on
+Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run.
+
+Silent: the driver is idle and its own session has written nothing for 90 minutes (longer than its longest sleep, an
+hour), so its /loop has ended. Silence is read from that session's transcript, never from the shared driver.log, where
+another driver's line would hide it. A silent driver is not restarted and not prompted (a driver often waits on purpose,
+and until 11-10 all 15 resumes were of such drivers, each moved to Sonnet): the human gets one alert per silence. A
+driver whose map is paused is not reported.
+
+Questions for the human go to their phone once each: every open grilling or prototype ticket of a map that is neither
+paused nor closed, and every new driver.log line that says `needs-you` (unless it names a ticket already sent). What
+was sent is kept in scratch/agents/team-watch.pushed, so restarting the watch sends nothing twice.
+
+A Codex driver has no /loop: the watchdog is its schedule. It types `tick` into the driver's pane once the pane has been
+idle, with no change of state and no tick, for 25 minutes. A Codex driver is never resumed; one whose pane does not move
+for 90 minutes despite the ticks is reported once.
 
 Workers (the Claude tabs team-worker opened in the watched drivers' workspaces) are checked too: one whose reply Claude's
 safeguards stopped is resumed once with `team-worker --rescue`, so it does not wait for the driver's next pass (up to an
 hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line.
 
-When it gives up on anything, it runs the command in ~/.config/research-harness/notify, if that file exists, with the
-message as its last argument: your own phone or desktop alert. Without it, give-ups go only to driver.log.
+An alert (a give-up, a silent driver, a question) runs the command in ~/.config/research-harness/notify, if that file
+exists, with the message as its last argument: your own phone or desktop alert. Without it, alerts go only to driver.log.
+Every action is logged to driver.log.
 """
 import datetime as dt
 import fcntl
@@ -39,20 +50,48 @@ import time
 EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "high", 25
 LOG = os.path.join("scratch", "agents", "driver.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
-TEAM_WORKER = os.path.join(os.path.dirname(os.path.realpath(__file__)), "team-worker.py")
+PUSHED = os.path.join("scratch", "agents", "team-watch.pushed")   # what the human was already told, one key per line
+HERE = os.path.dirname(os.path.realpath(__file__))
+TEAM_WORKER = os.path.join(HERE, "team-worker.py")
+sys.path.insert(0, HERE)
+import status as tracker   # noqa: E402  (status.py, the `research-status` parser: maps, tickets, what waits on the human)
 WORKER_NAME = re.compile(r"^(.+)-s?\d{6}$")   # team-worker names a worker <ticket id>-HHMMSS (rescued: -sHHMMSS)
+NEEDS = re.compile(r"\bneeds-you\b", re.I)
+NO_NEEDS = re.compile(r"\bno\b[^.;|]{0,30}\bneeds-you\b", re.I)
+STAMP = re.compile(r"^\d{4}-\d\d-\d\d[T ][\d:]+Z?\s*\|?\s*")
 STARTED = time.time()
 
 
 def roster_drivers():
-    """{pane: map} for the driver lines on the roster (the latest line per pane wins)."""
+    """{pane: (map, session name)} for the driver lines on the roster (the latest line per pane wins)."""
     out = {}
     if os.path.exists(ROSTER):
         for line in open(ROSTER):
             cells = [c.strip() for c in line.split("|")]
             if len(cells) >= 6 and cells[0] == "driver" and cells[2] not in ("", "-") and cells[5] not in ("", "-"):
-                out[cells[2]] = cells[5].split()[0]
+                out[cells[2]] = (cells[5].split()[0], (cells[3].split() or [""])[0])
     return out
+
+
+def load_maps():
+    try:
+        return tracker.load(".")
+    except (OSError, ValueError):          # a file caught half-written: next cycle reads it whole
+        return []
+
+
+def map_state(maps, ref, name):
+    """(map id, status) of the map a driver drives: the roster's map cell as a folder or an id, else the open map whose
+    claim names the driver's session (a roster line may describe its map in words). (None, None) when neither finds
+    one: that driver is watched as on an open map."""
+    want = os.path.basename(ref.rstrip("/")).lower()
+    for m in maps:
+        if want in (os.path.basename(os.path.dirname(m["_path"])).lower(), str(m.get("id")).lower()):
+            return m.get("id"), tracker.status_of(m)
+    for m in maps:
+        if name and tracker.status_of(m) != "closed" and name in f"{m.get('status')} {m.get('claimed')}":
+            return m.get("id"), tracker.status_of(m)
+    return None, None
 
 
 def now():
@@ -101,6 +140,54 @@ def alert(text):
             pass
 
 
+def load_pushed():
+    try:
+        return set(open(PUSHED).read().splitlines())
+    except OSError:
+        return set()
+
+
+def save_pushed(pushed):
+    with open(PUSHED + ".tmp", "w") as f:
+        f.write("".join(k + "\n" for k in sorted(pushed)))
+    os.replace(PUSHED + ".tmp", PUSHED)
+
+
+def push_once(key, text, pushed):
+    """alert() the human, unless this key was sent before (by this watch or an earlier one)."""
+    if key not in pushed:
+        pushed.add(key)
+        alert(text)
+
+
+def push_questions(maps, pushed):
+    """Each open question for the human (a grilling or prototype ticket, an old map's Needs-you item) once. Paused and
+    closed maps are left alone. More than 3 new at once (a first run) go as one alert."""
+    quiet = {m.get("id") for m in maps if tracker.status_of(m) in ("paused", "closed")}
+    new = [(mid, text, f"ask {key}") for mid, text, key in tracker.waiting(maps)
+           if mid not in quiet and f"ask {key}" not in pushed]
+    if len(new) > 3:
+        pushed.update(key for _, _, key in new)
+        alert(f"{len(new)} questions wait on you ({', '.join(sorted({str(mid) for mid, _, _ in new}))}): research-status --now")
+        return
+    for mid, text, key in new:
+        push_once(key, f"needs you ({mid}): {text}"[:400], pushed)
+
+
+def asked(maps):
+    """Ids and paths of the tickets waiting on the human: a log line that names one adds nothing to that ticket's alert."""
+    paths = {key for _, _, key in tracker.waiting(maps)}
+    return paths | {str(k.get("id")) for m in maps for k in m["_tickets"] if k["_path"] in paths}
+
+
+def push_needs(lines, pushed, covered=()):
+    """Each new driver.log line that says `needs-you`, once: what a driver sends the desk reaches the human's phone too."""
+    for line in lines:
+        m = NEEDS.search(line)
+        if m and "watchdog:" not in line and not NO_NEEDS.search(line) and not any(c.lower() in line.lower() for c in covered):
+            push_once("log " + STAMP.sub("", line)[:160], "driver.log: …" + line[max(0, m.start() - 160):m.start() + 240], pushed)
+
+
 def ended_on_safeguard_stop(session_id):
     """True when the session's transcript ends on a reply Claude's safeguards stopped (or Claude Code's retry note)."""
     path = transcript(session_id)
@@ -131,13 +218,23 @@ def ended_on_safeguard_stop(session_id):
 def stuck_reason(agent):
     if not agent or agent.get("agent_status") in ("working", "blocked"):
         return None
-    last_pass = os.path.getmtime(LOG) if os.path.exists(LOG) else 0
     if ended_on_safeguard_stop((agent.get("agent_session") or {}).get("value")):
         return "its last reply was stopped by Claude's safeguards"
-    idle_min = (time.time() - last_pass) / 60
-    if last_pass and idle_min > STALE_MIN:
-        return f"no pass logged for {idle_min:.0f} min"
     return None
+
+
+def check_silence(pane, label, agent, pushed):
+    """An idle driver whose own session wrote nothing for STALE_MIN has lost its /loop. One alert per silence; the
+    driver is not restarted and not prompted. A session whose transcript cannot be found is never judged."""
+    path = transcript((agent.get("agent_session") or {}).get("value"))
+    if not path:
+        return
+    quiet, key = (time.time() - os.path.getmtime(path)) / 60, f"silent {pane}"
+    if quiet <= STALE_MIN:
+        pushed.discard(key)
+    elif agent.get("agent_status") not in ("working", "blocked"):
+        push_once(key, f"driver for {label} in {pane} is idle and has written nothing for {quiet:.0f} min: its loop has "
+                       f"ended. Not restarted; left for the human", pushed)
 
 
 def restart(pane, name, map_ref, reason, session, n):
@@ -157,17 +254,23 @@ def restart(pane, name, map_ref, reason, session, n):
     return True
 
 
-def tick(pane, agent, ticks, warned):
-    """Wake an idle Codex driver with `tick` when neither a pass nor a tick came for TICK_MIN minutes."""
+def tick(pane, agent, ticks, moved, pushed):
+    """Wake an idle Codex driver with `tick` when its pane changed state last, and was ticked last, TICK_MIN minutes ago
+    or more. `moved` holds, per pane, herdr's state counter and when this watch saw it change."""
+    seq = agent.get("state_change_seq")
+    if pane not in moved:
+        moved[pane] = (seq, STARTED - TICK_MIN * 60)      # first sight: a tick is due as soon as the pane is idle
+    elif moved[pane][0] != seq:
+        moved[pane] = (seq, time.time())
+        pushed.discard(f"silent {pane}")
     if agent.get("agent_status") in ("working", "blocked"):
         return
-    last_pass = os.path.getmtime(LOG) if os.path.exists(LOG) else 0
-    if (time.time() - max(last_pass, ticks.get(pane, 0))) / 60 < TICK_MIN:
+    changed = moved[pane][1]
+    if (time.time() - max(changed, ticks.get(pane, 0))) / 60 < TICK_MIN:
         return
-    silent = (time.time() - last_pass) / 60
-    if last_pass and silent > STALE_MIN and pane not in warned:
-        alert(f"Codex driver in {pane} has logged no pass for {silent:.0f} min despite ticks; leaving it for the human")
-        warned.add(pane)
+    quiet = (time.time() - changed) / 60
+    if quiet > STALE_MIN and pane in ticks:
+        push_once(f"silent {pane}", f"Codex driver in {pane} has not moved for {quiet:.0f} min despite ticks; left for the human", pushed)
     herdr("agent", "prompt", pane, "tick")
     ticks[pane] = time.time()
 
@@ -219,12 +322,14 @@ def check_worker(pane, tid, agent, drivers, rescued):
 
 
 def handle_stuck(pane, map_ref, agent, base, restarts, fails, given_up):
-    """Resume a stuck Claude driver. Only a resume that started counts toward MAX_RESTARTS; a start that failed (the pane
+    """Resume a Claude driver stopped by a safeguard. Only a resume that started counts toward MAX_RESTARTS; a start that failed (the pane
     busy, 10-31: 4 such failures used up both drivers' resumes) is tried again next cycle, at most MAX_RESTARTS times in a
     row. Giving up pushes to the human's phone. True when it acted."""
     reason = stuck_reason(agent)
-    if not reason or pane in given_up:
+    if not reason:
         return False
+    if pane in given_up:
+        return True
     session = (agent.get("agent_session") or {}).get("value")
     done, failed = restarts.get(pane, 0), fails.get(pane, 0)
     if done >= MAX_RESTARTS or failed >= MAX_RESTARTS or not session:
@@ -257,34 +362,54 @@ def single():
     return fd                                   # kept open for the process's life: closing it releases the lock
 
 
+def show_log(seen, pushed, covered=()):
+    """Print what the drivers added to driver.log since `seen` (whole lines; the watchdog's own were printed by note())
+    and push its needs-you lines, except those about a ticket in `covered`. Returns the new offset."""
+    if not os.path.exists(LOG) or os.path.getsize(LOG) <= seen:
+        return min(seen, os.path.getsize(LOG)) if os.path.exists(LOG) else 0
+    with open(LOG, "rb") as f:
+        f.seek(seen)
+        chunk = f.read()
+    chunk = chunk[:chunk.rfind(b"\n") + 1]
+    lines = [l for l in chunk.decode(errors="replace").splitlines() if "  watchdog: " not in l]
+    if lines:
+        print("\n".join(lines), flush=True)
+    push_needs(lines, pushed, covered)
+    return seen + len(chunk)
+
+
 def main():
     if len(sys.argv) == 2 or sys.argv[1:2] in (["-h"], ["--help"]):
         sys.exit(__doc__)
     lock = single()   # noqa: F841 (held until exit)
-    fixed = {sys.argv[2]: sys.argv[1]} if len(sys.argv) >= 3 else None
+    fixed = {sys.argv[2]: (sys.argv[1], "")} if len(sys.argv) >= 3 else None
     base = sys.argv[3] if len(sys.argv) > 3 else "driver"
-    restarts, fails, given_up, ticks, warned, rescued = {}, {}, set(), {}, set(), {}
+    restarts, fails, given_up, ticks, moved, rescued = {}, {}, set(), {}, {}, {}
+    pushed = load_pushed()
     seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
     while True:
         os.utime(LOCK)        # a session that cannot list processes (Codex's sandbox) reads this file's age instead
-        if os.path.exists(LOG) and os.path.getsize(LOG) > seen:     # show the driver's log as it grows
-            with open(LOG) as f:
-                f.seek(seen)
-                sys.stdout.write(f.read())
-                sys.stdout.flush()
-            seen = os.path.getsize(LOG)
-        drivers, spaces = fixed or roster_drivers(), set()
-        for pane, map_ref in drivers.items():
+        told = set(pushed)
+        maps = load_maps()
+        push_questions(maps, pushed)
+        seen = show_log(seen, pushed, asked(maps))
+        drivers, spaces = {}, set()
+        for pane, (ref, name) in (fixed or roster_drivers()).items():
+            map_id, state = map_state(maps, ref, name)
+            label = drivers[pane] = map_id or ref
             agent = agent_at(pane)
             spaces.add((agent or {}).get("workspace_id"))
-            if agent and agent.get("agent") == "codex":
-                tick(pane, agent, ticks, warned)
+            if not agent or state == "closed":
                 continue
-            if handle_stuck(pane, map_ref, agent, base, restarts, fails, given_up):
-                seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
+            if agent.get("agent") == "codex":
+                tick(pane, agent, ticks, moved, pushed)
+            elif not handle_stuck(pane, label, agent, base, restarts, fails, given_up) and state != "paused":
+                check_silence(pane, label, agent, pushed)
         for pane, (tid, agent) in workers(spaces - {None}).items():
             check_worker(pane, tid, agent, drivers, rescued)
+        if pushed != told:
+            save_pushed(pushed)
         time.sleep(EVERY)
 
 

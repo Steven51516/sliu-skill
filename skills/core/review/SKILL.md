@@ -9,7 +9,8 @@ Three-axis review of a ticket's answer, by one reviewer with a fresh context win
   with its N.
 - **Spec**: is the pre-registered rule (for a `task`, its acceptance) applied exactly as written, and does the answer
   claim no more than its numbers show: no wider scope, no cause credited to one of several changes, no single run treated
-  as replicated, no deviation left unrecorded?
+  as replicated, no deviation left unrecorded? An `experiment` answer without its four labelled lines (Set, Runs,
+  Deviations, Does not show; `research-work`), or with one that disagrees with the files, fails here.
 - **Code**: does the code that produced the result do what the ticket says, and nothing else that changes the numbers (a
   default, a filter, a seed, an eval path, a data range)?
 

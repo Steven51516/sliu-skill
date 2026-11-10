@@ -5,13 +5,15 @@ The local issue tracker's view and checker (docs/agents/issue-tracker.md). STATU
 Edit the map/ticket files, then rerun, so parallel sessions never collide on one shared file.
 
 Usage (from the project root, or pass it):
-    research-status [PROJECT] [--print] [--check] [--frontier]
+    research-status [PROJECT] [--print] [--now] [--check] [--frontier] [--map ID]
       (none)      write STATUS.md, the project page: milestones (closed maps' outcomes) and open maps
       --print     the same page to stdout instead
       --now       print what is live: waiting on you, running or claimed, the frontier (never stored)
       --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
-                  missing fields, resolved tickets missing from their map or their answer); exit 1 if any
+                  missing fields, resolved tickets missing from their map or their answer, a map grown past
+                  12,000 characters); exit 1 if any
       --frontier  only list the frontier (open, unblocked, unclaimed tickets), one per line
+      --map ID    with --check or --frontier: only that map (its id or folder name), as a driver checks its own
 Pure standard library.
 """
 import argparse
@@ -30,7 +32,8 @@ ACTIVE = {"claimed", "running"}
 HITL = {"grilling", "prototype"}
 TYPES = {"experiment", "research", "prototype", "grilling", "task"}
 STALE_HOURS = 36
-MAX_MAP_LINES = 80                    # STYLE.md: each map.md is rewritten to stay within 80 lines
+MAX_MAP_CHARS = 12000                 # STYLE.md: a map is an index. Characters, not lines: an 80-line limit let one
+                                      # map reach 26.7 KB in 63 lines (four lines over 1,500 characters)
 MAX_WAITING = 8
 # older words for the same states and types, read as the canonical ones
 STATUS_ALIASES = {"done": "resolved", "final": "resolved", "planned": "open", "stale": "open", "approved": "open",
@@ -188,7 +191,7 @@ def load(project):
             archived.append(kmeta)
         meta["_path"] = os.path.relpath(mpath, project)
         with open(mpath, errors="replace") as f:
-            meta["_lines"] = sum(1 for _ in f)
+            meta["_chars"] = len(f.read())
         meta["_destination"] = destination(body)
         meta["_needs"] = legacy_needs(body)
         meta["_map_links"] = map_links(body)
@@ -259,9 +262,9 @@ def analyse(maps):
             problems.append(f"{m['_path']}: closed without an `outcome:` line")
         if bad_claim_date(claim_text(m)):
             problems.append(f"{m['_path']}: claim has an invalid date: {claim_text(m)}")
-        if m["_lines"] > MAX_MAP_LINES and status_of(m) != "closed":   # STYLE: a live map stays short; detail lives in its tickets
-            problems.append(f"{m['_path']}: {m['_lines']} lines (max {MAX_MAP_LINES}): move detail into its tickets, keep "
-                            f"one line and a link per finding")
+        if m["_chars"] > MAX_MAP_CHARS and status_of(m) != "closed":   # STYLE: a live map stays short; detail lives in its tickets
+            problems.append(f"{m['_path']}: {m['_chars']:,} characters (max {MAX_MAP_CHARS:,}): move detail into its "
+                            f"tickets, keep one line and a link per finding")
         fr = []
         for k in m["_tickets"]:
             for f in ("id", "title", "type", "status"):
@@ -335,16 +338,22 @@ def render_page(project, maps):
     return "\n".join(out) + "\n"
 
 
+def waiting(maps):
+    """What waits on the human, as (map id, text, key): each open grilling or prototype ticket (key: its path) and each
+    open item of an old map's `Needs you` (key: its text). team-watch pushes each key to the human once."""
+    out = [(m.get("id"), f"{k.get('title')} ({k['_path']})", k["_path"]) for m in maps for k in m["_tickets"]
+           if type_of(k) in HITL and status_of(k) not in CLOSED | HUMAN_ONLY]   # held: the human parked it
+    return out + [(m.get("id"), n, n) for m in maps for n in m["_needs"]]
+
+
 def render_now(maps, frontier, problems):
     """What is live: printed, never stored."""
     out = []
-    waiting = [(m.get("id"), f"{k.get('title')} ({k['_path']})") for m in maps for k in m["_tickets"]
-               if type_of(k) in HITL and status_of(k) not in CLOSED | HUMAN_ONLY]   # held: the human parked it
-    waiting += [(m.get("id"), n) for m in maps for n in m["_needs"]]
+    asks = waiting(maps)
     out.append("Waiting on you:")
-    out += [f"  {mid}  {w}" for mid, w in waiting[:MAX_WAITING]] or ["  nothing open"]
-    if len(waiting) > MAX_WAITING:
-        out.append(f"  … {len(waiting) - MAX_WAITING} more")
+    out += [f"  {mid}  {w}" for mid, w, _ in asks[:MAX_WAITING]] or ["  nothing open"]
+    if len(asks) > MAX_WAITING:
+        out.append(f"  … {len(asks) - MAX_WAITING} more")
     running = [k for m in maps for k in m["_tickets"] if status_of(k) in ACTIVE]
     out.append("Running / claimed:")
     for k in running:
@@ -369,11 +378,19 @@ def main():
     ap.add_argument("--now", action="store_true")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--frontier", action="store_true")
+    ap.add_argument("--map")
     a = ap.parse_args()
     maps = load(a.project)
     if not maps:
         sys.exit(f"no maps/*/map.md under {os.path.abspath(a.project)}")
     problems, frontier = analyse(maps)
+    if a.map:                             # one map's problems and frontier; the graph is still checked whole
+        one = next((m for m in maps if a.map in (m.get("id"), os.path.basename(os.path.dirname(m["_path"])))), None)
+        if not one:
+            sys.exit(f"no map `{a.map}` (ids: {', '.join(str(m.get('id')) for m in maps)})")
+        mine = (os.path.dirname(one["_path"]) + os.sep, f"{one.get('id')}-")
+        problems = [p for p in problems if any(x in p for x in mine)]
+        frontier = {one.get("id"): frontier.get(one.get("id"))}
     if a.check:
         print("\n".join(problems) if problems else "ok")
         sys.exit(1 if problems else 0)

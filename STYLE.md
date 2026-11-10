@@ -53,7 +53,7 @@
 
 ## Docs upkeep
 - `STATUS.md` is generated: after opening, re-charting, pausing or closing a map, run `research-status`. Never hand-edit it.
-- Each `map.md` (≤80 lines) is **rewritten** to stay current,
+- Each `map.md` (≤12,000 characters; `research-status --check` counts) is **rewritten** to stay current,
   not appended to. A fact lives in one place (usually a ticket); everything above it is a one-line gist and a link.
 - When a finding changes, update its tag in the map; when a ticket's approach dies, its answer says so and its line in the
   map's Decisions so far shows it. Consolidate closed tickets rather than letting indexes grow.
