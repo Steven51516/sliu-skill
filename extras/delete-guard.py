@@ -9,7 +9,8 @@ The timer acts only when the call is still unanswered in the session's transcrip
 a prompt; outside herdr the prompt simply waits. It never approves anything. Actions: ~/.local/state/delete-guard.log.
 
 Install in ~/.claude/settings.json under "hooks":
-  "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/research-harness/tools/delete-guard.py"}]}]
+  "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/research-harness/extras/delete-guard.py"}]}]
+An optional extra (README, "Optional extras"): no skill relies on it.
 """
 import json
 import os

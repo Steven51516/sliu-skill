@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Your own setup is kept out of the workflow:** `trash` and `delete-guard` moved to `extras/`, used by no skill
+  (`install.sh --extras`; a trash link an earlier install made is kept up to date). `STYLE.md`'s delete rule names no
+  tool; the team docs say alerts go to your alert command, not to a phone. README: "Optional extras".
 - **`team-watch`** reads silence per driver, from that driver's own session, and no longer restarts a silent driver:
   the human gets one alert. All 15 resumes in its history were for "no pass logged for 90 min" on the shared
   `driver.log`, none for a safeguard stop; each moved a waiting driver to Sonnet 5.5, one driver wrote 24 hourly

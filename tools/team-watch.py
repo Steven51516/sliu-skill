@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """team-watch: the watch tab's supervisor. Prints the driver's log as it grows, resumes a driver or worker stopped by
-Claude's safeguards on Sonnet 5.5, and sends what needs the human to their phone, once each.
+Claude's safeguards on Sonnet 5.5, and passes what needs the human to their alert command, once each.
 
 Usage (from the project folder, inside herdr):  team-watch                 every driver on scratch/agents/roster.md
                                                 team-watch <map> <driver pane> [agent name]   one driver
@@ -20,7 +20,7 @@ another driver's line would hide it. A silent driver is not restarted and not pr
 and until 11-10 all 15 resumes were of such drivers, each moved to Sonnet): the human gets one alert per silence. A
 driver whose map is paused is not reported.
 
-Questions for the human go to their phone once each: every open grilling or prototype ticket of a map that is neither
+Questions for the human go to the alert command once each: every open grilling or prototype ticket of a map that is neither
 paused nor closed, and every new driver.log line that says `needs-you` (unless it names a ticket already sent). What
 was sent is kept in scratch/agents/team-watch.pushed, so restarting the watch sends nothing twice.
 
@@ -126,7 +126,7 @@ NOTIFY = os.path.expanduser("~/.config/research-harness/notify")   # optional: y
 
 
 def alert(text):
-    """note(), plus your own alert for a give-up: the command in ~/.config/research-harness/notify, if any, with the
+    """note(), plus the human's own alert: the command in ~/.config/research-harness/notify, if any, with the
     message added as its last argument (e.g. `ntfy publish <topic>`, or a phone app's notify command). Best effort."""
     note(text)
     try:

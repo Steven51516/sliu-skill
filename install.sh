@@ -13,7 +13,13 @@ chmod +x "$HERE/tools/status.py"; ln -sfn "$HERE/tools/status.py" "$HOME/.local/
 chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.local/bin/codex-run"
 chmod +x "$HERE/tools/team-watch.py"; ln -sfn "$HERE/tools/team-watch.py" "$HOME/.local/bin/team-watch"
 chmod +x "$HERE/tools/team-worker.py"; ln -sfn "$HERE/tools/team-worker.py" "$HOME/.local/bin/team-worker"
-chmod +x "$HERE/tools/trash.py" "$HERE/tools/delete-guard.py"; ln -sfn "$HERE/tools/trash.py" "$HOME/.local/bin/trash"
+# Optional extras (extras/, README "Optional extras"): `trash`, a delete that can be undone, and the delete-guard hook.
+# Off unless asked for (`install.sh --extras`); a trash link an earlier install made is kept pointing at the right file.
+case "$(readlink "$HOME/.local/bin/trash" 2>/dev/null)" in "$HERE"/*|"$HOME/research-harness"/*) EXTRAS=1;; *) EXTRAS=0;; esac
+if [[ "${1:-}" == "--extras" || $EXTRAS == 1 ]]; then
+  chmod +x "$HERE/extras/trash.py" "$HERE/extras/delete-guard.py"; ln -sfn "$HERE/extras/trash.py" "$HOME/.local/bin/trash"
+  echo "extras: trash on PATH (the delete-guard hook goes into ~/.claude/settings.json by hand: extras/delete-guard.py)"
+fi
 for t in "$HERE"/tools/local/*; do   # your own tools (tools/local/, gitignored), on PATH without their extension
   [[ -f "$t" ]] || continue; chmod +x "$t"; ln -sfn "$t" "$HOME/.local/bin/$(basename "${t%.*}")"
 done

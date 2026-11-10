@@ -9,7 +9,7 @@ The roles run the same skills as a single session, with two swaps:
 - **"use implementer subagents"** (the driver): open a worker per ticket (below). A worker runs `research-work` in a
   session of its own, so it can open subagents itself (a subagent cannot), and the human can watch or answer it in its tab.
 - **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>` and writes the same
-  line once in `driver.log`, from where `team-watch` sends it to the human's phone; a worker sends the
+  line once in `driver.log`, from where `team-watch` passes it once to the human's alert command, if one is set; a worker sends the
   driver `ask` and keeps working (`blocked` once nothing is left that doesn't need the answer), and the driver tells the desk. The desk puts it to the human (STYLE.md) and relays
   the answer to the driver.
 
@@ -96,6 +96,6 @@ sessions of a team run on the same machine.
   session on Sonnet 5.5, keeping its chat, at most 3 times; a worker is rescued once the same way. A driver waiting on
   a permission prompt is left for the human. A driver idle with nothing written by its own session for 90 minutes has
   lost its loop: it is not restarted, the human gets one alert (so a pass written only to look alive is never needed).
-  Each open `grilling` or `prototype` ticket and each `needs-you` line in `driver.log` goes to the human's phone once
-  (`~/.config/research-harness/notify`).
+  Each open `grilling` or `prototype` ticket and each `needs-you` line in `driver.log` goes once to the human's alert
+  command (`~/.config/research-harness/notify`, if set).
 - Long GPU jobs run detached on the server per the scope file, never inside any of these sessions.

@@ -19,8 +19,8 @@ You are the human's partner for this project for the rest of the session: the on
   If no driver is listed, say so and suggest starting one.
   If no `team-watch` is running for this project (its heartbeat `scratch/agents/team-watch.pid` is missing or over 10
   minutes old), tell the human to start it in a spare tab
-  (`caffeinate -dimsu team-watch`) before leaving the team unattended: it resumes a driver or worker stopped by a safeguard, sends what
-  needs the human to their phone once (an open question, a driver gone silent), and a Codex driver runs only when it ticks.
+  (`caffeinate -dimsu team-watch`) before leaving the team unattended: it resumes a driver or worker stopped by a safeguard, passes what
+  needs the human to their alert command once (an open question, a driver gone silent), and a Codex driver runs only when it ticks.
 - Then, on every turn: discuss with the human from the files (STATUS, maps, tickets, run cards and other records): what a
   result means, what to diagnose next, whether the route still holds. Name tickets by their question. Turn each decision
   into one driver instruction from the protocol (`hold`, `release`, `reopen`, `new`, `rechart`, `pause`, `resume`, `stop`)

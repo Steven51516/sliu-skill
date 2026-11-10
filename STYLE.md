@@ -20,9 +20,8 @@
 - A single ticket over ~5 GPU-hours, a batch over ~40 GPU-hours, or one submission or sweep over **50 GPU-hours** (edit
   these), plus any limit the project's scope file adds.
 - Changing a stop criterion after the fact, or a map's destination or Contract (benchmark, baselines, what may be done without asking) once results exist.
-- Deleting or overwriting data, results, checkpoints or code outside `scratch/` (a `trash` move is not a delete: do it without
-  asking; `delete-guard` asks for a real recursive delete and, unanswered for 15 min, turns it into a `trash` move) (rewriting a map or ticket record is routine;
-  consolidating tickets is not deleting); the request names what can no
+- Deleting or overwriting data, results, checkpoints or code outside `scratch/` (a move the human can undo is not a delete;
+  rewriting a map or ticket record is routine; consolidating tickets is not deleting); the request names what can no
   longer be resumed or reproduced afterwards.
 - Pushing to a repository the human does not own, posting anything externally, or emailing.
 - Opening a network listener, relay or remote command channel on a shared machine.

@@ -10,6 +10,7 @@ instant rename, never a copy. Emptying the trash is the human's call.
 Every move is a line in ~/.local/state/trash.log (tab-separated: UTC time, action, original path, trash path), so the
 trash can be found again from any folder. A path that cannot be renamed in place (a mount point, no write access to its
 folder) is left alone with an error: ask the human.
+An optional extra (README, "Optional extras"; `install.sh --extras` puts it on PATH): no skill relies on it.
 """
 import calendar
 import os

@@ -83,7 +83,7 @@ def main():
                 continue                              # a template placeholder, a URL, an anchor or an absolute path
             if not (doc.parent / path).exists():
                 problems.append(f"{doc.relative_to(ROOT)}: link to a missing file `{target}`")
-    for py in sorted(files("tools/**/*.py") + files("scripts/*.py") + files("skills/**/*.py")):
+    for py in sorted(files("tools/**/*.py") + files("extras/*.py") + files("scripts/*.py") + files("skills/**/*.py")):
         try:
             compile(py.read_text(), str(py), "exec")
         except SyntaxError as e:
