@@ -9,9 +9,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   (`--remove`) by `research-preset` or `install.sh --preset <name>`: `alerts` (`extras/notify.py` routes each alert by
   kind: a Moshi push and a Mac sound by default), `safe-deletes` (`trash`, the `delete-guard` hook and a rule for Claude
   and Codex), `team-hooks` (the roster hook), `claude-codex` (a project's delegation rows: work in your field that
-  Claude's safeguards often stop, and large reviews, go to Codex at xhigh) and `recommended` (all four).
-  `research-init` asks: for delegation, the `claude-codex` preset, none, or your own rules; once per machine, the
-  machine presets not yet applied.
+  Claude's safeguards often stop, and large reviews, go to Codex at xhigh; an option, not in `recommended`) and
+  `recommended` (alerts, safe-deletes, team-hooks). `research-init` asks: for delegation, all Claude (the default), the
+  `claude-codex` preset, or your own rules; once per machine, the machine presets not yet applied. With no rule,
+  delegated work and reviews go to a Claude subagent.
 - **`team-watch`** gives each alert a kind in `RH_EVENT` (`question`, `silent`, `gave-up`), and expands `~` in every word
   of your alert command.
 - **Your own setup is kept out of the workflow:** `trash` and `delete-guard` moved to `extras/`, used by no skill (a

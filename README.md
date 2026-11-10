@@ -250,8 +250,8 @@ links on your PATH, and, per project, rows in `docs/agents/delegation.md`.
 | `alerts` | `team-watch`'s alerts routed by kind (`extras/notify.py`): a phone push through [Moshi](https://getmoshi.app)'s `moshi-hook` and a Mac sound for an open question, a silent driver or a give-up; other channels (a banner, ntfy, a chat bot) by editing `~/.config/research-harness/notify.json` |
 | `safe-deletes` | `trash` on your PATH (`extras/trash.py`: a delete that can be undone), the `delete-guard` hook (`extras/delete-guard.py`: a recursive delete asks you and, unanswered for 15 min, is declined with a pointer to `trash`, so an unattended session never sits at the prompt), and a rule telling Claude and Codex to use them |
 | `team-hooks` | the roster hook: a team session that restarts under a new name updates the roster |
-| `claude-codex` | per project (`--project <dir> --topic <field>`): Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps go to a Sonnet subagent |
-| `recommended` | the author's setup: all four |
+| `claude-codex` | an option per project (`--project <dir> --topic <field>`); without it, delegation is all Claude. Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps go to a Sonnet subagent |
+| `recommended` | `alerts`, `safe-deletes` and `team-hooks`; delegation stays all Claude |
 
 **Alerts without the preset:** `team-watch` runs the command in `~/.config/research-harness/notify`, if that file exists,
 with the message as its last argument and its kind (`question`, `silent`, `gave-up`) in `RH_EVENT`. Without it, alerts

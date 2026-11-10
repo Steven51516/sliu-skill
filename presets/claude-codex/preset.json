@@ -1,5 +1,5 @@
 {
-  "about": "per project: Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps to a Sonnet subagent",
+  "about": "per project, an option (the default is all Claude): Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps to a Sonnet subagent",
   "delegation": "delegation.md",
   "needs": ["codex"]
 }
