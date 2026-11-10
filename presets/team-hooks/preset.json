@@ -1,0 +1,5 @@
+{
+  "about": "team mode on Claude Code: a team session that restarts under a new name updates the roster",
+  "hooks": {"SessionStart": [{"hooks": [
+    {"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}]}]}
+}

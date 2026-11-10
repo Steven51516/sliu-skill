@@ -1,0 +1,13 @@
+{
+  "channels": {
+    "push": {"run": "~/.local/bin/moshi-hook notify --source team-watch --title \"research: needs you\"", "message": true},
+    "sound": {"run": "afplay /System/Library/Sounds/Glass.aiff", "message": false},
+    "banner": {"run": "osascript -e \"on run argv\" -e \"display notification (item 1 of argv) with title \\\"research\\\"\" -e \"end run\"", "message": true}
+  },
+  "events": {
+    "question": ["push", "sound"],
+    "silent": ["push", "sound"],
+    "gave-up": ["push", "sound"],
+    "other": ["push"]
+  }
+}

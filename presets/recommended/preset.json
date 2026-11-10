@@ -1,0 +1,4 @@
+{
+  "about": "the author's setup: alerts, safe-deletes and team-hooks; with --project and --topic, claude-codex too",
+  "includes": ["alerts", "safe-deletes", "team-hooks", "claude-codex"]
+}

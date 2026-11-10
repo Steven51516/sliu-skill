@@ -11,3 +11,6 @@ scopes/
 
 # Rejected ideas, kept for this machine's agents only
 .out-of-scope/
+
+# trash moves (tools: extras/trash.py) land in a .trash/ folder beside the path
+.trash/

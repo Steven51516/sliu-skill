@@ -13,13 +13,12 @@ chmod +x "$HERE/tools/status.py"; ln -sfn "$HERE/tools/status.py" "$HOME/.local/
 chmod +x "$HERE/tools/codex-run.sh"; ln -sfn "$HERE/tools/codex-run.sh" "$HOME/.local/bin/codex-run"
 chmod +x "$HERE/tools/team-watch.py"; ln -sfn "$HERE/tools/team-watch.py" "$HOME/.local/bin/team-watch"
 chmod +x "$HERE/tools/team-worker.py"; ln -sfn "$HERE/tools/team-worker.py" "$HOME/.local/bin/team-worker"
-# Optional extras (extras/, README "Optional extras"): `trash`, a delete that can be undone, and the delete-guard hook.
-# Off unless asked for (`install.sh --extras`); a trash link an earlier install made is kept pointing at the right file.
-case "$(readlink "$HOME/.local/bin/trash" 2>/dev/null)" in "$HERE"/*|"$HOME/research-harness"/*) EXTRAS=1;; *) EXTRAS=0;; esac
-if [[ "${1:-}" == "--extras" || $EXTRAS == 1 ]]; then
-  chmod +x "$HERE/extras/trash.py" "$HERE/extras/delete-guard.py"; ln -sfn "$HERE/extras/trash.py" "$HOME/.local/bin/trash"
-  echo "extras: trash on PATH (the delete-guard hook goes into ~/.claude/settings.json by hand: extras/delete-guard.py)"
-fi
+chmod +x "$HERE/tools/preset.py"; ln -sfn "$HERE/tools/preset.py" "$HOME/.local/bin/research-preset"
+# Optional setup lives in presets/ (README "Presets and extras"): `install.sh --preset <name>` applies one at the end.
+# A trash link an earlier install made (before trash moved to extras/) is kept pointing at the right file.
+case "$(readlink "$HOME/.local/bin/trash" 2>/dev/null)" in
+  "$HERE"/*|"$HOME/research-harness"/*) chmod +x "$HERE/extras/trash.py"; ln -sfn "$HERE/extras/trash.py" "$HOME/.local/bin/trash";;
+esac
 for t in "$HERE"/tools/local/*; do   # your own tools (tools/local/, gitignored), on PATH without their extension
   [[ -f "$t" ]] || continue; chmod +x "$t"; ln -sfn "$t" "$HOME/.local/bin/$(basename "${t%.*}")"
 done
@@ -30,6 +29,7 @@ for d in "$DEST" "$AGENTS_DEST"; do for l in "$d"/*; do
   case "$(readlink "$l")" in "$HERE"/*|"$HOME/research-harness"/*) rm "$l"; echo "removed stale $(basename "$l")";; esac
 done; done
 chmod +x "$HERE"/skills/*/*/*.sh 2>/dev/null || true
+if [[ "${1:-}" == "--preset" ]]; then PRESET="${2:?usage: install.sh --preset <name>  (research-preset lists them)}"; else PRESET=""; fi
 for s in "$HERE"/skills/*/*/; do
   name="$(basename "$s")"
   target="$DEST/$name"
@@ -46,3 +46,5 @@ for s in "$HERE"/skills/*/*/; do
   else ln -s "${s%/}" "$target"; echo "linked  $name (codex)"
   fi
 done
+[[ -n "$PRESET" ]] && python3 "$HERE/tools/preset.py" "$PRESET"
+exit 0

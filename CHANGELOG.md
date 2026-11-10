@@ -5,9 +5,18 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
-- **Your own setup is kept out of the workflow:** `trash` and `delete-guard` moved to `extras/`, used by no skill
-  (`install.sh --extras`; a trash link an earlier install made is kept up to date). `STYLE.md`'s delete rule names no
-  tool; the team docs say alerts go to your alert command, not to a phone. README: "Optional extras".
+- **Presets:** optional setup comes as named presets (`presets/`), applied, shown (`--dry-run`) and taken out
+  (`--remove`) by `research-preset` or `install.sh --preset <name>`: `alerts` (`extras/notify.py` routes each alert by
+  kind: a Moshi push and a Mac sound by default), `safe-deletes` (`trash`, the `delete-guard` hook and a rule for Claude
+  and Codex), `team-hooks` (the roster hook), `claude-codex` (a project's delegation rows: work in your field that
+  Claude's safeguards often stop, and large reviews, go to Codex at xhigh) and `recommended` (all four).
+  `research-init` asks: for delegation, the `claude-codex` preset, none, or your own rules; once per machine, the
+  machine presets not yet applied.
+- **`team-watch`** gives each alert a kind in `RH_EVENT` (`question`, `silent`, `gave-up`), and expands `~` in every word
+  of your alert command.
+- **Your own setup is kept out of the workflow:** `trash` and `delete-guard` moved to `extras/`, used by no skill (a
+  trash link an earlier install made is kept up to date). `STYLE.md`'s delete rule names no tool; the team docs say
+  alerts go to your alert command, not to a phone.
 - **`team-watch`** reads silence per driver, from that driver's own session, and no longer restarts a silent driver:
   the human gets one alert. All 15 resumes in its history were for "no pass logged for 90 min" on the shared
   `driver.log`, none for a safeguard stop; each moved a waiting driver to Sonnet 5.5, one driver wrote 24 hourly

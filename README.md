@@ -52,8 +52,9 @@ git clone https://github.com/Steven51516/sliu-skill ~/research-harness
 
 `install.sh` links every skill into `~/.claude/skills` (Claude Code) and `~/.agents/skills` (Codex), puts the commands on
 your PATH (`research-status`, `codex-run`, `team-up`, `team-worker`, `team-watch`,
-`research-gui`, and anything in `tools/local/`; `--extras` adds [the optional extras](#optional-extras)), and removes links left by skills that were removed or renamed. Nothing is copied: edit a file here and
-every project sees it. Safe to rerun.
+`research-gui`, `research-preset`, and anything in `tools/local/`), and removes links left by skills that were removed or renamed. Nothing is copied: edit a file here and
+every project sees it. Safe to rerun. Optional setup (safe deletes, hooks, a Claude–Codex split) comes as
+[presets](#presets-and-extras): `install.sh --preset recommended`, or one at a time.
 
 Then, in Claude Code:
 
@@ -186,7 +187,8 @@ The skills are plain markdown and work in Codex too: `install.sh` links them int
 
 **Mixing the two:** a Claude Code session can hand work to Codex with `codex-run` (every call carries the same model,
 effort and sandbox, checks its exit code and answer, and strips tokens from the environment); which work goes there is a
-per-project rule in `docs/agents/delegation.md` (the author sends biology-heavy coding, analysis and reviews to Codex).
+per-project rule in `docs/agents/delegation.md` (the author sends biology-heavy coding, analysis and reviews to Codex:
+the `claude-codex` preset).
 A **team** is all Claude Code or all Codex, never mixed: `team-up --codex <map>`, or pick Codex in the Research Desk's
 Start team. The flags every Codex team session starts with are in `tools/codex-team.args` (model, workspace-write sandbox
 with network, never ask for approval; medium effort for the desk and driver, xhigh for workers).
@@ -210,8 +212,9 @@ Setup, once:
    there.
 4. Optional, Claude Code: add the roster hook to `~/.claude/settings.json` under `hooks.SessionStart`, so a team session
    that restarts under a new name updates the roster:
-   `{"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}`.
-   For unattended sessions, see `delete-guard` in [Optional extras](#optional-extras).
+   `{"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}`
+   (or `research-preset team-hooks`). For unattended sessions, the `safe-deletes` preset keeps a recursive delete from
+   stalling one ([Presets and extras](#presets-and-extras)).
 
 5. Optional, to save tokens, in `~/.claude/settings.json`: `"autoCompactWindow": 400000`, so long sessions compact at
    400k tokens instead of near the model's full window (every call re-reads the context); and in its `env` block,
@@ -221,7 +224,7 @@ Setup, once:
 Then, from a herdr pane in the project folder: `team-up <map>` (Claude Code, Opus) or `team-up --codex <map>`. It opens
 tabs **A desk**, **B driver** and **watch**; talk to the desk. The watch tab runs `team-watch`: it shows the driver's
 log, resumes a Claude driver or worker stopped by a safeguard in its own session (on Sonnet), passes each open question
-and each driver gone silent for 90 minutes to your alert command once (see [Optional extras](#optional-extras)), and is
+and each driver gone silent for 90 minutes to your alert command once (see [Presets and extras](#presets-and-extras)), and is
 a Codex driver's schedule. Keep the machine awake while a team runs (`team-up` wraps the watch in `caffeinate` on macOS).
 
 ## Research Desk app (optional, macOS)
@@ -233,19 +236,26 @@ any agent (Claude Code or Codex), terminals, GPUs, and Start team with a click (
 sounds or a Moshi phone push. `tools/gui/README.md` has the details. It is built for macOS (Keychain logins, banners);
 other systems are untested.
 
-## Optional extras
+## Presets and extras
 
-The workflow names no alert app and no delete tool: these plug in from outside, and none is needed.
+The workflow names no alert app, no delete tool and no second agent: these plug in from outside, and none is needed.
+A **preset** bundles one such choice. `research-preset` lists them and whether each is applied here;
+`research-preset <name> --dry-run` shows what it would change, `research-preset <name>` applies it (also
+`install.sh --preset <name>`), `--remove` takes it out again. It adds hooks to `~/.claude/settings.json` (never twice;
+the old file is kept beside it), rules between marker lines in your own `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`,
+links on your PATH, and, per project, rows in `docs/agents/delegation.md`.
 
-- **Alerts:** `team-watch` runs the command in `~/.config/research-harness/notify`, if that file exists, with the
-  message as its last argument: a phone push, a banner, a sound, a chat message, whatever you choose. Without it, alerts
-  stay in `driver.log`.
-- **`trash`** (`extras/trash.py`; `install.sh --extras` puts it on your PATH): a delete that can be undone. If you want
-  agents to use it, say so in your own instructions (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`), not in `STYLE.md`.
-- **`delete-guard`** (`extras/delete-guard.py`, Claude Code): a recursive delete asks you and, unanswered for 15 min, is
-  declined with a pointer to `trash`, instead of leaving an unattended session stuck at the prompt. Under
-  `hooks.PreToolUse` in `~/.claude/settings.json`:
-  `{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/research-harness/extras/delete-guard.py", "timeout": 10}]}`.
+| preset | what it adds |
+|---|---|
+| `alerts` | `team-watch`'s alerts routed by kind (`extras/notify.py`): a phone push through [Moshi](https://getmoshi.app)'s `moshi-hook` and a Mac sound for an open question, a silent driver or a give-up; other channels (a banner, ntfy, a chat bot) by editing `~/.config/research-harness/notify.json` |
+| `safe-deletes` | `trash` on your PATH (`extras/trash.py`: a delete that can be undone), the `delete-guard` hook (`extras/delete-guard.py`: a recursive delete asks you and, unanswered for 15 min, is declined with a pointer to `trash`, so an unattended session never sits at the prompt), and a rule telling Claude and Codex to use them |
+| `team-hooks` | the roster hook: a team session that restarts under a new name updates the roster |
+| `claude-codex` | per project (`--project <dir> --topic <field>`): Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps go to a Sonnet subagent |
+| `recommended` | the author's setup: all four |
+
+**Alerts without the preset:** `team-watch` runs the command in `~/.config/research-harness/notify`, if that file exists,
+with the message as its last argument and its kind (`question`, `silent`, `gave-up`) in `RH_EVENT`. Without it, alerts
+stay in `driver.log`.
 
 ## Make it yours
 
@@ -346,10 +356,11 @@ STYLE.md     your rules for every project (honesty, what always needs your OK, c
 scopes/      your machine files (gitignored); research-init/SCOPE-FORMAT.md says what a scope answers
 templates/   project scaffold research-init writes: AGENTS.md, CLAUDE.md, STATUS.md, docs/decisions.md
              (seeds for docs/agents/ live in skills/core/research-init/)
-tools/       status.py (research-status) · codex-run.sh · local/ (your own, gitignored)
+tools/       status.py (research-status) · codex-run.sh · preset.py (research-preset) · local/ (your own, gitignored)
              team-up.sh · team-worker.py · team-watch.py · codex-team.args · team-roster-hook.py (team mode)
              gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
-extras/      optional, used by no skill: trash.py · delete-guard.py (README, Optional extras)
+presets/     optional setup, one folder per preset (preset.json and the files it adds); research-preset applies them
+extras/      optional tools no skill relies on: trash.py · delete-guard.py (the safe-deletes preset)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 scripts/     check.py: the structural checks CI runs on every push (.github/workflows/check.yml)

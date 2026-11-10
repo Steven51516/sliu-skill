@@ -8,11 +8,13 @@
 - every relative link in a skill's markdown files points to a file that exists (template placeholders, `[<...>](...)`,
   are skipped)
 - every Python tool compiles and every shell script parses (`bash -n`)
-- the README names every skill
+- every preset (presets/<name>/preset.json) parses, has an `about`, and names only presets and files that exist
+- the README names every skill and every preset
 - Research Desk never floods a remote host with ssh (tools/gui/tests/remote_calls_test.py, ~20 s)
 - every skill another file calls by name (`Skill tool with "x"`, "the `x` skill", `/x` in a code span or a prompt string)
   exists in git: a removed, renamed or local-only skill fails here instead of in a user's session
 """
+import json
 import pathlib
 import re
 import subprocess
@@ -94,6 +96,26 @@ def main():
             problems.append(f"{sh.relative_to(ROOT)}: does not parse: {r.stderr.strip()[:200]}")
     readme = (ROOT / "README.md").read_text()
     problems += [f"README.md: skill `{n}` is not named" for n in names if f"`{n}`" not in readme]
+    for pj in sorted(files("presets/*/preset.json")):
+        rel, name = pj.relative_to(ROOT), pj.parent.name
+        try:
+            m = json.loads(pj.read_text())
+        except ValueError as e:
+            problems.append(f"{rel}: not valid JSON: {e}")
+            continue
+        if not m.get("about"):
+            problems.append(f"{rel}: no `about`")
+        if f"`{name}`" not in readme:
+            problems.append(f"README.md: preset `{name}` is not named")
+        problems += [f"{rel}: includes `{i}`, which is not a preset" for i in m.get("includes", [])
+                     if not (ROOT / "presets" / i / "preset.json").exists()]
+        problems += [f"{rel}: `{k}` file `{m[k]}` is missing" for k in ("claude_md", "codex_md", "delegation")
+                     if m.get(k) and not (pj.parent / m[k]).exists()]
+        problems += [f"{rel}: `{c}` links to `{p}`, which is missing" for c, p in m.get("path", {}).items() if not (ROOT / p).exists()]
+        problems += [f"{rel}: file `{s}` for `{d}` is missing" for d, s in m.get("files", {}).items() if not (pj.parent / s).exists()]
+        cmds = [h.get("command", "") for gs in m.get("hooks", {}).values() for g in gs for h in g.get("hooks", [])]
+        problems += [f"{rel}: hook runs `{t}`, which is missing" for c in cmds for t in c.split()
+                     if "research-harness/" in t and not (ROOT / t.split("research-harness/", 1)[1]).exists()]
     docs = [f for f in files("**/*.md") if f.name != "CHANGELOG.md"]   # the changelog names removed skills on purpose
     code = files("tools/**/*.py") + files("tools/**/*.sh") + files("tools/gui/web/js/*.js")
     for f in sorted(docs + code):

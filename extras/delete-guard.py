@@ -10,7 +10,7 @@ a prompt; outside herdr the prompt simply waits. It never approves anything. Act
 
 Install in ~/.claude/settings.json under "hooks":
   "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/research-harness/extras/delete-guard.py"}]}]
-An optional extra (README, "Optional extras"): no skill relies on it.
+Optional (README, "Presets and extras"; the `safe-deletes` preset installs it): no skill relies on it.
 """
 import json
 import os

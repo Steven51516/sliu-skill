@@ -29,6 +29,7 @@ Look at the target folder to understand its starting state. Read whatever exists
 - `GLOSSARY.md` and `docs/decisions.md` at the root, and the legacy `CONTEXT.md` / `CONTEXT-MAP.md`. If a legacy file exists, offer to `git mv` it to its `GLOSSARY` name and rewrite those names in `docs/agents/domain.md`.
 - Parent folders' `CLAUDE.md` (walk up from the target): does one already import a scope file (an org's server rules)? Your own scopes are in `~/research-harness/scopes/` (gitignored), plus any a parent imports
 - `codex --version`, `claude --version`: which agents can take a role
+- `research-preset`: which optional presets this machine has (they change the machine, not the project)
 
 ### 2. Present findings and ask
 
@@ -55,9 +56,11 @@ A GitHub or GitLab tracker needs a reachable repo. When the user picks one and n
 
 Record the choice in `docs/agents/issue-tracker.md`.
 
-**Section D: Delegation.** Where delegated work goes: who writes code, runs analyses, reads papers and reviews results. Default to [delegation.md](delegation.md) with no rules: each session decides whether to delegate and to whom. If the user has rules (by topic, by kind of work, or by role, e.g. "biology-related coding, analysis, paper reading and review go to Codex"), write each as a row, with the agent's model and effort.
+**Section D: Delegation.** Where delegated work goes: who writes code, runs analyses, reads papers and reviews results. Three options, the first recommended when both `claude` and `codex` are installed, else the second: **the `claude-codex` preset** (Claude drives; work in the field that Claude's safeguards often stop, plus reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps to a Sonnet subagent; ask for the field, then after writing the docs run `research-preset claude-codex --project <dir> --topic <field>`), **none** ([delegation.md](delegation.md) with no rules: each session decides whether to delegate and to whom), or **your own** (rules by topic, by kind of work or by role, e.g. "biology-related coding, analysis, paper reading and review go to Codex": write each as a row, with the agent's model and effort; they can sit beside the preset's rows).
 
 **Section E: Domain docs.** Default to one `GLOSSARY.md` + `docs/decisions.md` at the project root. Write it without asking.
+
+**Section F: This machine's presets.** Only when `research-preset` showed some not applied, and only once per machine: three options, **apply `recommended`** (alerts, safe deletes, team hooks; its project part is Section D), **pick some**, or **none**. Show the lines of `research-preset <name> --dry-run` before applying; they change this machine (your settings and instruction files), not the project.
 
 ### 3. Confirm and edit
 

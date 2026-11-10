@@ -32,8 +32,9 @@ Workers (the Claude tabs team-worker opened in the watched drivers' workspaces) 
 safeguards stopped is resumed once with `team-worker --rescue`, so it does not wait for the driver's next pass (up to an
 hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line.
 
-An alert (a give-up, a silent driver, a question) runs the command in ~/.config/research-harness/notify, if that file
-exists, with the message as its last argument: your own phone or desktop alert. Without it, alerts go only to driver.log.
+An alert runs the command in ~/.config/research-harness/notify, if that file exists, with the message as its last
+argument and its kind in RH_EVENT: `question`, `silent` or `gave-up`. Your command routes it (a phone push, a sound, a
+banner; the `alerts` preset installs one that routes by kind). Without the file, alerts go only to driver.log.
 Every action is logged to driver.log.
 """
 import datetime as dt
@@ -125,9 +126,10 @@ def transcript(session_id):
 NOTIFY = os.path.expanduser("~/.config/research-harness/notify")   # optional: your own alert command
 
 
-def alert(text):
+def alert(text, kind="other"):
     """note(), plus the human's own alert: the command in ~/.config/research-harness/notify, if any, with the
-    message added as its last argument (e.g. `ntfy publish <topic>`, or a phone app's notify command). Best effort."""
+    message added as its last argument and the kind in RH_EVENT (question, silent, gave-up), so the command can route
+    it (e.g. extras/notify.py, the `alerts` preset; or `ntfy publish <topic>`). Best effort."""
     note(text)
     try:
         cmd = shlex.split(open(NOTIFY).read().strip())
@@ -135,7 +137,8 @@ def alert(text):
         return
     if cmd:
         try:
-            subprocess.run([os.path.expanduser(cmd[0]), *cmd[1:], text], capture_output=True, timeout=60)
+            subprocess.run([os.path.expanduser(c) for c in cmd] + [text], capture_output=True, timeout=60,
+                           env={**os.environ, "RH_EVENT": kind})
         except (OSError, subprocess.SubprocessError):
             pass
 
@@ -153,11 +156,11 @@ def save_pushed(pushed):
     os.replace(PUSHED + ".tmp", PUSHED)
 
 
-def push_once(key, text, pushed):
+def push_once(key, text, pushed, kind):
     """alert() the human, unless this key was sent before (by this watch or an earlier one)."""
     if key not in pushed:
         pushed.add(key)
-        alert(text)
+        alert(text, kind)
 
 
 def push_questions(maps, pushed):
@@ -168,10 +171,10 @@ def push_questions(maps, pushed):
            if mid not in quiet and f"ask {key}" not in pushed]
     if len(new) > 3:
         pushed.update(key for _, _, key in new)
-        alert(f"{len(new)} questions wait on you ({', '.join(sorted({str(mid) for mid, _, _ in new}))}): research-status --now")
+        alert(f"{len(new)} questions wait on you ({', '.join(sorted({str(mid) for mid, _, _ in new}))}): research-status --now", "question")
         return
     for mid, text, key in new:
-        push_once(key, f"needs you ({mid}): {text}"[:400], pushed)
+        push_once(key, f"needs you ({mid}): {text}"[:400], pushed, "question")
 
 
 def asked(maps):
@@ -185,7 +188,8 @@ def push_needs(lines, pushed, covered=()):
     for line in lines:
         m = NEEDS.search(line)
         if m and "watchdog:" not in line and not NO_NEEDS.search(line) and not any(c.lower() in line.lower() for c in covered):
-            push_once("log " + STAMP.sub("", line)[:160], "driver.log: …" + line[max(0, m.start() - 160):m.start() + 240], pushed)
+            push_once("log " + STAMP.sub("", line)[:160], "driver.log: …" + line[max(0, m.start() - 160):m.start() + 240], pushed,
+                      "question")
 
 
 def ended_on_safeguard_stop(session_id):
@@ -234,7 +238,7 @@ def check_silence(pane, label, agent, pushed):
         pushed.discard(key)
     elif agent.get("agent_status") not in ("working", "blocked"):
         push_once(key, f"driver for {label} in {pane} is idle and has written nothing for {quiet:.0f} min: its loop has "
-                       f"ended. Not restarted; left for the human", pushed)
+                       f"ended. Not restarted; left for the human", pushed, "silent")
 
 
 def restart(pane, name, map_ref, reason, session, n):
@@ -270,7 +274,8 @@ def tick(pane, agent, ticks, moved, pushed):
         return
     quiet = (time.time() - changed) / 60
     if quiet > STALE_MIN and pane in ticks:
-        push_once(f"silent {pane}", f"Codex driver in {pane} has not moved for {quiet:.0f} min despite ticks; left for the human", pushed)
+        push_once(f"silent {pane}", f"Codex driver in {pane} has not moved for {quiet:.0f} min despite ticks; left for the human",
+                  pushed, "silent")
     herdr("agent", "prompt", pane, "tick")
     ticks[pane] = time.time()
 
@@ -315,7 +320,8 @@ def check_worker(pane, tid, agent, drivers, rescued):
         why = f"the rescue failed: {(r.stderr or r.stdout).strip()[:200]}"
     rescued[pane] = "left"
     driver = driver_of(tid, drivers)
-    (note if driver else alert)(f"worker {tid} in {pane} is stopped by Claude's safeguards ({why}); left to {'its driver ' + driver if driver else 'the human'}")
+    msg = f"worker {tid} in {pane} is stopped by Claude's safeguards ({why}); left to {'its driver ' + driver if driver else 'the human'}"
+    note(msg) if driver else alert(msg, "gave-up")
     if driver:
         herdr("agent", "prompt", driver, f"watchdog: worker {tid} in {pane} was stopped by Claude's safeguards ({why}); "
                                          f"read its screen and hand that step to its delegate (docs/agents/delegation.md)")
@@ -334,7 +340,7 @@ def handle_stuck(pane, map_ref, agent, base, restarts, fails, given_up):
     done, failed = restarts.get(pane, 0), fails.get(pane, 0)
     if done >= MAX_RESTARTS or failed >= MAX_RESTARTS or not session:
         why = "its session id is unknown" if not session else f"{done} resumes, {failed} failed starts in a row"
-        alert(f"driver in {pane} is stuck ({reason}); {why}: leaving it for the human")
+        alert(f"driver in {pane} is stuck ({reason}); {why}: leaving it for the human", "gave-up")
         given_up.add(pane)
         return True
     if restart(pane, f"{base}-{pane.replace(':', '')}-r{done + 1}", map_ref, reason, session, done + 1):
