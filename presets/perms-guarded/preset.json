@@ -1,0 +1,41 @@
+{
+  "about": "permissions, pick one: work runs without prompts (Claude's auto mode, every shell command allowed; Codex sandboxed, never asks) except history rewrites, PRs and recursive deletes, which ask you (a delete unanswered for 15 min is declined: use trash)",
+  "group": "permissions",
+  "includes": [
+    "safe-deletes"
+  ],
+  "settings": {
+    "permissions.defaultMode": "auto",
+    "permissions.allow": [
+      "Bash(*)"
+    ],
+    "permissions.ask": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git reset --hard *)",
+      "Bash(git checkout -- *)",
+      "Bash(git clean *)",
+      "Bash(git branch -D *)",
+      "Bash(git branch -d *)",
+      "Bash(git branch --delete *)",
+      "Bash(git stash drop *)",
+      "Bash(git stash clear *)",
+      "Bash(git tag -d *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr close *)",
+      "Bash(gh repo delete *)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(rm -r -f *)"
+    ]
+  },
+  "codex_config": {
+    "approval_policy": "never",
+    "sandbox_mode": "workspace-write"
+  }
+}

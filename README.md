@@ -253,6 +253,17 @@ links on your PATH, and, per project, rows in `docs/agents/delegation.md`.
 | `claude-codex` | an option per project (`--project <dir> --topic <field>`); without it, all work stays with the agent you run (all Claude in Claude Code, all Codex in Codex). With it, Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps go to a Sonnet subagent |
 | `recommended` | `alerts`, `safe-deletes` and `team-hooks`; delegation stays with the agent you run |
 
+**Permissions:** one of three profiles; applying one takes out the other's rules, and none applied leaves Claude Code
+and Codex on their own defaults. They set `permissions` in `~/.claude/settings.json` and `approval_policy` /
+`sandbox_mode` in `~/.codex/config.toml` for every session on the machine (the Claude team sessions too: their
+launchers pass no permission flag; Codex team sessions keep `tools/codex-team.args`, sandboxed and never asking).
+
+| preset | what asks you |
+|---|---|
+| `perms-ask` | anything not allowed (each agent's own default): for a session you watch |
+| `perms-guarded` | only history rewrites, PRs and recursive deletes (Claude's auto mode, every shell command allowed; a delete unanswered for 15 min is declined with a pointer to `trash`); the author's choice |
+| `perms-full-auto` | nothing (Claude: `bypassPermissions`, the same as `--dangerously-skip-permissions`; Codex: no approvals, no sandbox). What `perms-guarded` asks is refused instead: deny rules for history rewrites and PRs, `delete-guard` for recursive deletes (it refuses at once in a mode without prompts) |
+
 **Alerts without the preset:** `team-watch` runs the command in `~/.config/research-harness/notify`, if that file exists,
 with the message as its last argument and its kind (`question`, `silent`, `gave-up`) in `RH_EVENT`. Without it, alerts
 stay in `driver.log`.

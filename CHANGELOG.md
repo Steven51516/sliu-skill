@@ -5,6 +5,13 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Permission profiles** as presets, one at a time: `perms-ask` (each agent's default), `perms-guarded` (Claude's auto
+  mode with every shell command allowed; history rewrites, PRs and recursive deletes ask; Codex sandboxed, never asks)
+  and `perms-full-auto` (Claude `bypassPermissions`, Codex without approvals or sandbox; what would ask is refused by
+  deny rules and `delete-guard`). `research-preset` gained `settings` (dotted keys in `~/.claude/settings.json`),
+  `codex_config` (top-level keys of `~/.codex/config.toml`) and `group` (presets that exclude each other).
+  `delete-guard` refuses a recursive delete at once, with the `trash` pointer, in a session without prompts
+  (`bypassPermissions`, `dontAsk`). `research-init` offers a profile once per machine.
 - **`run-card`** rewritten from how its 39 cards were used: 36 were over 4,000 characters (median 7.3 KB), with table
   cells written as paragraphs. A card is about one screen; long configs sit beside it as files; a run that differs from
   a reference lists only the differences; the line under the title says what a comparison must match; entries count as

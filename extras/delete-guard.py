@@ -4,6 +4,10 @@ rsync --delete, shutil.rmtree, trash --empty), anywhere in the command, ssh quot
 permission prompt, as before. If nobody answers for 15 minutes (an unattended session waits forever otherwise), a timer
 declines it (Esc in the session's herdr pane) and tells the agent to use `trash <path>`, which can be undone.
 
+In a session that never shows prompts (`bypassPermissions`, i.e. --dangerously-skip-permissions, or `dontAsk`; the
+`perms-full-auto` preset) it refuses the delete at once, with the same pointer to `trash`: a hook's "ask" is not
+documented to prompt there, and nobody would answer.
+
 Free to run without asking: targets under /tmp or /private/tmp, and __pycache__ folders. `git rm` is left to git.
 The timer acts only when the call is still unanswered in the session's transcript and herdr shows the pane waiting on
 a prompt; outside herdr the prompt simply waits. It never approves anything. Actions: ~/.local/state/delete-guard.log.
@@ -119,6 +123,13 @@ def main():
         note(f"saw {data.get('tool_name')}: {cmd[:80]!r} (fields: {', '.join(sorted(data))})")
     why = data.get("tool_name") == "Bash" and recursive_delete(cmd)
     if not why:
+        return
+    if data.get("permission_mode") in ("bypassPermissions", "dontAsk"):
+        note(f"refused (mode {data['permission_mode']}, no prompts): {cmd[:200]}")
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PreToolUse", "permissionDecision": "deny",
+            "permissionDecisionReason": f"Recursive delete ({why}) refused: this session runs without prompts. "
+                                        + TOLD.split(". ", 1)[1]}}))
         return
     pane, later = os.environ.get("HERDR_PANE_ID"), ""
     if pane and data.get("transcript_path"):

@@ -1,0 +1,36 @@
+{
+  "about": "permissions, pick one: nothing ever asks (Claude: bypassPermissions, the same as --dangerously-skip-permissions; Codex: no approvals, no sandbox); what perms-guarded asks you is refused instead (history rewrites and PRs by deny rules, recursive deletes by delete-guard: use trash)",
+  "group": "permissions",
+  "includes": [
+    "safe-deletes"
+  ],
+  "settings": {
+    "permissions.defaultMode": "bypassPermissions",
+    "skipDangerousModePermissionPrompt": true,
+    "permissions.deny": [
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * --force*)",
+      "Bash(git push * -f*)",
+      "Bash(git reset --hard *)",
+      "Bash(git checkout -- *)",
+      "Bash(git clean *)",
+      "Bash(git branch -D *)",
+      "Bash(git branch -d *)",
+      "Bash(git branch --delete *)",
+      "Bash(git stash drop *)",
+      "Bash(git stash clear *)",
+      "Bash(git tag -d *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh pr close *)",
+      "Bash(gh repo delete *)"
+    ]
+  },
+  "codex_config": {
+    "approval_policy": "never",
+    "sandbox_mode": "danger-full-access"
+  }
+}

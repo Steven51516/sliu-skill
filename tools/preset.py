@@ -12,11 +12,15 @@ matched by command, never added twice; the old file is kept as settings.json.bak
 between marker lines, to ~/.claude/CLAUDE.md (`claude_md`) and ~/.codex/AGENTS.md (`codex_md`); add rows to a project's
 delegation table (`delegation`, with `<topic>` filled from --topic); write config files (`files`, {destination: source}:
 a file that exists and differs is yours and is left alone; removing takes out, with `trash`, only one still unchanged);
-name other presets (`includes`). Applying twice changes nothing. Pure standard library.
+set Claude Code settings (`settings`, dotted keys: a list gains or loses entries, a value is set or, on removal, taken
+out if it still equals the preset's) and top-level keys of ~/.codex/config.toml (`codex_config`); name other presets
+(`includes`). Presets sharing a `group` (the permission profiles) exclude each other: applying one takes out the
+others' rule lists and sets its own values over theirs. Applying twice changes nothing. Pure standard library.
 """
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +34,7 @@ LINK_BASE = STABLE if os.path.realpath(STABLE) == HARNESS else HARNESS
 SETTINGS = os.path.join(HOME, ".claude", "settings.json")
 DOCS = {"claude_md": os.path.join(HOME, ".claude", "CLAUDE.md"), "codex_md": os.path.join(HOME, ".codex", "AGENTS.md")}
 BIN = os.path.join(HOME, ".local", "bin")
+CODEX_CONFIG = os.path.join(HOME, ".codex", "config.toml")
 
 
 def names():
@@ -74,8 +79,9 @@ class Plan:
             self.texts[path] = [old, old]
         return self.texts[path]
 
-    def say(self, changed, what):
-        self.lines.append(f"  {('-' if self.remove else '+') if changed else '='} {what}")
+    def say(self, changed, what, remove=None, quiet=False):
+        if changed or not quiet:
+            self.lines.append(f"  {('-' if (self.remove if remove is None else remove) else '+') if changed else '='} {what}")
 
     def path(self, cmd, rel):
         src, dst = os.path.join(LINK_BASE, rel), os.path.join(BIN, cmd)
@@ -92,14 +98,90 @@ class Plan:
             self.say(True, f"{short(dst)} -> {rel}")
             self.links.append((src, dst))
 
-    def hooks(self, hooks):
+    def load_settings(self):
         if self.settings is None:
             try:
                 self.settings = json.load(open(SETTINGS)) if os.path.exists(SETTINGS) else {}
             except ValueError as e:
                 sys.exit(f"research-preset: {short(SETTINGS)} is not valid JSON ({e}); fix it first, nothing changed")
             self.settings_old = json.dumps(self.settings, sort_keys=True)
-        table = self.settings.setdefault("hooks", {})
+        return self.settings
+
+    def set_values(self, values, remove=None, quiet=False, keep=None):
+        """Claude Code settings by dotted key. `keep` ({key: value}) is what the preset being applied sets: taking out
+        another profile's entries never takes out one of those."""
+        remove, keep = self.remove if remove is None else remove, keep or {}
+        for key, val in values.items():
+            *parents, last = key.split(".")
+            node = self.load_settings()
+            for k in parents:
+                if not isinstance(node.get(k), dict):
+                    if remove:
+                        node = None
+                        break
+                    node[k] = {}
+                node = node[k]
+            cur = None if node is None else node.get(last)
+            if isinstance(val, list):
+                have = cur if isinstance(cur, list) else []
+                for item in val:
+                    present = item in have
+                    if remove and present and item not in (keep.get(key) or []):
+                        have.remove(item)
+                        self.say(True, f"{key}: {item}", remove, quiet)
+                    elif not remove and not present:
+                        node[last] = have = have + [item]
+                        self.say(True, f"{key}: {item}", remove, quiet)
+                    else:
+                        self.say(False, f"{key}: {item}" + (" (already)" if present else " (not there)"), remove, quiet)
+                if remove and node is not None and last in node and not node[last]:
+                    del node[last]
+            elif remove:
+                ours = cur == val and key not in keep
+                if ours:
+                    del node[last]
+                self.say(ours, f"{key} = {json.dumps(val)}" + ("" if ours else " (not there)" if cur is None else
+                                                                 f" (now {json.dumps(cur)}, left)"), remove, quiet)
+            elif cur == val:
+                self.say(False, f"{key} = {json.dumps(val)} (already)", remove, quiet)
+            else:
+                node[last] = val
+                self.say(True, f"{key} = {json.dumps(val)}" + (f" (was {json.dumps(cur)})" if cur is not None else ""), remove, quiet)
+        for k in [k for k, v in self.settings.items() if v == {}]:
+            del self.settings[k]
+
+    def codex(self, values, remove=None, quiet=False, keep=None):
+        """Top-level `key = value` lines of ~/.codex/config.toml (above its first [table])."""
+        remove, keep = self.remove if remove is None else remove, keep or {}
+        t = self.text(CODEX_CONFIG)
+        lines = t[1].split("\n") if t[1] else []
+        if lines and lines[-1] == "":
+            lines.pop()
+        top = next((i for i, l in enumerate(lines) if l.lstrip().startswith("[")), len(lines))
+        for key, val in values.items():
+            want = f"{key} = {json.dumps(val)}"
+            idx = next((i for i in range(top) if re.match(rf"\s*{re.escape(key)}\s*=", lines[i])), None)
+            cur = lines[idx].strip() if idx is not None else None
+            where = f"{short(CODEX_CONFIG)}: {want}"
+            if remove:
+                ours = cur == want and key not in keep
+                if ours:
+                    del lines[idx]
+                    top -= 1
+                self.say(ours, where + ("" if ours else " (not there)" if cur is None else f" (now `{cur}`, left)"), remove, quiet)
+            elif cur == want:
+                self.say(False, where + " (already)", remove, quiet)
+            else:
+                if idx is None:
+                    lines.insert(top, want)
+                    top += 1
+                else:
+                    lines[idx] = want
+                self.say(True, where + (f" (was `{cur}`)" if cur else ""), remove, quiet)
+        t[1] = "\n".join(lines) + ("\n" if lines else "")
+
+    def hooks(self, hooks):
+        table = self.load_settings().setdefault("hooks", {})
         for event, groups in hooks.items():
             for g in groups:
                 for h in g["hooks"]:
@@ -184,7 +266,10 @@ class Plan:
         if self.settings is not None and json.dumps(self.settings, sort_keys=True) != self.settings_old:
             os.makedirs(os.path.dirname(SETTINGS), exist_ok=True)
             if os.path.exists(SETTINGS):
-                backup = f"{SETTINGS}.bak-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
+                backup = base = f"{SETTINGS}.bak-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
+                n = 1
+                while os.path.exists(backup):          # two applies in one second must not overwrite the first backup
+                    backup, n = f"{base}~{n}", n + 1
                 shutil.copy2(SETTINGS, backup)
             with open(SETTINGS + ".tmp", "w") as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
@@ -208,10 +293,27 @@ class Plan:
         return backup
 
 
+def group_members(group):
+    return [n for n in names() if json.load(open(os.path.join(PRESETS, n, "preset.json"))).get("group") == group]
+
+
 def plan(name, remove=False, project=None, topic=None, quiet_project=False):
     p = Plan(remove)
     for n, folder, m in load(name):
+        if m.get("group") and not remove:                # one profile at a time: take out the others' rules first
+            for other in group_members(m["group"]):
+                if other != n:
+                    om = json.load(open(os.path.join(PRESETS, other, "preset.json")))
+                    before = len(p.lines)
+                    rules = {k: v for k, v in om.get("settings", {}).items() if isinstance(v, list)}   # values: overwritten below
+                    p.set_values(rules, remove=True, quiet=True, keep=m.get("settings", {}))
+                    if len(p.lines) > before:
+                        p.lines.insert(before, f"{other} (same group `{m['group']}`): taken out")
         p.lines.append(f"{n}: {m.get('about', '')}")
+        if m.get("settings"):
+            p.set_values(m["settings"])
+        if m.get("codex_config"):
+            p.codex(m["codex_config"])
         for cmd, rel in m.get("path", {}).items():
             p.path(cmd, rel)
         if m.get("hooks"):
@@ -249,10 +351,11 @@ def main():
         for n in names():
             m = json.load(open(os.path.join(PRESETS, n, "preset.json")))
             p = plan(n, quiet_project=True)
-            only_project = all(not (k in mm) for _, _, mm in load(n) for k in ("path", "hooks", "claude_md", "codex_md", "files"))
+            only_project = all(not (k in mm) for _, _, mm in load(n)
+                               for k in ("path", "hooks", "claude_md", "codex_md", "files", "settings", "codex_config"))
             state = ("project preset" if only_project else "not fully applied" if p.changed() else
                      "yours differs" if p.conflicts else "applied")
-            print(f"{n:14} [{state}]  {m.get('about', '')}")
+            print(f"{n:16} [{state}]  {m.get('about', '')}" + (f" (group `{m['group']}`: pick one)" if m.get("group") else ""))
         print("\nresearch-preset <name> --dry-run shows what applying one would change.")
         return
     p = plan(a.name, a.remove, a.project, a.topic)
