@@ -45,6 +45,10 @@
 - Readable over clever. Abstract only after the third use.
 - Ticket code is throwaway: no test suites, no polish, but check what a claim rests on (`rigor`). Code in `common/` that several tickets use is clean enough that a labmate could rerun it.
 
+## Waiting on jobs and servers
+- Never wait with a foreground `sleep`: Claude Code refuses it, and a sleeping session hears nothing. Wait in a
+  background command (`sleep N; <check>`) or a Monitor loop.
+
 ## Git
 - Small commits with messages that say what changed and why. Commit before launching a run that will back a result,
   so the run can record its commit hash.
