@@ -1,4 +1,8 @@
 {
-  "about": "the machine setup the author recommends: alerts, safe-deletes and team-hooks (delegation stays with the agent you run; claude-codex is a separate option)",
-  "includes": ["alerts", "safe-deletes", "team-hooks"]
+  "about": "the machine setup the author recommends: alerts, deletes-ask and team-hooks (a permission mode is a separate choice; delegation stays with the agent you run)",
+  "includes": [
+    "alerts",
+    "deletes-ask",
+    "team-hooks"
+  ]
 }

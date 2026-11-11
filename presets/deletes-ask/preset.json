@@ -1,0 +1,33 @@
+{
+  "about": "deletes, pick one: a recursive delete asks you; unanswered for 15 min, or in a session without prompts, it is declined with a pointer to `trash` (a delete that can be undone, put on PATH)",
+  "group": "deletes",
+  "was": [
+    "safe-deletes"
+  ],
+  "path": {
+    "trash": "extras/trash.py"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/research-harness/extras/delete-guard.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "settings": {
+    "permissions.ask": [
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(rm -r -f *)"
+    ]
+  },
+  "claude_md": "claude.md",
+  "codex_md": "codex.md"
+}

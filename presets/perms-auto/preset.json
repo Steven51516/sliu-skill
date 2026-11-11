@@ -1,9 +1,6 @@
 {
-  "about": "permissions, pick one: work runs without prompts (Claude's auto mode, every shell command allowed; Codex sandboxed, never asks) except history rewrites, PRs and recursive deletes, which ask you (a delete unanswered for 15 min is declined: use trash)",
+  "about": "permissions, pick one: Claude's auto mode (a classifier checks each action instead of asking you; a blanket Bash(*) allow rule is set for the other modes, auto mode ignores it) and Codex sandboxed, never asking; history rewrites and PRs ask you; deletes follow the deletes-* choice",
   "group": "permissions",
-  "includes": [
-    "safe-deletes"
-  ],
   "settings": {
     "permissions.defaultMode": "auto",
     "permissions.allow": [
@@ -28,10 +25,7 @@
       "Bash(gh pr create *)",
       "Bash(gh pr merge *)",
       "Bash(gh pr close *)",
-      "Bash(gh repo delete *)",
-      "Bash(rm -rf *)",
-      "Bash(rm -fr *)",
-      "Bash(rm -r -f *)"
+      "Bash(gh repo delete *)"
     ]
   },
   "codex_config": {

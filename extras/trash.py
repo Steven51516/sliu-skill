@@ -10,7 +10,7 @@ instant rename, never a copy. Emptying the trash is the human's call.
 Every move is a line in ~/.local/state/trash.log (tab-separated: UTC time, action, original path, trash path), so the
 trash can be found again from any folder. A path that cannot be renamed in place (a mount point, no write access to its
 folder) is left alone with an error: ask the human.
-Optional (README, "Presets and extras"; the `safe-deletes` preset puts it on PATH): no skill relies on it.
+Optional (README, "Presets and extras"; the `deletes-ask` and `deletes-trash` presets put it on PATH): no skill relies on it.
 """
 import calendar
 import os

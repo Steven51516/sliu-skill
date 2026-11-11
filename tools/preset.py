@@ -41,9 +41,17 @@ def names():
     return sorted(d for d in os.listdir(PRESETS) if os.path.exists(os.path.join(PRESETS, d, "preset.json")))
 
 
+def renamed(name):
+    """The current name of a preset that was once called `name` (its manifest's `was`), else `name`."""
+    if os.path.exists(os.path.join(PRESETS, name, "preset.json")):
+        return name
+    return next((n for n in names() if name in json.load(open(os.path.join(PRESETS, n, "preset.json"))).get("was", [])), name)
+
+
 def load(name, out=None):
     """[(name, folder, manifest)]: the preset and every preset it includes, includes first, each once."""
     out = [] if out is None else out
+    name = renamed(name)
     folder = os.path.join(PRESETS, name)
     if not os.path.exists(os.path.join(folder, "preset.json")):
         sys.exit(f"research-preset: no preset `{name}` (presets: {', '.join(names())})")
@@ -109,8 +117,9 @@ class Plan:
 
     def set_values(self, values, remove=None, quiet=False, keep=None):
         """Claude Code settings by dotted key. `keep` ({key: value}) is what the preset being applied sets: taking out
-        another profile's entries never takes out one of those."""
+        another profile's entries never takes out one of those, nor a `$` marker such as autoMode's `$defaults`."""
         remove, keep = self.remove if remove is None else remove, keep or {}
+        self.load_settings()
         for key, val in values.items():
             *parents, last = key.split(".")
             node = self.load_settings()
@@ -126,7 +135,7 @@ class Plan:
                 have = cur if isinstance(cur, list) else []
                 for item in val:
                     present = item in have
-                    if remove and present and item not in (keep.get(key) or []):
+                    if remove and present and item not in (keep.get(key) or []) and not str(item).startswith("$"):
                         have.remove(item)
                         self.say(True, f"{key}: {item}", remove, quiet)
                     elif not remove and not present:
@@ -180,41 +189,53 @@ class Plan:
                 self.say(True, where + (f" (was `{cur}`)" if cur else ""), remove, quiet)
         t[1] = "\n".join(lines) + ("\n" if lines else "")
 
-    def hooks(self, hooks):
+    def hooks(self, hooks, remove=None, quiet=False, keep=None):
+        remove = self.remove if remove is None else remove
+        kept = [h["command"] for gs in (keep or {}).values() for g in gs for h in g["hooks"]]
         table = self.load_settings().setdefault("hooks", {})
         for event, groups in hooks.items():
             for g in groups:
                 for h in g["hooks"]:
                     have = any(same_cmd(h["command"], x.get("command")) for grp in table.get(event, [])
                                for x in grp.get("hooks", []))
-                    if self.remove and have:
+                    if remove and have and any(same_cmd(h["command"], k) for k in kept):
+                        continue
+                    if remove and have:
                         for grp in table.get(event, []):
                             grp["hooks"] = [x for x in grp.get("hooks", []) if not same_cmd(h["command"], x.get("command"))]
                         table[event] = [grp for grp in table[event] if grp["hooks"]]
                         if not table[event]:
                             del table[event]
-                    elif not self.remove and not have:
+                    elif not remove and not have:
                         table.setdefault(event, []).append({**{k: v for k, v in g.items() if k != "hooks"}, "hooks": [h]})
-                    changed = have if self.remove else not have
-                    self.say(changed, f"hook {event}: {h['command']}" + ("" if changed else " (already)" if have else " (not there)"))
+                    changed = have if remove else not have
+                    self.say(changed, f"hook {event}: {h['command']}" + ("" if changed else " (already)" if have else " (not there)"),
+                             remove, quiet)
         if not table:
             del self.settings["hooks"]
 
-    def block(self, path, name, body):
-        start, end = f"<!-- research-harness preset: {name} -->", f"<!-- /research-harness preset: {name} -->"
+    def block(self, path, name, body, remove=None, quiet=False, was=()):
+        """The preset's rules between marker lines; a block under one of its old names (`was`) is replaced."""
+        remove = self.remove if remove is None else remove
         t = self.text(path)
-        i, j = t[1].find(start), t[1].find(end)
-        new = "" if self.remove else f"{start}\n{body.rstrip()}\n{end}\n"
+        for label in (name, *was):
+            start, end = f"<!-- research-harness preset: {label} -->", f"<!-- /research-harness preset: {label} -->"
+            i, j = t[1].find(start), t[1].find(end)
+            if i >= 0 and j > i:
+                break
+        new = "" if remove else (f"<!-- research-harness preset: {name} -->\n{body.rstrip()}\n"
+                                 f"<!-- /research-harness preset: {name} -->\n")
         if i >= 0 and j > i:
             j += len(end) + (t[1][j + len(end):j + len(end) + 1] == "\n")
             current = t[1][i:j]
             t[1] = t[1][:i] + new + t[1][j:]
             changed = current != new
         else:
-            changed = not self.remove
+            changed = not remove
             if changed:
                 t[1] += ("" if not t[1] else "\n" if t[1].endswith("\n") else "\n\n") + new
-        self.say(changed, f"{short(path)}: rules of `{name}`" + ("" if changed else " (already)" if not self.remove else " (not there)"))
+        self.say(changed, f"{short(path)}: rules of `{name}`" + ("" if changed else " (already)" if not remove else " (not there)"),
+                 remove, quiet)
 
     def file(self, dest, body):
         path = os.path.expanduser(dest)
@@ -307,6 +328,11 @@ def plan(name, remove=False, project=None, topic=None, quiet_project=False):
                     before = len(p.lines)
                     rules = {k: v for k, v in om.get("settings", {}).items() if isinstance(v, list)}   # values: overwritten below
                     p.set_values(rules, remove=True, quiet=True, keep=m.get("settings", {}))
+                    if om.get("hooks"):
+                        p.hooks(om["hooks"], remove=True, quiet=True, keep=m.get("hooks"))
+                    for key, doc in DOCS.items():
+                        if om.get(key):
+                            p.block(doc, other, "", remove=True, quiet=True, was=om.get("was", []))
                     if len(p.lines) > before:
                         p.lines.insert(before, f"{other} (same group `{m['group']}`): taken out")
         p.lines.append(f"{n}: {m.get('about', '')}")
@@ -322,7 +348,7 @@ def plan(name, remove=False, project=None, topic=None, quiet_project=False):
             p.file(dest, open(os.path.join(folder, src)).read())
         for key, doc in DOCS.items():
             if m.get(key):
-                p.block(doc, n, open(os.path.join(folder, m[key])).read())
+                p.block(doc, n, open(os.path.join(folder, m[key])).read(), was=m.get("was", []))
         if m.get("delegation"):
             text = open(os.path.join(folder, m["delegation"])).read()
             if not project:
@@ -352,7 +378,7 @@ def main():
             m = json.load(open(os.path.join(PRESETS, n, "preset.json")))
             p = plan(n, quiet_project=True)
             only_project = all(not (k in mm) for _, _, mm in load(n)
-                               for k in ("path", "hooks", "claude_md", "codex_md", "files", "settings", "codex_config"))
+                               for k in ("path", "hooks", "claude_md", "codex_md", "files", "settings", "codex_config", "group"))
             state = ("project preset" if only_project else "not fully applied" if p.changed() else
                      "yours differs" if p.conflicts else "applied")
             print(f"{n:16} [{state}]  {m.get('about', '')}" + (f" (group `{m['group']}`: pick one)" if m.get("group") else ""))

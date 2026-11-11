@@ -60,7 +60,7 @@ Record the choice in `docs/agents/issue-tracker.md`.
 
 **Section E: Domain docs.** Default to one `GLOSSARY.md` + `docs/decisions.md` at the project root. Write it without asking.
 
-**Section F: This machine's presets.** Only when `research-preset` showed some not applied, and only once per machine: three options, **apply `recommended`** (alerts, safe deletes, team hooks), **pick some**, or **none**; then one permissions profile: **`perms-guarded`** (recommended for a team: only history rewrites, PRs and recursive deletes ask), `perms-ask` (everything asks, for a session the user watches), `perms-full-auto` (nothing asks; what would is refused), or none (the agents' own defaults). Show the lines of `research-preset <name> --dry-run` before applying; they change this machine (your settings and instruction files), not the project.
+**Section F: This machine's presets.** Only when `research-preset` showed some not applied, and only once per machine: three options, **apply `recommended`** (alerts, safe deletes, team hooks), **pick some**, or **none**; then two permission choices, each one preset or none (the agents' own defaults): a **mode**, `perms-auto` (recommended for a team: a classifier checks actions, history rewrites and PRs ask), `perms-ask` (everything asks, for a session the user watches) or `perms-full-auto` (nothing asks; history rewrites and PRs are refused); and **deletes**, `deletes-ask` (recommended: asks, declined after 15 min with a pointer to `trash`), `deletes-trash` (refused at once, use `trash`) or `deletes-allow` (run like any command). Show the lines of `research-preset <name> --dry-run` before applying; they change this machine (your settings and instruction files), not the project.
 
 ### 3. Confirm and edit
 

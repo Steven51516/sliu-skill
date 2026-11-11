@@ -1,0 +1,23 @@
+{
+  "about": "deletes, pick one: a recursive delete is refused at once with a pointer to `trash` (put on PATH); nothing waits for you",
+  "group": "deletes",
+  "path": {
+    "trash": "extras/trash.py"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/research-harness/extras/delete-guard.py --policy trash",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "claude_md": "claude.md",
+  "codex_md": "codex.md"
+}

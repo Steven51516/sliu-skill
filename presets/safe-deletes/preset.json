@@ -1,8 +1,0 @@
-{
-  "about": "deletes that can be undone: `trash` on PATH, the delete-guard hook, and a rule telling agents to use them",
-  "path": {"trash": "extras/trash.py"},
-  "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [
-    {"type": "command", "command": "python3 ~/research-harness/extras/delete-guard.py", "timeout": 10}]}]},
-  "claude_md": "claude.md",
-  "codex_md": "codex.md"
-}

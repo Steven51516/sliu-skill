@@ -213,8 +213,8 @@ Setup, once:
 4. Optional, Claude Code: add the roster hook to `~/.claude/settings.json` under `hooks.SessionStart`, so a team session
    that restarts under a new name updates the roster:
    `{"type": "command", "command": "python3 ~/research-harness/tools/team-roster-hook.py", "timeout": 10}`
-   (or `research-preset team-hooks`). For unattended sessions, the `safe-deletes` preset keeps a recursive delete from
-   stalling one ([Presets and extras](#presets-and-extras)).
+   (or `research-preset team-hooks`). For unattended sessions, `deletes-ask` or `deletes-trash` keeps a recursive delete
+   from stalling one ([Presets and extras](#presets-and-extras)).
 
 5. Optional, to save tokens, in `~/.claude/settings.json`: `"autoCompactWindow": 400000`, so long sessions compact at
    400k tokens instead of near the model's full window (every call re-reads the context); and in its `env` block,
@@ -248,21 +248,31 @@ links on your PATH, and, per project, rows in `docs/agents/delegation.md`.
 | preset | what it adds |
 |---|---|
 | `alerts` | `team-watch`'s alerts routed by kind (`extras/notify.py`): a phone push through [Moshi](https://getmoshi.app)'s `moshi-hook` and a Mac sound for an open question, a silent driver or a give-up; other channels (a banner, ntfy, a chat bot) by editing `~/.config/research-harness/notify.json` |
-| `safe-deletes` | `trash` on your PATH (`extras/trash.py`: a delete that can be undone), the `delete-guard` hook (`extras/delete-guard.py`: a recursive delete asks you and, unanswered for 15 min, is declined with a pointer to `trash`, so an unattended session never sits at the prompt), and a rule telling Claude and Codex to use them |
 | `team-hooks` | the roster hook: a team session that restarts under a new name updates the roster |
 | `claude-codex` | an option per project (`--project <dir> --topic <field>`); without it, all work stays with the agent you run (all Claude in Claude Code, all Codex in Codex). With it, Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps go to a Sonnet subagent |
-| `recommended` | `alerts`, `safe-deletes` and `team-hooks`; delegation stays with the agent you run |
+| `recommended` | `alerts`, `deletes-ask` and `team-hooks`; a permission mode is a separate choice, and delegation stays with the agent you run |
 
-**Permissions:** one of three profiles; applying one takes out the other's rules, and none applied leaves Claude Code
-and Codex on their own defaults. They set `permissions` in `~/.claude/settings.json` and `approval_policy` /
-`sandbox_mode` in `~/.codex/config.toml` for every session on the machine (the Claude team sessions too: their
-launchers pass no permission flag; Codex team sessions keep `tools/codex-team.args`, sandboxed and never asking).
+**Permissions: two choices, one preset each.** Within a choice, applying one preset takes out the other's rules; none
+applied leaves Claude Code and Codex on their own defaults. They act on every session on the machine (the Claude team
+sessions too: their launchers pass no permission flag; Codex team sessions keep `tools/codex-team.args`, sandboxed and
+never asking).
 
-| preset | what asks you |
+| mode | what asks you |
 |---|---|
 | `perms-ask` | anything not allowed (each agent's own default): for a session you watch |
-| `perms-guarded` | only history rewrites, PRs and recursive deletes (Claude's auto mode, every shell command allowed; a delete unanswered for 15 min is declined with a pointer to `trash`); the author's choice |
-| `perms-full-auto` | nothing (Claude: `bypassPermissions`, the same as `--dangerously-skip-permissions`; Codex: no approvals, no sandbox). What `perms-guarded` asks is refused instead: deny rules for history rewrites and PRs, `delete-guard` for recursive deletes (it refuses at once in a mode without prompts) |
+| `perms-auto` | history rewrites and PRs. Otherwise Claude runs in auto mode, where a classifier checks each action instead of asking (it ignores a blanket `Bash(*)` allow rule), and Codex is sandboxed and never asks. The author's choice |
+| `perms-full-auto` | nothing (Claude: `bypassPermissions`, the same as `--dangerously-skip-permissions`; Codex: no approvals, no sandbox). History rewrites and PRs are refused instead, by deny rules |
+
+| deletes | a recursive delete (`rm -r` in any form, `find -delete`, `rsync --delete`, `shutil.rmtree`) |
+|---|---|
+| `deletes-ask` | asks you; unanswered for 15 min, or in a session without prompts, it is declined with a pointer to `trash` (`extras/trash.py`, a delete that can be undone, put on your PATH). The author's choice |
+| `deletes-trash` | is refused at once with a pointer to `trash`; nothing waits for you |
+| `deletes-allow` | runs like any other command: no guard, no trash rule (under `perms-ask` it still asks; in auto mode a rule tells the classifier deletes are allowed) |
+
+`deletes-ask` and `deletes-trash` install the `delete-guard` hook (`extras/delete-guard.py`) and a rule for Claude and
+Codex to use `trash`. Deleting a critical path such as `/` or `~` stays blocked in every mode, by Claude Code itself.
+Any mode goes with any delete choice: `perms-auto` + `deletes-trash` never waits on a delete; `perms-full-auto` +
+`deletes-allow` asks nothing at all.
 
 **Alerts without the preset:** `team-watch` runs the command in `~/.config/research-harness/notify`, if that file exists,
 with the message as its last argument and its kind (`question`, `silent`, `gave-up`) in `RH_EVENT`. Without it, alerts
@@ -371,7 +381,7 @@ tools/       status.py (research-status) · codex-run.sh · preset.py (research-
              team-up.sh · team-worker.py · team-watch.py · codex-team.args · team-roster-hook.py (team mode)
              gui/ (research-gui: the Research Desk backend, its web/ page and the app/ shell)
 presets/     optional setup, one folder per preset (preset.json and the files it adds); research-preset applies them
-extras/      optional tools no skill relies on: trash.py · delete-guard.py (the safe-deletes preset)
+extras/      optional tools no skill relies on: trash.py · delete-guard.py (the deletes-* presets) · notify.py (alerts)
 licenses/    licences of copied and adapted third-party skills
 install.sh   (re)creates the links; safe to run again
 scripts/     check.py: the structural checks CI runs on every push (.github/workflows/check.yml)

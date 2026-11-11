@@ -1,9 +1,6 @@
 {
-  "about": "permissions, pick one: nothing ever asks (Claude: bypassPermissions, the same as --dangerously-skip-permissions; Codex: no approvals, no sandbox); what perms-guarded asks you is refused instead (history rewrites and PRs by deny rules, recursive deletes by delete-guard: use trash)",
+  "about": "permissions, pick one: nothing ever asks (Claude: bypassPermissions, the same as --dangerously-skip-permissions; Codex: no approvals, no sandbox); history rewrites and PRs are refused instead; deletes follow the deletes-* choice (deletes-ask and deletes-trash refuse them)",
   "group": "permissions",
-  "includes": [
-    "safe-deletes"
-  ],
   "settings": {
     "permissions.defaultMode": "bypassPermissions",
     "skipDangerousModePermissionPrompt": true,

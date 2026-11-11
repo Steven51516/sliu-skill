@@ -4,6 +4,7 @@ rsync --delete, shutil.rmtree, trash --empty), anywhere in the command, ssh quot
 permission prompt, as before. If nobody answers for 15 minutes (an unattended session waits forever otherwise), a timer
 declines it (Esc in the session's herdr pane) and tells the agent to use `trash <path>`, which can be undone.
 
+With `--policy trash` (the `deletes-trash` preset) it refuses every recursive delete at once, with the same pointer.
 In a session that never shows prompts (`bypassPermissions`, i.e. --dangerously-skip-permissions, or `dontAsk`; the
 `perms-full-auto` preset) it refuses the delete at once, with the same pointer to `trash`: a hook's "ask" is not
 documented to prompt there, and nobody would answer.
@@ -14,7 +15,7 @@ a prompt; outside herdr the prompt simply waits. It never approves anything. Act
 
 Install in ~/.claude/settings.json under "hooks":
   "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 ~/research-harness/extras/delete-guard.py"}]}]
-Optional (README, "Presets and extras"; the `safe-deletes` preset installs it): no skill relies on it.
+Optional (README, "Presets and extras"; the `deletes-ask` and `deletes-trash` presets install it): no skill relies on it.
 """
 import json
 import os
@@ -124,12 +125,13 @@ def main():
     why = data.get("tool_name") == "Bash" and recursive_delete(cmd)
     if not why:
         return
-    if data.get("permission_mode") in ("bypassPermissions", "dontAsk"):
-        note(f"refused (mode {data['permission_mode']}, no prompts): {cmd[:200]}")
+    trash_only = sys.argv[1:3] == ["--policy", "trash"]
+    if trash_only or data.get("permission_mode") in ("bypassPermissions", "dontAsk"):
+        why_now = "recursive deletes are refused here" if trash_only else "this session runs without prompts"
+        note(f"refused ({why_now}): {cmd[:200]}")
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "deny",
-            "permissionDecisionReason": f"Recursive delete ({why}) refused: this session runs without prompts. "
-                                        + TOLD.split(". ", 1)[1]}}))
+            "permissionDecisionReason": f"Recursive delete ({why}) refused: {why_now}. " + TOLD.split(". ", 1)[1]}}))
         return
     pane, later = os.environ.get("HERDR_PANE_ID"), ""
     if pane and data.get("transcript_path"):
