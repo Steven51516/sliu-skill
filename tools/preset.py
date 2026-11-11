@@ -13,14 +13,12 @@ between marker lines, to ~/.claude/CLAUDE.md (`claude_md`) and ~/.codex/AGENTS.m
 delegation table (`delegation`, with `<topic>` filled from --topic); write config files (`files`, {destination: source}:
 a file that exists and differs is yours and is left alone; removing takes out, with `trash`, only one still unchanged);
 set Claude Code settings (`settings`, dotted keys: a list gains or loses entries, a value is set or, on removal, taken
-out if it still equals the preset's) and top-level keys of ~/.codex/config.toml (`codex_config`); name other presets
-(`includes`). Presets sharing a `group` (the permission profiles) exclude each other: applying one takes out the
-others' rule lists and sets its own values over theirs. Applying twice changes nothing. Pure standard library.
+out if it still equals the preset's); name other presets (`includes`). Presets sharing a `group` (the deletes-* choice)
+exclude each other: applying one takes out the others' rule lists, hooks and rule blocks. Applying twice changes nothing. Pure standard library.
 """
 import argparse
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -34,7 +32,6 @@ LINK_BASE = STABLE if os.path.realpath(STABLE) == HARNESS else HARNESS
 SETTINGS = os.path.join(HOME, ".claude", "settings.json")
 DOCS = {"claude_md": os.path.join(HOME, ".claude", "CLAUDE.md"), "codex_md": os.path.join(HOME, ".codex", "AGENTS.md")}
 BIN = os.path.join(HOME, ".local", "bin")
-CODEX_CONFIG = os.path.join(HOME, ".codex", "config.toml")
 
 
 def names():
@@ -158,36 +155,6 @@ class Plan:
                 self.say(True, f"{key} = {json.dumps(val)}" + (f" (was {json.dumps(cur)})" if cur is not None else ""), remove, quiet)
         for k in [k for k, v in self.settings.items() if v == {}]:
             del self.settings[k]
-
-    def codex(self, values, remove=None, quiet=False, keep=None):
-        """Top-level `key = value` lines of ~/.codex/config.toml (above its first [table])."""
-        remove, keep = self.remove if remove is None else remove, keep or {}
-        t = self.text(CODEX_CONFIG)
-        lines = t[1].split("\n") if t[1] else []
-        if lines and lines[-1] == "":
-            lines.pop()
-        top = next((i for i, l in enumerate(lines) if l.lstrip().startswith("[")), len(lines))
-        for key, val in values.items():
-            want = f"{key} = {json.dumps(val)}"
-            idx = next((i for i in range(top) if re.match(rf"\s*{re.escape(key)}\s*=", lines[i])), None)
-            cur = lines[idx].strip() if idx is not None else None
-            where = f"{short(CODEX_CONFIG)}: {want}"
-            if remove:
-                ours = cur == want and key not in keep
-                if ours:
-                    del lines[idx]
-                    top -= 1
-                self.say(ours, where + ("" if ours else " (not there)" if cur is None else f" (now `{cur}`, left)"), remove, quiet)
-            elif cur == want:
-                self.say(False, where + " (already)", remove, quiet)
-            else:
-                if idx is None:
-                    lines.insert(top, want)
-                    top += 1
-                else:
-                    lines[idx] = want
-                self.say(True, where + (f" (was `{cur}`)" if cur else ""), remove, quiet)
-        t[1] = "\n".join(lines) + ("\n" if lines else "")
 
     def hooks(self, hooks, remove=None, quiet=False, keep=None):
         remove = self.remove if remove is None else remove
@@ -338,8 +305,6 @@ def plan(name, remove=False, project=None, topic=None, quiet_project=False):
         p.lines.append(f"{n}: {m.get('about', '')}")
         if m.get("settings"):
             p.set_values(m["settings"])
-        if m.get("codex_config"):
-            p.codex(m["codex_config"])
         for cmd, rel in m.get("path", {}).items():
             p.path(cmd, rel)
         if m.get("hooks"):
@@ -378,7 +343,7 @@ def main():
             m = json.load(open(os.path.join(PRESETS, n, "preset.json")))
             p = plan(n, quiet_project=True)
             only_project = all(not (k in mm) for _, _, mm in load(n)
-                               for k in ("path", "hooks", "claude_md", "codex_md", "files", "settings", "codex_config", "group"))
+                               for k in ("path", "hooks", "claude_md", "codex_md", "files", "settings", "group"))
             state = ("project preset" if only_project else "not fully applied" if p.changed() else
                      "yours differs" if p.conflicts else "applied")
             print(f"{n:16} [{state}]  {m.get('about', '')}" + (f" (group `{m['group']}`: pick one)" if m.get("group") else ""))

@@ -113,7 +113,7 @@ def main():
                      if m.get(k) and not (pj.parent / m[k]).exists()]
         problems += [f"{rel}: `{c}` links to `{p}`, which is missing" for c, p in m.get("path", {}).items() if not (ROOT / p).exists()]
         problems += [f"{rel}: file `{s}` for `{d}` is missing" for d, s in m.get("files", {}).items() if not (pj.parent / s).exists()]
-        problems += [f"{rel}: `{k}` must be an object of keys and values" for k in ("settings", "codex_config", "files", "path")
+        problems += [f"{rel}: `{k}` must be an object of keys and values" for k in ("settings", "files", "path")
                      if k in m and not isinstance(m[k], dict)]
         cmds = [h.get("command", "") for gs in m.get("hooks", {}).values() for g in gs for h in g.get("hooks", [])]
         problems += [f"{rel}: hook runs `{t}`, which is missing" for c in cmds for t in c.split()

@@ -1,5 +1,5 @@
 {
-  "about": "deletes, pick one: no delete guard and no trash rule; a recursive delete runs like any other command (perms-ask still asks first; in auto mode a rule tells the classifier deletes are allowed; deleting a critical path such as / or ~ stays blocked in every mode)",
+  "about": "deletes, pick one: no delete guard and no trash rule; a recursive delete runs like any other command (a session in Claude's default mode still asks first; in auto mode a rule tells the classifier deletes are allowed; deleting a critical path such as / or ~ stays blocked in every mode)",
   "group": "deletes",
   "settings": {
     "autoMode.allow": [

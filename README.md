@@ -250,29 +250,20 @@ links on your PATH, and, per project, rows in `docs/agents/delegation.md`.
 | `alerts` | `team-watch`'s alerts routed by kind (`extras/notify.py`): a phone push through [Moshi](https://getmoshi.app)'s `moshi-hook` and a Mac sound for an open question, a silent driver or a give-up; other channels (a banner, ntfy, a chat bot) by editing `~/.config/research-harness/notify.json` |
 | `team-hooks` | the roster hook: a team session that restarts under a new name updates the roster |
 | `claude-codex` | an option per project (`--project <dir> --topic <field>`); without it, all work stays with the agent you run (all Claude in Claude Code, all Codex in Codex). With it, Claude drives; work in your field that Claude's safeguards often stop, and reviews too large for a subagent, go to Codex at xhigh; quick mechanical steps go to a Sonnet subagent |
-| `recommended` | `alerts`, `deletes-ask` and `team-hooks`; a permission mode is a separate choice, and delegation stays with the agent you run |
+| `recommended` | `alerts`, `deletes-ask` and `team-hooks`; delegation stays with the agent you run |
 
-**Permissions: two choices, one preset each.** Within a choice, applying one preset takes out the other's rules; none
-applied leaves Claude Code and Codex on their own defaults. They act on every session on the machine (the Claude team
-sessions too: their launchers pass no permission flag; Codex team sessions keep `tools/codex-team.args`, sandboxed and
-never asking).
-
-| mode | what asks you |
-|---|---|
-| `perms-ask` | anything not allowed (each agent's own default): for a session you watch |
-| `perms-auto` | history rewrites and PRs. Otherwise Claude runs in auto mode, where a classifier checks each action instead of asking (it ignores a blanket `Bash(*)` allow rule), and Codex is sandboxed and never asks. The author's choice |
-| `perms-full-auto` | nothing (Claude: `bypassPermissions`, the same as `--dangerously-skip-permissions`; Codex: no approvals, no sandbox). History rewrites and PRs are refused instead, by deny rules |
+**Deletes: one of three presets.** Applying one takes out the other's hook, rules and rule blocks; none applied leaves
+Claude Code and Codex on their own behaviour. The permission mode itself stays each agent's per-session choice.
 
 | deletes | a recursive delete (`rm -r` in any form, `find -delete`, `rsync --delete`, `shutil.rmtree`) |
 |---|---|
 | `deletes-ask` | asks you; unanswered for 15 min, or in a session without prompts, it is declined with a pointer to `trash` (`extras/trash.py`, a delete that can be undone, put on your PATH). The author's choice |
 | `deletes-trash` | is refused at once with a pointer to `trash`; nothing waits for you |
-| `deletes-allow` | runs like any other command: no guard, no trash rule (under `perms-ask` it still asks; in auto mode a rule tells the classifier deletes are allowed) |
+| `deletes-allow` | runs like any other command: no guard, no trash rule (in Claude's default mode it still asks; in auto mode a rule tells the classifier deletes are allowed) |
 
 `deletes-ask` and `deletes-trash` install the `delete-guard` hook (`extras/delete-guard.py`) and a rule for Claude and
-Codex to use `trash`. Deleting a critical path such as `/` or `~` stays blocked in every mode, by Claude Code itself.
-Any mode goes with any delete choice: `perms-auto` + `deletes-trash` never waits on a delete; `perms-full-auto` +
-`deletes-allow` asks nothing at all.
+Codex to use `trash`; in a session without prompts (`--dangerously-skip-permissions`) both refuse a recursive delete at
+once. Deleting a critical path such as `/` or `~` stays blocked in every mode, by Claude Code itself.
 
 **Alerts without the preset:** `team-watch` runs the command in `~/.config/research-harness/notify`, if that file exists,
 with the message as its last argument and its kind (`question`, `silent`, `gave-up`) in `RH_EVENT`. Without it, alerts

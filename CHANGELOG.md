@@ -5,16 +5,14 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
-- **Permission presets**, two choices of one preset each. Mode: `perms-ask` (each agent's default), `perms-auto`
-  (Claude's auto mode; history rewrites and PRs ask; Codex sandboxed, never asks) or `perms-full-auto` (Claude
-  `bypassPermissions`, Codex without approvals or sandbox; history rewrites and PRs refused by deny rules). Deletes:
-  `deletes-ask` (was `safe-deletes`: asks, declined after 15 min with a pointer to `trash`), `deletes-trash` (refused at
-  once; `delete-guard --policy trash`) or `deletes-allow` (no guard; in auto mode an `autoMode.allow` rule lets the
-  classifier pass deletes). `research-preset` gained `settings` (dotted keys in `~/.claude/settings.json`; a `$` marker
-  such as `$defaults` is never taken out), `codex_config` (top-level keys of `~/.codex/config.toml`), `group` (presets
-  that exclude each other: applying one takes out the others' rules, hooks and rule blocks) and `was` (an old name still
+- **Delete presets**, one of three: `deletes-ask` (was `safe-deletes`: a recursive delete asks, declined after 15 min
+  with a pointer to `trash`), `deletes-trash` (refused at once; `delete-guard --policy trash`) or `deletes-allow` (no
+  guard; in auto mode an `autoMode.allow` rule lets the classifier pass deletes). `research-preset` gained `settings`
+  (dotted keys in `~/.claude/settings.json`; a `$` marker such as `$defaults` is never taken out), `group` (presets that
+  exclude each other: applying one takes out the others' rules, hooks and rule blocks) and `was` (an old name still
   works and its rule block is replaced). `delete-guard` refuses at once, with the `trash` pointer, in a session without
-  prompts. Settings backups get unique names. `research-init` offers both choices once per machine.
+  prompts (`bypassPermissions`, `dontAsk`). Settings backups get unique names. `research-init` offers the choice once
+  per machine.
 - **`run-card`** rewritten from how its 39 cards were used: 36 were over 4,000 characters (median 7.3 KB), with table
   cells written as paragraphs. A card is about one screen; long configs sit beside it as files; a run that differs from
   a reference lists only the differences; the line under the title says what a comparison must match; entries count as

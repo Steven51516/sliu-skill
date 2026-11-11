@@ -5,8 +5,8 @@ permission prompt, as before. If nobody answers for 15 minutes (an unattended se
 declines it (Esc in the session's herdr pane) and tells the agent to use `trash <path>`, which can be undone.
 
 With `--policy trash` (the `deletes-trash` preset) it refuses every recursive delete at once, with the same pointer.
-In a session that never shows prompts (`bypassPermissions`, i.e. --dangerously-skip-permissions, or `dontAsk`; the
-`perms-full-auto` preset) it refuses the delete at once, with the same pointer to `trash`: a hook's "ask" is not
+In a session that never shows prompts (`bypassPermissions`, i.e. --dangerously-skip-permissions, or `dontAsk`) it
+refuses the delete at once, with the same pointer to `trash`: a hook's "ask" is not
 documented to prompt there, and nobody would answer.
 
 Free to run without asking: targets under /tmp or /private/tmp, and __pycache__ folders. `git rm` is left to git.
