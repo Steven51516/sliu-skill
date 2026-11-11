@@ -11,7 +11,8 @@ Usage (from the project root, or pass it):
       --now       print what is live: waiting on you, running or claimed, the frontier (never stored)
       --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
                   missing fields, resolved tickets missing from their map or their answer, a map grown past
-                  12,000 characters); exit 1 if any
+                  12,000 characters; run cards with an unknown status, a missing field, or no link from their
+                  ticket); exit 1 if any
       --frontier  only list the frontier (open, unblocked, unclaimed tickets), one per line
       --map ID    with --check or --frontier: only that map (its id or folder name), as a driver checks its own
 Pure standard library.
@@ -30,6 +31,7 @@ MAP_STATUSES = {"open", "claimed", "paused", "closed"}
 HUMAN_ONLY = {"held", "paused"}
 ACTIVE = {"claimed", "running"}
 HITL = {"grilling", "prototype"}
+RUN_STATUSES = {"launched", "running", "paused", "stopped", "failed", "finished", "evaluated", "reference", "superseded"}
 TYPES = {"experiment", "research", "prototype", "grilling", "task"}
 STALE_HOURS = 36
 MAX_MAP_CHARS = 12000                 # STYLE.md: a map is an index. Characters, not lines: an 80-line limit let one
@@ -180,6 +182,9 @@ def load(project):
             kmeta, kbody = parse_front_matter(kpath)
             kmeta["_path"] = os.path.relpath(kpath, project)
             kmeta["_answered"] = answered(kbody)
+            kmeta["_cards"] = [(os.path.relpath(c, project), parse_front_matter(c)[0])      # run-card skill
+                               for c in sorted(glob.glob(os.path.join(os.path.dirname(kpath), "runs", "*.md")))]
+            kmeta["_run_links"] = set(re.findall(r"runs/([^)\s`|'\"]+?\.md)", kbody))
             b = kmeta.get("blocked_by") or []
             b = [b] if isinstance(b, str) else b          # a plain number names a ticket on the same map
             kmeta["blocked_by"] = [f"{meta.get('id')}-{int(x):02d}" if str(x).strip().isdigit() else x for x in b]
@@ -284,6 +289,16 @@ def analyse(maps):
                     problems.append(f"{k['_path']}: unknown blocker `{b}`")
                 elif status_of(k) == "open" and status_of(by_id[b]) == "parked":
                     problems.append(f"{k['_path']}: blocked by parked `{b}`: waive the edge or unpark it")
+            for cpath, c in k["_cards"]:          # run cards: RUN-CARD.md in the run-card skill
+                missing = [f"`{f}`" for f in ("run", "ticket", "status") if not c.get(f)]
+                if missing:
+                    problems.append(f"{cpath}: run card without {', '.join(missing)}")
+                word = re.split(r"[\s(]", str(c.get("status") or "").strip(), maxsplit=1)[0]
+                if word and word not in RUN_STATUSES:
+                    problems.append(f"{cpath}: unknown run status `{c.get('status')}` (one word of "
+                                    f"{', '.join(sorted(RUN_STATUSES))}; why goes in Lineage)")
+                if os.path.basename(cpath) not in k["_run_links"]:
+                    problems.append(f"{cpath}: not linked from its ticket ({k['_path']}, Assets)")
             if k.get("status") == "superseded" and not k.get("superseded_by"):
                 problems.append(f"{k['_path']}: superseded without `superseded_by`")
             # the map records every resolved ticket in Decisions so far, a parked one there or in Out of scope

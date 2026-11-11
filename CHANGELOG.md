@@ -5,6 +5,12 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`run-card`** rewritten from how its 39 cards were used: 36 were over 4,000 characters (median 7.3 KB), with table
+  cells written as paragraphs. A card is about one screen; long configs sit beside it as files; a run that differs from
+  a reference lists only the differences; the line under the title says what a comparison must match; entries count as
+  read on the card's `checked` date unless marked (reported) or (inferred); `status` is one word, now including `paused`
+  and `stopped`. `research-status --check` reports a card with another status word, a missing field, or no link from its
+  ticket (5 cards across both projects).
 - **Presets:** optional setup comes as named presets (`presets/`), applied, shown (`--dry-run`) and taken out
   (`--remove`) by `research-preset` or `install.sh --preset <name>`: `alerts` (`extras/notify.py` routes each alert by
   kind: a Moshi push and a Mac sound by default), `safe-deletes` (`trash`, the `delete-guard` hook and a rule for Claude
