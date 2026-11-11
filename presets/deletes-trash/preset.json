@@ -1,5 +1,5 @@
 {
-  "about": "deletes, pick one: a recursive delete is refused at once with a pointer to `trash` (put on PATH); nothing waits for you",
+  "about": "a recursive delete is refused at once: use trash",
   "group": "deletes",
   "path": {
     "trash": "extras/trash.py"
@@ -19,5 +19,6 @@
     ]
   },
   "claude_md": "claude.md",
-  "codex_md": "codex.md"
+  "codex_md": "codex.md",
+  "order": 2
 }

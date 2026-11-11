@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`research-preset`** lists presets in sections (this machine, each pick-one choice, bundles, per project), each with
+  on / partly / off and one short line; the long descriptions moved to the README.
 - **Delete presets**, one of three: `deletes-ask` (was `safe-deletes`: a recursive delete asks, declined after 15 min
   with a pointer to `trash`), `deletes-trash` (refused at once; `delete-guard --policy trash`) or `deletes-allow` (no
   guard; in auto mode an `autoMode.allow` rule lets the classifier pass deletes). `research-preset` gained `settings`

@@ -1,5 +1,10 @@
 {
-  "about": "alerts by kind: a Moshi phone push (moshi-hook) and a Mac sound for open questions, silent drivers and give-ups; edit ~/.config/research-harness/notify.json to change channels",
-  "files": {"~/.config/research-harness/notify": "notify", "~/.config/research-harness/notify.json": "notify.json"},
-  "needs": ["moshi-hook"]
+  "about": "a phone push and a Mac sound when a team needs you",
+  "files": {
+    "~/.config/research-harness/notify": "notify",
+    "~/.config/research-harness/notify.json": "notify.json"
+  },
+  "needs": [
+    "moshi-hook"
+  ]
 }

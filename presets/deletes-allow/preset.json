@@ -1,10 +1,11 @@
 {
-  "about": "deletes, pick one: no delete guard and no trash rule; a recursive delete runs like any other command (a session in Claude's default mode still asks first; in auto mode a rule tells the classifier deletes are allowed; deleting a critical path such as / or ~ stays blocked in every mode)",
+  "about": "a recursive delete runs like any other command",
   "group": "deletes",
   "settings": {
     "autoMode.allow": [
       "$defaults",
       "Recursive deletes (rm -r in any form, find -delete, rsync --delete) of the user's own files and folders: the user allows them without a confirmation or a trash step."
     ]
-  }
+  },
+  "order": 3
 }

@@ -19,6 +19,7 @@ exclude each other: applying one takes out the others' rule lists, hooks and rul
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -66,6 +67,10 @@ def same_cmd(a, b):
     return norm(a) == norm(b)
 
 
+SUFFIX = re.compile(r" \((already|not there|yours[^)]*|now [^)]*|was [^)]*)\)$")
+MACHINE = ("path", "hooks", "claude_md", "codex_md", "files", "settings", "group")
+
+
 def short(path):
     return path.replace(HOME, "~", 1)
 
@@ -75,6 +80,7 @@ class Plan:
 
     def __init__(self, remove):
         self.remove, self.lines, self.links, self.conflicts, self.drop = remove, [], [], 0, []
+        self.items = []                                   # (mark, what) for each item, for the listing's state
         self.texts = {}                                   # path -> [old, new]
         self.settings = self.settings_old = None
 
@@ -85,8 +91,10 @@ class Plan:
         return self.texts[path]
 
     def say(self, changed, what, remove=None, quiet=False):
+        mark = ('-' if (self.remove if remove is None else remove) else '+') if changed else '='
+        self.items.append((mark, SUFFIX.sub("", what)))
         if changed or not quiet:
-            self.lines.append(f"  {('-' if (self.remove if remove is None else remove) else '+') if changed else '='} {what}")
+            self.lines.append(f"  {mark} {what}")
 
     def path(self, cmd, rel):
         src, dst = os.path.join(LINK_BASE, rel), os.path.join(BIN, cmd)
@@ -301,7 +309,7 @@ def plan(name, remove=False, project=None, topic=None, quiet_project=False):
                         if om.get(key):
                             p.block(doc, other, "", remove=True, quiet=True, was=om.get("was", []))
                     if len(p.lines) > before:
-                        p.lines.insert(before, f"{other} (same group `{m['group']}`): taken out")
+                        p.lines.insert(before, f"{other}: switched off (one {m['group']} choice at a time)")
         p.lines.append(f"{n}: {m.get('about', '')}")
         if m.get("settings"):
             p.set_values(m["settings"])
@@ -330,6 +338,50 @@ def plan(name, remove=False, project=None, topic=None, quiet_project=False):
     return p
 
 
+def state(n, m):
+    """`on`, `partly`, `off`, `edited` (on, with a config file of yours) or None (a per-project preset)."""
+    parts = load(n)
+    if not m.get("group") and all(not any(k in mm for k in MACHINE) for _, _, mm in parts):
+        return None
+    p = plan(n, quiet_project=True)
+    if not p.changed():
+        return "edited" if p.conflicts else "on"
+    have = {what for mark, what in p.items if mark == "=" and not re.search(r": \$\w+$", what)}   # `$defaults` says nothing
+    if m.get("group"):                     # what the other choices also install (the trash link) does not count
+        for other in group_members(m["group"]):
+            if other != n:
+                have -= {what for mark, what in plan(other, quiet_project=True).items if mark != "-"}
+    return "partly" if have else "off"
+
+
+def show_list():
+    sections = {}
+    for n in names():
+        m = json.load(open(os.path.join(PRESETS, n, "preset.json")))
+        if m.get("group"):
+            title = f"{m['group'].capitalize()} (pick one)"
+        elif m.get("delegation"):
+            title = "Per project (add --project DIR --topic FIELD)"
+        elif m.get("includes") and not any(k in m for k in MACHINE):
+            title = "Bundles"
+        else:
+            title = "This machine"
+        sections.setdefault(title, []).append((m.get("order", 50), n, state(n, m), m.get("about", "")))
+    color = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+    paint = {"on": "32", "edited": "32", "partly": "33", "off": "2"}
+    print("Optional setup. research-preset <name> applies one (--dry-run first shows what it changes; --remove undoes it).")
+    order = ["This machine"] + sorted(t for t in sections if t.endswith("(pick one)")) + ["Bundles"] + \
+        [t for t in sections if t.startswith("Per project")]
+    for title in [t for t in order if t in sections]:
+        print(f"\n{title}")
+        for _, n, st, about in sorted(sections[title]):
+            word = st or ""
+            cell = f"\033[{paint[st]}m{word:7}\033[0m" if color and st else f"{word:7}"
+            print(f"  {n:15} {cell} {about}")
+    if any(st == "partly" for rows in sections.values() for _, _, st, _ in rows):
+        print("\npartly: some of it is set up here; research-preset <name> finishes it.")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("name", nargs="?")
@@ -339,16 +391,7 @@ def main():
     ap.add_argument("--topic")
     a = ap.parse_args()
     if not a.name:
-        for n in names():
-            m = json.load(open(os.path.join(PRESETS, n, "preset.json")))
-            p = plan(n, quiet_project=True)
-            only_project = all(not (k in mm) for _, _, mm in load(n)
-                               for k in ("path", "hooks", "claude_md", "codex_md", "files", "settings", "group"))
-            state = ("project preset" if only_project else "not fully applied" if p.changed() else
-                     "yours differs" if p.conflicts else "applied")
-            print(f"{n:16} [{state}]  {m.get('about', '')}" + (f" (group `{m['group']}`: pick one)" if m.get("group") else ""))
-        print("\nresearch-preset <name> --dry-run shows what applying one would change.")
-        return
+        return show_list()
     p = plan(a.name, a.remove, a.project, a.topic)
     print("\n".join(p.lines))
     if not p.changed():

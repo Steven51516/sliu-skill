@@ -1,5 +1,5 @@
 {
-  "about": "deletes, pick one: a recursive delete asks you; unanswered for 15 min, or in a session without prompts, it is declined with a pointer to `trash` (a delete that can be undone, put on PATH)",
+  "about": "a recursive delete asks you; unanswered for 15 min, it is declined: use trash",
   "group": "deletes",
   "was": [
     "safe-deletes"
@@ -29,5 +29,6 @@
     ]
   },
   "claude_md": "claude.md",
-  "codex_md": "codex.md"
+  "codex_md": "codex.md",
+  "order": 1
 }
