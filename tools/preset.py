@@ -190,7 +190,8 @@ class Plan:
             del self.settings["hooks"]
 
     def block(self, path, name, body, remove=None, quiet=False, was=()):
-        """The preset's rules between marker lines; a block under one of its old names (`was`) is replaced."""
+        """The preset's rules between marker lines. A block under one of its old names (`was`) with the same rules counts
+        as applied; with other rules it is replaced."""
         remove = self.remove if remove is None else remove
         t = self.text(path)
         for label in (name, *was):
@@ -202,9 +203,10 @@ class Plan:
                                  f"<!-- /research-harness preset: {name} -->\n")
         if i >= 0 and j > i:
             j += len(end) + (t[1][j + len(end):j + len(end) + 1] == "\n")
-            current = t[1][i:j]
-            t[1] = t[1][:i] + new + t[1][j:]
-            changed = current != new
+            same = t[1][i:j] == f"{start}\n{body.rstrip()}\n{end}\n"     # the same rules, under this name or an old one
+            changed = remove or not same
+            if changed:
+                t[1] = t[1][:i] + new + t[1][j:]
         else:
             changed = not remove
             if changed:
