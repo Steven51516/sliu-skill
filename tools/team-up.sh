@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# team-up [--codex] [--driver] <map, e.g. T8>
+# team-up [--codex] [--driver] <map, e.g. M8>
 # Run inside herdr from the project folder. Adds tabs A desk, B driver and watch to the current workspace; each agent tab
 # starts its team role (TEAM-PROTOCOL.md). Worker tabs open and close as the driver starts and finishes tickets, on the
 # driver's own agent. Claude Code (default): sessions start logged in (Keychain item claude-code-oauth) and on an explicit
@@ -11,7 +11,7 @@ set -euo pipefail
 [[ "${HERDR_ENV:-}" == 1 ]] || { echo "run team-up inside herdr"; exit 1; }
 AGENT=claude; ONLY_DRIVER=0   # --driver: only a driver tab for one more map, for a team already running
 while [[ "${1:-}" == --* ]]; do case "$1" in --codex) AGENT=codex;; --driver) ONLY_DRIVER=1;; *) echo "unknown option $1"; exit 1;; esac; shift; done
-T="${1:?usage: team-up [--codex] [--driver] <map, e.g. T8>}"
+T="${1:?usage: team-up [--codex] [--driver] <map, e.g. M8>}"
 if [[ ! -d "$T" ]]; then for d in maps/"$T"-*; do [[ -d "$d" ]] && { T="$d"; break; }; done; fi
 [[ -f "$T/map.md" ]] || { echo "no map '$1' in $PWD/maps"; exit 1; }
 P="$(basename "$PWD" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | cut -c1-20)"   # agent-name prefix
@@ -27,7 +27,7 @@ tab() {  # tab <label> -> pane id of a new tab in this workspace
   herdr tab create --workspace "$HERDR_WORKSPACE_ID" --cwd "$PWD" --label "$1" --no-focus ${TOK:+--env "CLAUDE_CODE_OAUTH_TOKEN=$TOK"} |
     python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["root_pane"]["pane_id"])'
 }
-go() {  # go <agent name> <pane> <team role, e.g. "driver maps/T8-x">
+go() {  # go <agent name> <pane> <team role, e.g. "driver maps/M8-x">
   if [[ $AGENT == codex ]]; then
     herdr agent start "$1" --kind codex --pane "$2" --timeout 120000 -- "${CODEX[@]}" -c 'model_reasoning_effort="medium"' >/dev/null
     herdr agent prompt "$1" "Read ~/.agents/skills/team/SKILL.md and follow it as \`team $3\`." >/dev/null

@@ -4,7 +4,7 @@ Maps and tickets for this project live as markdown files in `maps/`.
 
 ## Conventions
 
-- One map per destination: `maps/<id>-<slug>/map.md`, with `id` counting up (`T1`, `T2`, …) and never reused
+- One map per destination: `maps/<id>-<slug>/map.md`, with `id` counting up (`M1`, `M2`, …) and never reused
 - One folder per ticket: `maps/<map>/tickets/<NN>-<slug>/ticket.md`, numbered from `01`, never a single combined tickets file. The folder also holds the ticket's code and small results
 - Tracker state is recorded in YAML front matter at the top of each file (fields below); its `status:` line also says who holds it
 - Dates and times are UTC, from `date -u`
@@ -17,7 +17,7 @@ Create a new file under `maps/` (creating the directory if needed); for a new ma
 
 ## When a skill says "fetch the relevant ticket"
 
-Read the file at the referenced path. The user will normally pass the path or the ticket id (`T8-12`) directly.
+Read the file at the referenced path. The user will normally pass the path or the ticket id (`M8-12`) directly.
 
 ## Wayfinding operations
 
@@ -25,7 +25,7 @@ Used by `/wayfinder`. The **map** is a file with one **child** folder per ticket
 
 - **Map**: `maps/<id>-<slug>/map.md` (the Destination / Notes / Contract / Decisions-so-far / Fog / Out-of-scope body). Front matter: `id`, `title`, `status`, `outcome` (one line, once closed), `updated`. Status: `open`; `claimed (<session>, <time>)` while a session drives it; `paused (human, <date>: why)`; `closed`.
 - **Child ticket**: `maps/<map>/tickets/NN-<slug>/ticket.md`, with the question in the body. Front matter: `id` (`<map id>-NN`), `title` (the question), `type` (`research`/`prototype`/`grilling`/`task`/`experiment`), `status`, `blocked_by`, `updated`; an experiment adds `cost_cap`, `jobs` and `verdict`. Status: `open`; `claimed (<session>, <time>)`; `running (since <time>)`, while its jobs outlive the session that launched them; `held (human, <date>: why)`; `resolved`; `parked`; `superseded`.
-- **Blocking**: a `blocked_by: [T8-04, T8-07]` line. A ticket is unblocked when every ticket it lists is `resolved`, or `superseded` by a resolved one. Only a dated line from the human waives an edge.
+- **Blocking**: a `blocked_by: [M8-04, M8-07]` line. A ticket is unblocked when every ticket it lists is `resolved`, or `superseded` by a resolved one. Only a dated line from the human waives an edge.
 - **Frontier**: `research-status --frontier`: open, unblocked tickets on maps that are neither paused nor closed; first by number wins.
 - **Claim**: set `status: claimed (<session>, <time>)` and save before any work. A session holds one claim at a time. A claim with no Log activity for ~1.5 days may be taken over; say so in the Log.
 - **Resolve**: append the answer under an `## Answer` heading, set `status: resolved`, then append a context pointer (gist + link) to the map's Decisions-so-far in `map.md`.

@@ -35,7 +35,7 @@ You are the human's partner for this project for the rest of the session: the on
   a dated line in `docs/decisions.md`, then send the driver `rechart` or `new` with its path.
 - Speak for the human only in their words: a decision they gave goes on as `(human, <UTC time>: "<their words>")`; anything
   else you suggest is a proposal the human approves.
-- Name sessions to the human by role (desk, the T11 driver, …), never by session id.
+- Name sessions to the human by role (desk, the M11 driver, …), never by session id.
 
 ## driver `<map>`
 You run `research-drive` on this map. Its implementer subagents are workers: a fresh session per ticket that you open

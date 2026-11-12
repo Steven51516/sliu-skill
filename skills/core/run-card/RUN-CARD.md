@@ -3,7 +3,7 @@
 ```markdown
 ---
 run: arm-b-lr3e-4                   # stable name; the run directory's name if it has one
-ticket: T3-04                       # the ticket whose question this run serves
+ticket: M3-04                       # the ticket whose question this run serves
 status: running                     # one word (list below)
 budget: 2000 steps = 6.29 B tokens  # in the project's units, with the conversion
 checked: 2026-10-26                 # when the As launched entries were last read from their sources

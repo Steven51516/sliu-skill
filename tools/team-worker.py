@@ -57,7 +57,7 @@ def token():
 
 
 def submit(name, pane, text):
-    """Type a prompt and see it submitted: a prompt left typed in the input box (T11-69, 2026-11-02: 13 min) looks like a
+    """Type a prompt and see it submitted: a prompt left typed in the input box (2026-11-02: 13 min) looks like a
     started worker. herdr reports a prompt that started no turn within 5 s as stalled; then press Enter once."""
     r = herdr("agent", "prompt", name, text, "--wait", "--until", "working", "--timeout", "60000")
     if r.returncode != 0 and "stalled" in (r.stdout + r.stderr):

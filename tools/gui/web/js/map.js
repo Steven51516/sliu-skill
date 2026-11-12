@@ -216,7 +216,7 @@ function drawDag(m, keepView) {
   });
 }
 
-// ---------- jobs (free text in a ticket's jobs field, e.g. "tmux:T1-01 on pro5000-4, log logs/run.log") ----------
+// ---------- jobs (free text in a ticket's jobs field, e.g. "tmux:M1-01 on pro5000-4, log logs/run.log") ----------
 
 export function parseJob(text) {
   const session = (text.match(/tmux:([\w.:-]+)/) || [])[1];

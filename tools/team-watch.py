@@ -297,7 +297,7 @@ def workers(spaces):
 
 
 def driver_of(tid, drivers):
-    """The driver pane whose map shares the ticket's prefix (T12 for T12-09)."""
+    """The driver pane whose map shares the ticket's prefix (M12 for M12-09)."""
     prefix = tid.split("-")[0].upper()
     return next((p for p, m in drivers.items() if os.path.basename(m.rstrip("/")).split("-")[0].upper() == prefix), None)
 

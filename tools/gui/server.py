@@ -1706,7 +1706,7 @@ def name_role(items, cwd):
     for it in froms:
         r = by_session.get(it["who"])
         if r:
-            m = re.search(r"\b(T\d+)\b", r["map"] or "")
+            m = re.search(r"\b([MT]\d+)\b", r["map"] or "")
             it["role"] = r["role"] + (f" · {m.group(1)}" if m else "")
 
 

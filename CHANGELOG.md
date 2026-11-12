@@ -5,6 +5,7 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Map ids** are `M1`, `M2`, … and ticket ids `M1-01`, … throughout the docs, examples and `team-up`.
 - **`research-preset`** lists presets in sections (this machine, each pick-one choice, bundles, per project), each with
   on / partly / off and one short line; the long descriptions moved to the README.
 - **Delete presets**, one of three: `deletes-ask` (was `safe-deletes`: a recursive delete asks, declined after 15 min

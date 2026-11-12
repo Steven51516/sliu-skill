@@ -180,7 +180,7 @@ The skills are plain markdown and work in Codex too: `install.sh` links them int
 
 | In Claude Code | In Codex |
 |---|---|
-| `/research-drive <map>`, `/team desk` … | ask for a skill by name: "use the research-drive skill on maps/T1-x". Skills marked user-only (`research-init`, `wayfinder`, `to-map`, `team`, `retro`, …) are hidden from Codex's model: point it at the file, "read ~/.agents/skills/team/SKILL.md and follow it as `team desk`" |
+| `/research-drive <map>`, `/team desk` … | ask for a skill by name: "use the research-drive skill on maps/M1-x". Skills marked user-only (`research-init`, `wayfinder`, `to-map`, `team`, `retro`, …) are hidden from Codex's model: point it at the file, "read ~/.agents/skills/team/SKILL.md and follow it as `team desk`" |
 | `/loop` repeats a driver's pass on a schedule | no loop: prompt each pass yourself, or run an all-Codex team, where `team-watch` types `tick` into an idle driver every 25 min |
 | a fresh subagent per ticket | a Codex worker per ticket in team mode; in a single session, Codex works tickets itself |
 | `team-roster-hook`, `team-worker --rescue`, the optional `delete-guard` | Claude-only helpers; Codex asks in plain text and is not hit by Claude's safeguard stops |

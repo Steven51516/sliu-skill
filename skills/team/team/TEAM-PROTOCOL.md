@@ -2,7 +2,7 @@
 
 Long-lived agent sessions on one project, each with one job, so none of them fills its context: the **desk**, which the
 human talks to; one **driver** per active map, each in its own tab; and **workers**, a fresh session per ticket that the driver opens and
-closes. Started with the `team` skill (`/team <role>` in Claude Code), or by typing `team-up <map>` (e.g. `team-up T8`)
+closes. Started with the `team` skill (`/team <role>` in Claude Code), or by typing `team-up <map>` (e.g. `team-up M8`)
 in a herdr pane in the project folder; workers' tabs come and go as tickets start and finish.
 
 The roles run the same skills as a single session, with two swaps:
