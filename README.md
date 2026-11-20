@@ -113,17 +113,11 @@ Frontier (open, unblocked, unclaimed):
   M2-07  Spend 2 more GPU-days on the 2x-tokens run?
 ```
 
-**A team, in [herdr](https://herdr.dev) tabs.** You talk to the desk; the driver opens a worker tab per ticket and
-closes it when the ticket is done.
+**A team, in [herdr](https://herdr.dev) tabs**: a desk you talk to, a driver for the map, a watch tab, and a worker
+tab per ticket that the driver opens and closes. Here the driver has finished a pass and reports what is running, what
+is ready, and the one decision that needs you.
 
-```text
-tiny-lm
-├─ A desk         you talk here: it reports results, puts each decision to you, passes your answers on
-├─ B driver M2    /loop /research-drive: merges reviewed answers, dispatches ready tickets, files the next ones
-├─ watch          team-watch: the driver's log, and an alert when something needs you
-├─ M2-04          worker: Does a 2x longer warmup lower perplexity?
-└─ M2-05          worker: Does adding 10% books data lower perplexity?
-```
+<img src="docs/images/herdr.png" alt="A herdr window with tabs A desk, B driver M2, watch, M2-04 and M2-05; the driver tab shows a Claude Code session that ran one pass of research-drive and lists each ticket's state" width="100%">
 
 **A map, as a graph**, in the optional [Research Desk](#research-desk-app-optional-macos) app, for watching a project
 while it runs:
