@@ -334,7 +334,7 @@ progress, and the milestones: closed maps with their one-line outcomes. That pag
 </td>
 <td width="50%" valign="top">
 
-<img src="docs/images/ticket.png" alt="A ticket page: its question, its pre-registration and its runs with their progress" width="100%">
+<img src="docs/images/ticket.png" alt="A ticket opened beside the map graph: its job, its question, its pre-registration and its runs with their progress" width="100%">
 
 **A ticket.** Its question, its pre-registration (fixed before anything ran), and its assets: the runs, with their
 progress.
