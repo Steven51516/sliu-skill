@@ -34,7 +34,20 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 - **`trash --empty`** only empties under one folder (default: the current one) and lists each entry; unscoped, it
   deleted 46 entries of other sessions. **`codex-run`** fails when Codex could not start its tools (it printed "done").
 - Removed the unused `wait-what` skill.
+- **Research Desk:** Settings → Pictures for review saves a picture of each main screen (headless Chrome) where a
+  session without a browser can read them; a session may ask for a round itself once you allow it.
+- **Research Desk:** a simpler look: black-and-white controls so colour only marks a state, hairline cards, plain
+  replies, a larger message box that names the machine and model it goes to, a New session button, blurred dialogs,
+  thin scrollbars; one main action per page header.
+- **Research Desk:** the GPU page offers to update `[gpu_pools]` when `~/.ssh/config` renamed hosts (an old name kept
+  as an alias leads to the new one), dropped them, or has numbered hosts no pool lists.
+- **Research Desk:** Mark & ask on a figure (circle what's wrong, the marked copy and a note go to the ticket's worker
+  or the desk); a ticket's Trace tab (what its sessions did, step by step, here and on herdr machines).
 - **Map ids** are `M1`, `M2`, … and ticket ids `M1-01`, … throughout the docs, examples and `team-up`.
+- **Research Desk:** sessions on herdr's saved machines (a Docker container on this Mac, another computer) show beside
+  this Mac's, in their projects, with chat, prompts, keys, btw and paste; the sidebar footer lists the machines. Fixed:
+  remote calls used a later ssh option list (a connection of their own, not the shared one), and the GPU page and
+  server file views reached paused or Duo hosts outside the guard.
 - **`research-preset`** lists presets in sections (this machine, each pick-one choice, bundles, per project), each with
   on / partly / off and one short line; the long descriptions moved to the README.
 - **Delete presets**, one of three: `deletes-ask` (was `safe-deletes`: a recursive delete asks, declined after 15 min

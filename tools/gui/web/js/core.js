@@ -139,6 +139,10 @@ export function allAgents() {
   return out;
 }
 export const agentByPane = (pane) => allAgents().find((a) => a.pane === pane);
+// where a session runs when it isn't this Mac: a saved herdr machine (a Docker container here, another computer)
+export const machineTag = (a) => a?.machine ? `<span class="htag" title="runs on the herdr machine ${esc(a.machine)}">${esc(a.machine)}</span>` : "";
+// the places a list of sessions runs, for a heading: "" when all are on this Mac
+export const placesOf = (agents) => { const s = [...new Set(agents.map((a) => a.machine || "this Mac"))]; return s.length === 1 && s[0] === "this Mac" ? "" : s.join(" + "); };
 // a session can be forked into a "btw" side chat (read-only, deleted when closed): live Claude sessions only
 export const canBtw = (a) => !!a && a.agent === "claude" && !!a.session_id && a.role !== "btw" && (!a.remote || a.live);
 
@@ -243,6 +247,7 @@ const P = {
   check: '<path d="m5 12 5 5 9-10"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+  mark: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',
   doc: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
   phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/>',
   belloff: '<path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l1.5 2H8"/><path d="M10 20a2 2 0 0 0 4 0M4 4l16 16"/>',

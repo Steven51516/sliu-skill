@@ -14,3 +14,6 @@ scopes/
 
 # trash moves (tools: extras/trash.py) land in a .trash/ folder beside the path
 .trash/
+
+# pictures of the app for a session reviewing its look (Research Desk, Settings)
+tools/gui/.shots/

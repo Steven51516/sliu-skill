@@ -1,6 +1,6 @@
 // Chat with any live agent: its Claude Code transcript rendered, prompts answered from the exact screen, messages sent
 // through herdr. Polls fast while the agent works or waits, slowly while it is idle.
-import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent, modelTag, canBtw } from "./core.js";
+import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent, modelTag, canBtw, machineTag } from "./core.js";
 
 const C = S.chat;
 Object.assign(C, { items: [], tools: new Map(), offset: null, session: null, status: null, timer: null, queued: [], busy: false, seq: 0, turnFiles: new Set() });
@@ -143,7 +143,7 @@ function render() {
   const a = agentByPane(C.pane);
   el.innerHTML = `<div class="chat-head">
       <div class="picker" id="ch-pick" title="Switch agent">${a ? avatar(a) : `<span class="avatar">?</span>`}
-        <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : (C.pane || "").startsWith("session:") ? (C.label || "Saved conversation") + " · saved" : C.label ? C.label + " (ended)" : "No agent")}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
+        <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : (C.pane || "").startsWith("session:") ? (C.label || "Saved conversation") + " · saved" : C.label ? C.label + " (ended)" : "No agent")}${machineTag(a)}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
         <span class="muted" style="font-size:10px">▾</span></div>
       <span class="grow"></span>
       ${a?.role === "btw" ? `<button class="btn sm" id="ch-btw-close" title="Close this side chat and delete its conversation">${icon("trash")} Close &amp; delete</button>`
@@ -157,8 +157,8 @@ function render() {
     <div id="ch-live"></div>
     <div class="composer"><div class="box">
       <textarea id="composer" rows="1" placeholder="${a?.remote && !a.live ? `On ${esc(a.remote)}: read-only (its herdr there isn't reachable now). Message it in a terminal there.` : a?.remote ? `Message ${esc(agentLabel(a).toLowerCase())} on ${esc(a.remote)}…` : a ? `Message ${esc(agentLabel(a).toLowerCase())}…  / for skills, @ for tickets` : C.status === "ended" ? "This session has ended (its tab closed); its conversation stays readable here" : C.status === "archive" || (C.pane || "").startsWith("session:") ? "A saved conversation, read-only" : "Pick an agent first"}" ${a && (!a.remote || a.live) ? "" : "disabled"}></textarea>
-      <div class="bar2"><span class="hint" id="ch-hint">⏎ send · ⇧⏎ new line</span><span class="grow"></span>
-        <button class="send" id="ch-send" title="Send">${icon("send")}</button></div></div></div>`;
+      <div class="bar2">${a ? `<span class="to" title="This message goes to ${esc(agentLabel(a))}${a.machine ? ` on the herdr machine ${esc(a.machine)}` : a.remote ? ` on ${esc(a.remote)}` : " on this Mac"}">${esc([a.machine || a.remote, a.model ? a.model.replace(/\s*\(.*\)$/, "") + (a.effort ? " " + a.effort : "") : ""].filter(Boolean).join(" · "))}</span>` : ""}<span class="grow"></span>
+        <button class="send" id="ch-send" title="Send (⏎) · new line: ⇧⏎">${icon("send")}</button></div></div></div>`;
   $("#ch-pick").onclick = (e) => pickAgent(e.currentTarget);
   $("#ch-close").onclick = closeChat;
   if ($("#ch-live-open")) $("#ch-live-open").onclick = () => openChat(C.livePane);

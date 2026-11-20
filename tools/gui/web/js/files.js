@@ -1,5 +1,6 @@
 // Read-only file trees (records on the Mac, code on the server) and the file viewer.
 import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token } from "./core.js";
+import { markFigure } from "./annotate.js";
 
 const F = { trees: {}, viewer: null, scope: "map", focus: null };
 export const filesState = F;
@@ -188,6 +189,14 @@ export async function showDoc(el, side, path, opt = {}) {
   el.innerHTML = head;
   wire();
   if (!opt.bare) $("#vsize", el).textContent = fmtSize(f.size);
+  if (!opt.bare && f.kind === "image") {               // circle what's wrong and ask a session to fix it (annotate.js)
+    const b = document.createElement("button");
+    b.className = "btn sm";
+    b.innerHTML = `${icon("mark")} Mark &amp; ask`;
+    b.title = "Circle what's wrong on a copy and ask a session to fix this figure";
+    b.onclick = () => markFigure({ side, path, src: `data:${f.mime};base64,${f.data}` });
+    $(".vhead", el).insertBefore(b, $("#vvs", el));
+  }
   if (!opt.bare && f.kind === "log") {                 // follow: refetch every 5 s while this file stays open
     const b = document.createElement("button");
     b.className = "btn sm" + (opt.follow ? " primary" : "");

@@ -8,7 +8,9 @@ ProxyCommand hop would. The app's background loops, plus a page hammering it, ru
 - at no moment is more than one call to the host running;
 - every call's processes (the hop included) are gone within its deadline, and none are left at the end;
 - after a failure the app backs off instead of retrying;
-- with the shared connection closed (`ssh -O check` fails) it starts no call at all.
+- with the shared connection closed (`ssh -O check` fails) it starts no call at all;
+- no call opens a connection of its own (ControlMaster=no on every ssh and rsync);
+- a herdr machine (herdr --machine) that stalls gets the same: one call at a time, a deadline, back-off.
 
   python3 tools/gui/tests/remote_calls_test.py        (scripts/check.py runs it)
 """
@@ -25,11 +27,14 @@ GUI = pathlib.Path(__file__).resolve().parent.parent
 FAKE = """#!/bin/sh
 # a remote host whose link has stalled (remote_calls_test)
 for a in "$@"; do
+  [ "$a" = "-G" ] && { echo "hostname deadhost"; exit 0; }     # ssh -G only reads the config
   if [ "$a" = "-O" ]; then
     [ "$FAKE_LINK" = up ] && exit 0
     echo "Control socket connect(x): No such file or directory" >&2; exit 255
   fi
 done
+case "$1" in machine) echo '[{"id": "m-9", "label": "deadbox", "target": "ssh://u@deadbox:2222", "enabled": true}]'; exit 0;; esac
+echo "argv $(basename $0) $*" >> "$FAKE_LOG"
 sleep 318 &          # the hop a ProxyCommand starts
 echo "hop $!" >> "$FAKE_LOG"
 echo "call $$" >> "$FAKE_LOG"
@@ -51,11 +56,16 @@ def alive(pid):
 
 
 def main():
-    tmp = pathlib.Path(tempfile.mkdtemp(prefix="rd-remote-test-"))
-    (tmp / "bin").mkdir()
-    for name in ("ssh", "rsync"):
-        (tmp / "bin" / name).write_text(FAKE)
-        (tmp / "bin" / name).chmod(0o755)
+    for base in (None, os.path.expanduser("~/.cache")):     # a /tmp mounted noexec (a container) can't run the fakes
+        os.makedirs(base, exist_ok=True) if base else None
+        tmp = pathlib.Path(tempfile.mkdtemp(prefix="rd-remote-test-", dir=base))
+        (tmp / "bin").mkdir()
+        for name in ("ssh", "rsync", "herdr"):
+            (tmp / "bin" / name).write_text(FAKE)
+            (tmp / "bin" / name).chmod(0o755)
+        if os.access(tmp / "bin" / "ssh", os.X_OK) and shutil.which("ssh", path=str(tmp / "bin")):
+            break
+        shutil.rmtree(tmp, ignore_errors=True)
     (tmp / "projects.toml").write_text('[projects.deadproj]\nhost = "deadhost"\npath = "~/projects/deadproj"\n')
     log = tmp / "calls.log"
     log.touch()
@@ -66,6 +76,8 @@ def main():
 
     server.REMOTE_CACHE = str(tmp / "cache")
     server.REMOTE_SESSIONS = str(tmp / "cache" / ".sessions")
+    server.MACHINE_SESSIONS = str(tmp / "cache" / ".machines")
+    server.PAUSE_FILE = str(tmp / "paused")                  # not the person's own list
     server.CALL_LIMIT, server.RSYNC_LIMIT = 2, 2
     server.HERDR_EVERY, server.REMOTE_EVERY, server.PULL_EVERY = 0.3, 0.3, 0
     server.BACKOFF = [4, 8, 16]
@@ -125,6 +137,41 @@ def main():
         info = server.remote_info(p)
         if "not connected" not in (info["error"] or ""):
             problems.append(f"the project does not say it is not connected: {info['error']!r}")
+        own = [l for l in log.read_text().splitlines() if l.startswith(("argv ssh", "argv rsync")) and "ControlMaster=no" not in l]
+        if own:
+            problems.append(f"a call to the host could open a connection of its own: {own[0][:150]}")
+
+        server._hosts.clear()                       # a herdr machine that stopped answering
+        before = len(logged(log, "call"))
+        m = server.machine("deadbox")
+        pane = f"m:deadbox:w1:p1"
+
+        def hammer_machine():
+            while not stop.is_set():
+                server.refresh_machine(m)
+                try:
+                    server.chat(pane, None, None)       # an open chat: reads what the last look found, calls nothing
+                except server.ApiError:
+                    pass
+                time.sleep(0.05)
+        server.MACHINE_EVERY = server.MACHINE_FAST = 0.3
+        stop.clear()
+        for target in (server.machine_loop, hammer_machine, hammer_machine):
+            threading.Thread(target=target, daemon=True).start()
+        mpeak = watch(12, server.CALL_LIMIT + 1.5)
+        stop.set()
+        mcalls = len(logged(log, "call")) - before
+        if mpeak > 1:
+            problems.append(f"{mpeak} calls to a herdr machine ran at once (at most 1)")
+        if mcalls > 4:
+            problems.append(f"{mcalls} calls in 12 s to a herdr machine that never answers (back-off allows about 3)")
+        if not mcalls:
+            problems.append("the app never looked at the herdr machine")
+        if "unreachable" not in (server.machine_info()[0]["error"] or ""):
+            problems.append(f"the machine does not say it is unreachable: {server.machine_info()[0]!r}")
+        time.sleep(server.CALL_LIMIT + 1)
+        if running():
+            problems.append(f"herdr machine calls left running after their deadline: pids {running()}")
     except Exception as e:                        # the code under test broke: that is a failure too
         problems.append(f"the app's remote code raised {type(e).__name__}: {e}")
     finally:

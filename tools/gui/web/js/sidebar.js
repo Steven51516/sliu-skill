@@ -1,5 +1,5 @@
 // Left sidebar: search, inbox, projects (with the open project's maps), and the sessions of the open project by state.
-import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu, modelTag, modelOff, canBtw } from "./core.js";
+import { S, $, esc, icon, go, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, safeCls, codexNote, guardNote, loopNote, loopDead, store, popMenu, modelTag, modelOff, canBtw, machineTag, placesOf, toast } from "./core.js";
 
 export function inboxCount() {
   if (!S.summary) return 0;
@@ -18,8 +18,8 @@ export function renderSidebar() {
   const cur = r.project;
   const inbox = inboxCount();
   const nav = (h, ic, label, on, extra = "") => `<a class="nav ${on ? "on" : ""}" href="${h}">${icon(ic)}<span class="label">${esc(label)}</span>${extra}</a>`;
-  let html = `<div class="side-top"><span class="brand">Research Desk</span>
-      <button class="btn ghost sm icon" id="sb-new" title="New session or project">${icon("plus")}</button></div>
+  let html = `<div class="side-top"><span class="brand">Research Desk</span></div>
+    <button class="newbtn" id="sb-new" title="New session or project">${icon("plus")}<span class="grow">New session</span><kbd>⌘N</kbd></button>
     <div class="side-search" id="sb-search">${icon("search")}<span class="grow">Search or jump to…</span><kbd>⌘K</kbd></div>
     <div class="side-scroll">
     ${nav("#/inbox", "inbox", "Inbox", r.view === "inbox", inbox ? `<span class="count ${inbox ? "alert" : ""}">${inbox}</span>` : "")}
@@ -59,13 +59,14 @@ export function renderSidebar() {
   const needsYou = (a) => a.status === "blocked" || loopDead(a) || !!guardNote(a);
   const tree = cur && !folded.has(cur);
   const agents = allAgents().filter((a) => (tree ? a.project === cur : needsYou(a)));
+  const mixed = placesOf(agents).includes(" + ");   // sessions in more than one place: tag each row with its machine
   if (tree || agents.length) {
-    html += `<div class="side-sec"><span class="grow">${tree ? "Sessions" : "Needs you"}</span>
+    html += `<div class="side-sec"><span class="grow">${tree ? "Sessions" : "Needs you"}</span>${tree && placesOf(agents) && !mixed ? `<span class="htag" title="where these sessions run">${esc(placesOf(agents))}</span>` : ""}
       ${tree ? `<button class="btn ghost sm icon" id="sb-new2" title="New session">${icon("plus")}</button>` : ""}</div>`;
     if (!agents.length) html += `<div class="empty" style="padding:4px 10px">${sum && sum.herdr_error ? "herdr is not running" : "No live agent in this project"}.</div>`;
   }
   const row = (a, sub = false) => `<div tabindex="0" class="agent-row ${sub ? "sub" : ""} ${S.chat.open && S.chat.pane === a.pane ? "on" : ""}" data-pane="${esc(a.pane)}" title="${esc(a.title || "")}">
-      ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${modelOff(a) ? modelTag(a) : ""}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
+      ${avatar(a)}<div class="who"><div class="l1">${esc(agentLabel(a))}${mixed || !tree ? machineTag(a) : ""}${!cur && a.project ? ` <span class="muted">· ${esc(a.project)}</span>` : ""}</div>
       <div class="l2 ${(guardNote(a) || loopDead(a)) && a.status !== "blocked" ? "err" : ""}">${esc(a.status === "blocked" ? "Needs your answer" : guardNote(a) || (loopDead(a) ? loopNote(a) : "") || codexNote(a) || (a.role === "worker" ? a.ticket_title : "") || a.title || AGENT_WORD[a.status] || "")}</div></div>
       ${canBtw(a) ? `<button class="btn ghost sm icon btw-add" data-btw="${esc(a.pane)}" title="btw: fork a side chat with this session (read-only, deleted when you close it)">${icon("plus")}</button>` : ""}
       ${S.unread.has(a.pane) ? `<span class="dot unread" title="replied to you: not read yet"></span>` : `<span class="dot ${safeCls(a.status)}"></span>`}</div>`;
@@ -90,9 +91,7 @@ export function renderSidebar() {
     <button class="btn ghost sm icon ${S.summary?.moshi_mode ? "on moshi" : ""}" id="sb-moshi" title="${S.summary?.moshi_mode
       ? "Moshi mode is on: agents put yes/no and multiple-choice questions on your phone. Click to turn it off."
       : "Moshi mode is off. Click to have agents put yes/no and multiple-choice questions on your phone as buttons."}">${icon("phone")}</button>
-    <span class="dot ${sum && !sum.herdr_error ? "idle" : "blocked"}" title="${esc(sum?.herdr_error || "herdr connected")}"></span>
-    ${window.desk?.showHerdr ? `<a id="sb-herdr" title="Show herdr (⇧⌘H)" style="color:inherit">${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</a>`
-      : `<span>${sum && !sum.herdr_error ? "herdr" : "herdr offline"}</span>`}<span class="grow"></span>
+    ${herdrFoot(sum)}<span class="grow"></span>
     ${sum && sum.dry_run ? `<span class="tag warn" title="Start buttons send nothing">dry run</span>` : ""}</div>`;
   const el = $("#sidebar"), scroll = el.querySelector(".side-scroll")?.scrollTop || 0;
   el.innerHTML = html;
@@ -120,10 +119,31 @@ export function renderSidebar() {
     if (S.route.view === "project" && S.route.project === a.dataset.milestones) return show();
     go({ project: a.dataset.milestones }); setTimeout(show, 600);
   });
-  if ($("#sb-herdr")) $("#sb-herdr").onclick = () => window.desk.showHerdr();
+  if ($("#sb-herdr")) $("#sb-herdr").onclick = (e) => herdrMenu(e.currentTarget, sum);
   el.querySelectorAll("[data-add]").forEach((a) => a.onclick = () => hooks.addProject({ name: a.dataset.add, path: a.dataset.path }));
   el.querySelectorAll(".agent-row").forEach((row) => row.onclick = () => hooks.openChat(row.dataset.pane));
   el.querySelectorAll("[data-btw]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); hooks.btw(b.dataset.btw); });
+}
+
+// herdr in the footer: this Mac and each saved machine (herdr machine add) in one line; a click lists them
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+function machineRows(sum) {
+  const here = allAgents().filter((a) => !a.machine && !a.remote).length;
+  return [{ label: "This Mac", state: sum?.herdr_error ? "down" : "ok", note: sum?.herdr_error || plural(here, "session") },
+    ...(sum?.machines || []).map((m) => ({ label: m.label, state: m.state, target: m.target,
+      note: m.state === "ok" ? plural(m.agents, "session") : m.state === "paused" ? "paused" : m.state === "connecting" ? "connecting…" : m.error || "unreachable" }))];
+}
+function herdrFoot(sum) {
+  if (!sum) return "";
+  const rows = machineRows(sum), bad = rows.filter((r) => r.state === "down");
+  const text = rows.length > 1 ? `herdr · ${rows.length} machines` : bad.length ? "herdr offline" : "herdr";
+  return `<a id="sb-herdr" class="herdr-foot" title="${esc(rows.map((r) => `${r.label}: ${r.note}`).join("\n"))}"><span class="dot ${bad.length ? "blocked" : "idle"}"></span>${esc(text)}</a>`;
+}
+function herdrMenu(anchor, sum) {
+  const rows = machineRows(sum);
+  popMenu(anchor, [{ header: "herdr machines" }, ...rows.map((r) => ({ label: `${{ ok: "●", down: "✕", paused: "‖" }[r.state] || "…"}  ${r.label}`, hint: r.note,
+    run: () => toast(`${r.label}${r.target ? ` (${r.target})` : ""}: ${r.note}`, r.state === "down" ? "err" : "", 6000) })),
+    ...(window.desk?.showHerdr ? ["-", { label: "Show herdr", icon: "term", hint: "⇧⌘H", run: () => window.desk.showHerdr() }] : [])]);
 }
 
 export function initSidebarResize() {

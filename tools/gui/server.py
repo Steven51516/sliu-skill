@@ -41,6 +41,7 @@ import status as tracker  # noqa: E402  (tools/status.py, the `research-status` 
 import rg_chat  # noqa: E402
 import rg_term  # noqa: E402
 import rg_notify  # noqa: E402
+import rg_trace  # noqa: E402
 
 warnings.filterwarnings("ignore", message=".*fork.*", category=DeprecationWarning)   # pty.fork, child execs at once
 VERSION = "2"
@@ -111,9 +112,9 @@ PULL_EVERY = 15             # the conversation open in the chat
 CALL_LIMIT = 30             # seconds for an ssh call, whatever it went through
 RSYNC_LIMIT = 120           # seconds for an rsync (a first mirror of a project's records)
 BACKOFF = [30, 60, 120, 240, 480, 900]
-SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ClearAllForwardings=yes",
-            "-o", "ControlMaster=no", "-o", "ControlPersist=no"]   # use the shared connection, never become one
-SSH_BATCH = "ssh " + " ".join(SSH_OPTS)
+REMOTE_SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10", "-o", "ClearAllForwardings=yes",
+                   "-o", "ControlMaster=no", "-o", "ControlPersist=no"]   # use the shared connection, never become one
+SSH_BATCH = "ssh " + " ".join(REMOTE_SSH_OPTS)
 LINK_FAIL = re.compile(r"Permission denied|Connection (refused|reset|closed|timed out)|timed out|Broken pipe|Could not "
                        r"resolve|No route|kex_exchange|banner exchange|Control socket|mux_client|no answer within")
 PAUSE_FILE = os.path.expanduser("~/.config/research-gui/remote-paused")   # hosts the app must not contact, one per line
@@ -121,12 +122,26 @@ _hosts, _hosts_lock = {}, threading.Lock()
 
 
 def paused(host):
-    """A host the person told the app not to contact (listed in PAUSE_FILE) gets no call at all, not even ssh -O check."""
+    """A host the person told the app not to contact (listed in PAUSE_FILE) gets no call at all, not even ssh -O check;
+    so does any other name for it (an alias, a herdr machine's target): ssh -G says where a name goes, without a call."""
     try:
         with open(PAUSE_FILE) as f:
-            return host in f.read().split()
+            names = f.read().split()
     except OSError:
         return False
+    return bool(names) and (host in names or resolved(host) in {resolved(n) for n in names})
+
+
+_resolved = {}
+
+
+def resolved(host):
+    """The host name ssh would really connect to for a name in ~/.ssh/config (ssh -G reads the config only)."""
+    if host not in _resolved:
+        code, out, _ = run_group(["ssh", "-G", host], 5)
+        _resolved[host] = next((l.split()[1].lower() for l in out.decode(errors="replace").splitlines()
+                                if l.startswith("hostname ") and len(l.split()) > 1), host.lower()) if code == 0 else host.lower()
+    return _resolved[host]
 _remote = {}
 
 
@@ -158,10 +173,12 @@ def link_up(host):
     return run_group(["ssh", "-O", "check", host], 5)[0] == 0
 
 
-def host_call(host, cmd, timeout=None, input=None, wait=0.0, force=False):
-    """The one way the app reaches a remote host (ssh or rsync over ssh). A background check skips when a call to the
-    host is running (wait=0); a person's action waits up to `wait` s and goes even in back-off (force). Raises ApiError
-    when it can't call: 409 busy, 503 not connected or unreachable (then nothing is tried for 30 s, 1, 2, 4, 8, 15 min)."""
+def host_call(host, cmd, timeout=None, input=None, wait=0.0, force=False, link=True, fail_any=False):
+    """The one way the app reaches a remote host (ssh, rsync over ssh, herdr --machine). A background check skips when a
+    call to the host is running (wait=0); a person's action waits up to `wait` s and goes even in back-off (force).
+    link: go only over the shared connection (a remote project's host); a herdr machine has none. fail_any: any failed
+    call counts as the host being down (a background poll). Raises ApiError when it can't call: 409 busy, 503 not
+    connected or unreachable (then nothing is tried for 30 s, 1, 2, 4, 8, 15 min)."""
     st, timeout = host_state(host), timeout or CALL_LIMIT
     if paused(host):
         st.update(state="paused", error=f"paused: the app doesn't contact {host} until you resume it ({PAUSE_FILE})")
@@ -172,12 +189,12 @@ def host_call(host, cmd, timeout=None, input=None, wait=0.0, force=False):
     if not (st["lock"].acquire(timeout=wait) if wait else st["lock"].acquire(blocking=False)):
         raise ApiError(409, f"{host} is busy with another call; try again in a moment")
     try:
-        if not link_up(host):
+        if link and not link_up(host):
             st.update(state="no-link", error=f"not connected: log in to {host} once in a terminal (Duo), then Sync now")
             raise ApiError(503, st["error"])
         st["calls"] += 1
         code, out, err = run_group(cmd, timeout, input)
-        if code == 124 or (code != 0 and LINK_FAIL.search(err or "")):
+        if code == 124 or (code != 0 and (fail_any or LINK_FAIL.search(err or ""))):
             st["fails"] += 1
             lines = [l for l in (err or "").strip().splitlines() if l.strip()]
             st.update(state="down", error=(lines[-1] if lines else f"exit {code}")[:200],
@@ -190,7 +207,7 @@ def host_call(host, cmd, timeout=None, input=None, wait=0.0, force=False):
 
 
 def remote_ssh(host, command, **kw):
-    return host_call(host, ["ssh", *SSH_OPTS, host, command], **kw)
+    return host_call(host, ["ssh", *REMOTE_SSH_OPTS, host, command], **kw)
 
 
 def want(host):
@@ -421,6 +438,228 @@ def remote_sync_loop():
         time.sleep(REMOTE_EVERY)
 
 
+# ---------- herdr machines: sessions on other computers this Mac's herdr knows (herdr machine add) ----------
+# A saved machine (a Docker container on this Mac, another computer) runs its own herdr and sessions. The app shows their
+# agents beside the local ones, each in the project whose folder holds its cwd (the same path there: a shared folder or
+# a clone at the same place), and works them through `herdr --machine` (status, messages, keys, screens). Their
+# conversations come over ssh to the machine's target and are mirrored here read-only. Every call goes through
+# host_call (one at a time per machine, a deadline, back-off), without the shared-connection rule: these need no Duo.
+# A machine named in PAUSE_FILE (its label or its ssh host) gets no call at all.
+
+MACHINE_SESSIONS = os.path.join(REMOTE_CACHE, ".machines")    # <machine>/<encoded dir>/<session>.jsonl
+MACHINE_EVERY, MACHINE_FAST, MACHINE_PULL = 10, 3, 2           # s between looks; while one of its chats is open; its open chat
+_mlist = {"t": 0.0, "rows": []}
+_msnap = {}            # machine key -> {"t", "agents", "snap", "error", "files": {sid: path under ~/.claude/projects there}}
+_mbusy = set()
+
+
+def machines():
+    """The enabled saved machines of this Mac's herdr ({key, id, label, target}), read again each minute."""
+    if time.time() - _mlist["t"] > 60:
+        code, out, _ = run(["herdr", "machine", "list", "--json"], timeout=10)
+        try:
+            rows = json.loads(out) if code == 0 else []
+        except ValueError:
+            rows = []
+        ok = [r for r in rows if isinstance(r, dict) and r.get("enabled") and r.get("id") and not str(r.get("target", "")).startswith("-")]
+        _mlist.update(t=time.time(), rows=[{"key": r["label"] if re.fullmatch(r"[\w.-]{1,40}", r.get("label") or "") else r["id"],
+                                            "id": r["id"], "label": r.get("label") or r["id"], "target": r.get("target") or ""} for r in ok])
+    return _mlist["rows"]
+
+
+def machine(key):
+    m = next((x for x in machines() if x["key"] == key), None)
+    if not m:
+        raise ApiError(404, f"no herdr machine `{key}` (herdr machine list)")
+    return m
+
+
+def ssh_dest(target):
+    """ssh destination and options for a saved machine's target: `host`, `user@host` or `ssh://user@host:port`."""
+    u = re.fullmatch(r"ssh://(?:([^@/]+)@)?\[?([^\]/]+?)\]?(?::(\d+))?/?", target or "")
+    if u:
+        user, host, port = u.groups()
+        return (f"{user}@{host}" if user else host), (["-p", port] if port else [])
+    return target, []
+
+
+def machine_paused(m):
+    return any(paused(x) for x in (m["key"], m["label"], ssh_dest(m["target"])[0].split("@")[-1]))
+
+
+def machine_ssh(m, command, **kw):
+    dest, opts = ssh_dest(m["target"])
+    return host_call(m["key"], ["ssh", *REMOTE_SSH_OPTS, *opts, dest, command], link=False, **kw)
+
+
+def mpane(m, pane):
+    return f"m:{m['key']}:{pane}" if m else pane
+
+
+def split_pane(pane):
+    """(machine or None, its herdr pane id) for an app pane; `m:<machine>:<pane>` is a session on a saved machine."""
+    if (pane or "").startswith("m:"):
+        _, key, rp = pane.split(":", 2)
+        return machine(key), rp
+    return None, pane
+
+
+def refresh_machine(m, wait=0.0, force=False):
+    """Look at a machine's herdr (one call: its snapshot has agents, tabs and workspaces), then mirror its sessions'
+    conversations."""
+    st = _msnap.setdefault(m["key"], {"t": 0.0, "agents": None, "snap": {}, "error": None, "files": {}, "looked": {}})
+    if machine_paused(m):
+        st.update(t=time.time(), error=f"paused: the app doesn't contact {m['label']} until you resume it ({PAUSE_FILE})")
+        return st
+    try:
+        code, out, err = host_call(m["key"], ["herdr", "--machine", m["id"], "api", "snapshot"], wait=wait, force=force,
+                                   link=False, fail_any=True)
+        snap = json.loads(out)["result"]["snapshot"]
+        st.update(t=time.time(), ok=time.time(), agents=snap.get("agents", []), snap=snap, error=None)
+    except ApiError as e:
+        if e.code != 409:                                  # busy: keep what we have
+            msg = str(e)
+            j = re.search(r'"message"\s*:\s*"([^"]+)"', msg)    # herdr says why as JSON
+            st.update(t=time.time(), error=f"{m['label']} unreachable: {j.group(1)}" if j else msg)
+        return st
+    except (ValueError, KeyError, TypeError):
+        st.update(t=time.time(), error=f"herdr on {m['label']}: no readable answer")
+        return st
+    try:
+        mirror_machine(m, st)
+    except ApiError:
+        pass
+    return st
+
+
+MIRROR_TAIL = 2 << 20      # a conversation's first copy: its last 2 MB (the chat shows the tail, like a long local one)
+TAIL_SCRIPT = r"""cd ~/.claude/projects 2>/dev/null || exit 0
+for spec in "$@"; do
+  f=${spec%:*}; off=${spec##*:}
+  [ -f "$f" ] || continue
+  size=$(($(wc -c < "$f")))
+  start=$off
+  [ "$size" -lt "$off" ] && start=0                     # rewritten: copy afresh
+  [ $((size - start)) -gt CAP ] && start=$((size - CAP))  # first copy, or too far behind: the tail only
+  n=$((size - start))
+  echo "@@rd@@ $f $size $start $n"
+  [ "$n" -gt 0 ] && tail -c +$((start + 1)) < "$f" | head -c "$n"     # names start with "-": never an argument
+done
+true""".replace("CAP", str(MIRROR_TAIL))
+
+
+def mirror_machine(m, st, only=None, **kw):
+    """Copy the conversations of a machine's live Claude sessions here: the last 2 MB at first, then what was added
+    since, in one ssh call (plain sh, wc, tail, head there: no rsync needed)."""
+    files, looked, ends = st["files"], st["looked"], st.setdefault("ends", {})
+    sids = only or [s for a in st["agents"] if a.get("agent") == "claude"
+                    and SID.fullmatch(s := (a.get("agent_session") or {}).get("value") or "")]
+    new = [s for s in sids if s not in files and time.time() - looked.get(s, 0) > 60]
+    if new:
+        names = " -o ".join(f"-name {s}.jsonl" for s in new)
+        code, out, _ = machine_ssh(m, f"cd ~/.claude/projects 2>/dev/null && find . -maxdepth 2 \\( {names} \\) -type f", **kw)
+        for line in out.decode(errors="replace").split():
+            rel = line[2:] if line.startswith("./") else line
+            if os.path.basename(rel)[:-6] in new and re.fullmatch(r"[\w.-]+/[0-9a-fA-F-]+\.jsonl", rel):
+                files[os.path.basename(rel)[:-6]] = rel
+        looked.update({s: time.time() for s in new})
+    root = os.path.join(MACHINE_SESSIONS, m["key"])
+    specs = []
+    for s in sids:
+        rel = files.get(s)
+        if rel:
+            local = os.path.join(root, rel)
+            end = ends.get(rel)          # (remote offset where the copy starts, its length) when the copy is ours
+            ok = end and os.path.exists(local) and os.path.getsize(local) == end[1]
+            specs.append(f"{rel}:{end[0] + end[1] if ok else 0}")
+    if not specs:
+        return
+    code, out, _ = machine_ssh(m, "sh -c " + shlex.quote(TAIL_SCRIPT) + " rd " + " ".join(specs), timeout=RSYNC_LIMIT, **kw)
+    i = 0
+    while i < len(out):
+        nl = out.find(b"\n", i)
+        head = out[i:nl].decode(errors="replace").split() if nl > 0 else []
+        if len(head) != 5 or head[0] != "@@rd@@" or head[1] not in {x.rsplit(":", 1)[0] for x in specs}:
+            break
+        rel, start, n = head[1], int(head[3]), int(head[4])
+        data, i = out[nl + 1:nl + 1 + n], nl + 1 + n
+        local = os.path.join(root, rel)
+        end = ends.get(rel)
+        if end and start == end[0] + end[1] and os.path.exists(local) and os.path.getsize(local) == end[1]:
+            if data:
+                with open(local, "ab") as f:          # what was added since
+                    f.write(data)
+                ends[rel] = (end[0], end[1] + len(data))
+            continue
+        if start > 0:                                 # a tail starts mid-line: drop the partial first line
+            cut = data.find(b"\n") + 1
+            data, start = data[cut:], start + cut
+        os.makedirs(os.path.dirname(local), exist_ok=True)
+        with open(local + ".tmp", "wb") as f:
+            f.write(data)
+        os.replace(local + ".tmp", local)
+        ends[rel] = (start, len(data))
+
+
+def machine_transcript(m, sid):
+    rel = ((_msnap.get(m["key"]) or {}).get("files") or {}).get(sid or "")
+    path = os.path.join(MACHINE_SESSIONS, m["key"], rel) if rel else None
+    return path if path and os.path.exists(path) else None
+
+
+def pull_machine(m, sid):
+    """The open chat's conversation, fetched at most every MACHINE_PULL s (skipped while another call to it runs)."""
+    st = _msnap.get(m["key"])
+    if st and st.get("agents") is not None and SID.fullmatch(sid or "") and time.time() - _pulled.get((m["key"], sid), 0) >= MACHINE_PULL:
+        _pulled[(m["key"], sid)] = time.time()
+        try:
+            mirror_machine(m, st, only=[sid])
+        except ApiError:
+            pass
+    return machine_transcript(m, sid)
+
+
+def machine_agents():
+    """(machine, herdr agent, its snapshot) for every agent on a reachable machine; a machine that stopped answering
+    keeps its last list for a while, its agents shown as unknown."""
+    out = []
+    for m in machines():
+        st = _msnap.get(m["key"]) or {}
+        if st.get("agents") is None or time.time() - st.get("ok", 0) > 10 * 60:
+            continue
+        for a in st["agents"]:
+            out.append((m, a if not st.get("error") else dict(a, agent_status="unknown"), st.get("snap") or {}))
+    return out
+
+
+def machine_info():
+    out = []
+    for m in machines():
+        st, h = _msnap.get(m["key"]) or {}, host_state(m["key"])
+        state = "paused" if machine_paused(m) else "down" if st.get("error") else "ok" if st.get("agents") is not None else "connecting"
+        out.append({"key": m["key"], "label": m["label"], "target": m["target"], "state": state, "error": st.get("error"),
+                    "agents": len(st.get("agents") or []), "retry": max(0, int(h["until"] - time.time())) or None})
+    return out
+
+
+def machine_loop():
+    """Each machine on its own thread: one slow machine must not hold up another."""
+    def look(m):
+        try:
+            refresh_machine(m)
+        except Exception as e:                     # a bug here must not stop the loop
+            sys.stderr.write(f"machine {m['key']}: {e}\n")
+        finally:
+            _mbusy.discard(m["key"])
+    while True:
+        for m in machines():
+            st = _msnap.get(m["key"]) or {}
+            if m["key"] not in _mbusy and time.time() - st.get("t", 0) >= (MACHINE_FAST if wanted(m["key"]) else MACHINE_EVERY):
+                _mbusy.add(m["key"])
+                threading.Thread(target=look, args=(m,), daemon=True).start()
+        time.sleep(1)
+
+
 def project(name):
     p = load_config()["projects"].get(name)
     if not p:
@@ -471,8 +710,13 @@ class HerdrError(RuntimeError):
         self.code = code
 
 
-def herdr(*args, timeout=150):
-    code, out, err = run(["herdr", *args], timeout=timeout)
+def herdr(*args, timeout=150, machine=None):
+    """Run herdr here, or with machine= on that saved machine (a person's action: through the guard, waiting its turn)."""
+    if machine:
+        code, out, err = host_call(machine["key"], ["herdr", "--machine", machine["id"], *args], timeout=timeout, wait=15,
+                                   force=True, link=False)
+    else:
+        code, out, err = run(["herdr", *args], timeout=timeout)
     if code != 0:
         ecode = None
         try:
@@ -504,6 +748,16 @@ def agent_names():
 
 
 def live_agent(pane):
+    m, rp = split_pane(pane)
+    if m:
+        want(m["key"])
+        st = _msnap.get(m["key"]) or {}
+        if st.get("agents") is None or st.get("error"):
+            raise ApiError(503, st.get("error") or f"{m['label']}: not reached yet")
+        a = next((a for a in st["agents"] if a["pane_id"] == rp), None)
+        if not a:
+            raise ApiError(404, f"no live agent in pane {rp} on {m['label']}")
+        return a, st.get("snap") or {}
     snap, err = herdr_snapshot()
     if not snap:
         raise ApiError(503, f"herdr: {err}")
@@ -535,25 +789,30 @@ def in_folder(cwd, root):
     return cwd == root or cwd.startswith(root + os.sep)
 
 
-def agent_view(a, snap, ros):
+def agent_view(a, snap, ros, m=None):
+    """An agent as the page shows it; m: the saved machine it runs on (None: this Mac)."""
     tabs = {t["tab_id"]: t for t in snap.get("tabs", [])}
     spaces = {w["workspace_id"]: w for w in snap.get("workspaces", [])}
     tab = tabs.get(a.get("tab_id"), {})
     r = ros.get(a["pane_id"], {})
     label = tab.get("label", "")
     role = r.get("role") or next((w for w in ("desk", "driver", "worker", "implementer") if w in label.lower()), "")
-    return {"pane": a["pane_id"], "tab": a.get("tab_id"), "workspace": a.get("workspace_id"), "name": agent_names().get(a["pane_id"]),
+    sid = (a.get("agent_session") or {}).get("value")
+    path = (machine_transcript(m, sid) if a.get("agent") == "claude" else None) if m else transcript_of(a)
+    pane = mpane(m, a["pane_id"])
+    return {"pane": pane, "tab": a.get("tab_id"), "workspace": a.get("workspace_id"),
+            "name": a.get("name") if m else agent_names().get(a["pane_id"]), "machine": m["label"] if m else None,
             "workspace_label": spaces.get(a.get("workspace_id"), {}).get("label", ""),
             "agent": a.get("agent"), "status": a.get("agent_status"), "title": a.get("terminal_title_stripped"),
             "tab_label": label, "role": role, "map": r.get("map", ""), "session": r.get("session", ""),
-            "cwd": a.get("cwd"), "transcript": bool((a.get("agent_session") or {}).get("value")), "safeguard": guard_of(a),
-            "session_id": (a.get("agent_session") or {}).get("value"),
-            "turn_end": rg_chat.last_turn_end(transcript_of(a)) if transcript_of(a) else None,
-            "loop": rg_chat.loop_state(transcript_of(a)) if transcript_of(a) else None,
-            "api_error": rg_chat.last_api_error(transcript_of(a)) if transcript_of(a) else None,
-            "model": rg_chat.last_model(transcript_of(a)) if transcript_of(a) else None,
-            "effort": rg_chat.last_effort(transcript_of(a)) if transcript_of(a) else None,
-            **btw_fields(a["pane_id"])}
+            "cwd": a.get("cwd"), "transcript": bool(sid), "session_id": sid,
+            "safeguard": rg_chat.last_safeguard(path) if path else None,
+            "turn_end": rg_chat.last_turn_end(path) if path else None,
+            "loop": rg_chat.loop_state(path) if path else None,
+            "api_error": rg_chat.last_api_error(path) if path else None,
+            "model": rg_chat.last_model(path) if path else None,
+            "effort": rg_chat.last_effort(path) if path else None,
+            **btw_fields(pane)}
 
 
 def btw_fields(app_pane):
@@ -567,17 +826,11 @@ def transcript_of(a):
     return rg_chat.transcript_path((a.get("agent_session") or {}).get("value"))
 
 
-def guard_of(a):
-    """The agent's latest Opus-safeguard event that still matters, if any (Claude sessions only)."""
-    path = transcript_of(a)
-    return rg_chat.last_safeguard(path) if path else None
-
-
 def project_agents(p):
-    """herdr agents whose folder is the project, each with its role (roster line, else tab label)."""
+    """herdr agents whose folder is the project, here and on each saved machine, each with its role (roster line, else
+    tab label). The error: this Mac's herdr when nothing was found, and each machine that stopped answering after it
+    had sessions of the project."""
     snap, err = herdr_snapshot()
-    if not snap:
-        return [], err
     ros = roster(p)
     others = [q["path"] for q in load_config()["projects"].values() if q["name"] != p["name"]]
 
@@ -587,10 +840,16 @@ def project_agents(p):
         if in_folder(a.get("cwd"), p["path"]):
             return True
         return a["pane_id"] in ros and not any(in_folder(a.get("cwd"), o) for o in others)
-    out = [agent_view(a, snap, ros) for a in snap.get("agents", []) if mine(a)]
+    out = [agent_view(a, snap, ros) for a in (snap or {}).get("agents", []) if mine(a)]
+    out += [agent_view(a, msnap, ros, m) for m, a, msnap in machine_agents() if mine(a)]
+    errs = [] if snap or out else [err]
+    for m in {x["key"]: x for x in machines()}.values():
+        st = _msnap.get(m["key"]) or {}
+        if st.get("error") and any(a.get("machine") == m["label"] for a in out):
+            errs.append(st["error"])
     order = {"desk": 0, "driver": 1, "worker": 2, "implementer": 2}
     out.sort(key=lambda a: (order.get(a["role"], 3), a["tab_label"]))
-    return out, None
+    return out, "; ".join(e for e in errs if e) or None
 
 
 def live_driver_maps(agents, maps):
@@ -796,13 +1055,13 @@ def projects_summary():
                 found.append({"name": os.path.basename(d), "path": d})
     snap, err = herdr_snapshot()
     others = []
-    if snap:
-        for a in snap.get("agents", []):
-            claimed = {pane for q in cfg["projects"].values() if not q.get("remote_host") for pane in roster(q)}
-            if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed \
-                    and not is_asker(a):
-                others.append(agent_view(a, snap, {}))
+    claimed = {pane for q in cfg["projects"].values() if not q.get("remote_host") for pane in roster(q)}
+    for m, a, s in [(None, a, snap) for a in (snap or {}).get("agents", [])] + machine_agents():
+        if not any(in_folder(a.get("cwd"), p["path"]) for p in cfg["projects"].values()) and a["pane_id"] not in claimed \
+                and not is_asker(a):
+            others.append(agent_view(a, s, {}, m))
     return {"projects": out, "unregistered": found, "config": CONFIG, "other_agents": others, "herdr_error": err,
+            "machines": machine_info(),
             "dry_run": ARGS.dry_run, "version": VERSION, "moshi_mode": moshi_mode(), "asks": open_asks(), "roots": cfg.get("roots", [])}
 
 
@@ -974,24 +1233,30 @@ def btw_save(d):
 
 
 def btw_runner(pane):
-    """(herdr command, host or None, the session's herdr record, app pane prefix) for a local or remote session."""
+    """(herdr command, host or None, the session's herdr record, app pane prefix, machine or None) for a local, machine
+    or remote session."""
+    if (pane or "").startswith("m:"):
+        m, rp = split_pane(pane)
+        refresh_machine(m, wait=20, force=True)
+        a = next((x for x in (_msnap.get(m["key"]) or {}).get("agents") or [] if x["pane_id"] == rp), None)
+        return (lambda *args, timeout=60: herdr(*args, timeout=timeout, machine=m)), None, a, f"m:{m['key']}:", m
     if (pane or "").startswith("remote:"):
         _, name, rpane = pane.split(":", 2)
         p = project(name)
         host = p["remote_host"]
         refresh_remote_herdr(host, wait=20, force=True)
         a = next((x for x in (_rsnap.get(host) or {}).get("agents") or [] if x["pane_id"] == rpane), None)
-        return (lambda *args, timeout=60: remote_herdr(host, *args, timeout=timeout)), host, a, f"remote:{name}:"
+        return (lambda *args, timeout=60: remote_herdr(host, *args, timeout=timeout)), host, a, f"remote:{name}:", None
     snap, err = herdr_snapshot()
     a = next((x for x in (snap or {}).get("agents", []) if x["pane_id"] == pane), None)
-    return (lambda *args, timeout=60: herdr(*args, timeout=timeout)), None, a, ""
+    return (lambda *args, timeout=60: herdr(*args, timeout=timeout)), None, a, "", None
 
 
 def btw_start(b):
     """Fork a Claude session into a new tab beside it: same conversation so far, new session id, tools that change
     anything denied, a system note that this is a side chat. Returns the app pane of the fork."""
     pane = b.get("pane") or ""
-    run_herdr, host, a, prefix = btw_runner(pane)
+    run_herdr, host, a, prefix, m = btw_runner(pane)
     sid = ((a or {}).get("agent_session") or {}).get("value")
     if not a or a.get("agent") != "claude" or not SID.fullmatch(sid or ""):
         raise ApiError(400, "Only a live Claude Code session can be forked")
@@ -1015,11 +1280,13 @@ def btw_start(b):
             run_herdr("tab", "close", tab_id)
             raise
     reg = btw_load()
-    reg[prefix + new] = {"host": host, "pane": new, "tab": tab_id, "parent": pane, "parent_sid": sid, "label": label,
-                         "at": time.time()}
+    reg[prefix + new] = {"host": host, "machine": m and m["key"], "pane": new, "tab": tab_id, "parent": pane,
+                         "parent_sid": sid, "label": label, "at": time.time()}
     btw_save(reg)
     if host:
         refresh_remote_herdr(host, wait=20, force=True)
+    if m:
+        refresh_machine(m, wait=20, force=True)
     return {"pane": prefix + new}
 
 
@@ -1029,7 +1296,7 @@ def btw_close(b):
     rec = reg.get(b.get("pane") or "")
     if not rec:
         raise ApiError(404, "not a btw chat")
-    run_herdr, host, a, _ = btw_runner(b["pane"])
+    run_herdr, host, a, _, m = btw_runner(b["pane"])
     sid = ((a or {}).get("agent_session") or {}).get("value") or rec.get("sid")
     try:
         run_herdr("tab", "close", rec["tab"], timeout=20)
@@ -1039,15 +1306,15 @@ def btw_close(b):
     if SID.fullmatch(sid or "") and sid != rec["parent_sid"]:   # never the session it was forked from
         time.sleep(1.5)                          # let Claude Code finish writing as it exits
         paths = [f"projects/*/{sid}.jsonl", f"projects/*/{sid}", f"file-history/{sid}", f"session-env/{sid}", f"todos/{sid}*"]
-        if host:
+        if host or m:
             script = (f"cd ~/.claude && rm -rf {' '.join(paths)}; "
                       f"[ -f history.jsonl ] && grep -v '\"sessionId\":\"{sid}\"' history.jsonl > history.jsonl.btw; "
                       f"[ -f history.jsonl.btw ] && cat history.jsonl.btw > history.jsonl && rm -f history.jsonl.btw")
             try:
-                remote_ssh(host, script, wait=20, force=True)
+                machine_ssh(m, script, wait=20, force=True) if m else remote_ssh(host, script, wait=20, force=True)
             except ApiError as e:
-                raise ApiError(e.code, f"closed it, but couldn't delete its conversation on {host}: {e}")
-            for f in glob.glob(os.path.join(REMOTE_SESSIONS, "*", "*", f"{sid}.jsonl")):
+                raise ApiError(e.code, f"closed it, but couldn't delete its conversation on {m['label'] if m else host}: {e}")
+            for f in glob.glob(os.path.join(MACHINE_SESSIONS if m else REMOTE_SESSIONS, "*", "*", f"{sid}.jsonl")):
                 os.remove(f)
         else:
             root = os.path.expanduser("~/.claude")
@@ -1075,6 +1342,8 @@ def btw_close(b):
     btw_save(reg)
     if host:
         refresh_remote_herdr(host, wait=10, force=True)
+    if m:
+        refresh_machine(m, wait=10, force=True)
     return {"ok": True, "deleted": deleted, "parent": rec["parent"]}
 
 
@@ -1110,6 +1379,8 @@ def paste_file(b):
     with open(local, "wb") as f:
         f.write(data)
     pane = b.get("pane") or ""
+    if pane.startswith("m:"):
+        return {"path": machine_upload(split_pane(pane)[0], local, fname)}
     if not pane.startswith("remote:"):
         return {"path": local}
     host = project(pane.split(":")[1])["remote_host"]
@@ -1125,6 +1396,21 @@ def paste_file(b):
     if code != 0:
         raise ApiError(502, f"upload to {host} failed: {err.strip()[:150]}")
     return {"path": f"{rdir}/{fname}"}
+
+
+def machine_upload(m, local, fname):
+    """Put a pasted or dropped file in ~/.cache/research-desk-paste on a saved machine; its path there."""
+    with open(local, "rb") as f:
+        data = f.read()
+    try:
+        code, out, err = machine_ssh(m, "mkdir -p ~/.cache/research-desk-paste && cd ~/.cache/research-desk-paste && "
+                                     f"cat > {shlex.quote(fname)} && pwd", input=data, wait=20, force=True)
+    except ApiError as e:
+        raise ApiError(e.code, f"couldn't upload it to {m['label']}: {e}")
+    rdir = out.decode(errors="replace").strip()
+    if code != 0 or not rdir.startswith("/"):
+        raise ApiError(502, f"upload to {m['label']} failed: {err.strip()[:150]}")
+    return f"{rdir}/{fname}"
 
 
 # ---------- what changed since the human last looked ----------
@@ -1285,7 +1571,12 @@ _cache, _cache_lock, _homes = {}, threading.Lock(), {}
 
 
 def ssh(host, cmd, timeout=40):
-    code, out, err = run(["ssh", *SSH_OPTS, host, cmd], timeout=timeout)
+    """ssh for server files and GPUs. A remote project's host (a Duo login) or a paused one only through host_call's
+    guard: never a login of its own, nothing at all while paused."""
+    if paused(host) or host in remote_hosts():
+        code, out, err = remote_ssh(host, cmd, timeout=timeout, wait=10)
+    else:
+        code, out, err = run(["ssh", *SSH_OPTS, host, cmd], timeout=timeout)
     if code != 0:
         raise ApiError(502, f"ssh {host}: {err.strip() or f'exit {code}'}")
     return out
@@ -1405,8 +1696,8 @@ def gpu_pools():
     cfg = load_config()
     pools = {k: list(v) for k, v in (cfg.get("gpu_pools") or {}).items() if isinstance(v, list)}
     listed = {h for hs in pools.values() for h in hs}
-    extra = [h for h in (cfg.get("gpu_hosts") or []) + [p.get("server") for p in cfg["projects"].values()]
-             if h and h not in listed]
+    extra = [h for h in (cfg.get("gpu_hosts") or []) + [p.get("server") for p in cfg["projects"].values() if not p.get("remote_host")]
+             if h and h not in listed]      # a remote project's host is a login node: no GPUs, and a Duo login
     if extra:
         pools.setdefault("Other", [])
         pools["Other"] += [h for h in dict.fromkeys(extra)]
@@ -1415,6 +1706,75 @@ def gpu_pools():
 
 def gpu_hosts():
     return [h for hs in gpu_pools().values() for h in hs]
+
+
+def ssh_host_lines():
+    """Each `Host` line of ~/.ssh/config as its names (no wildcards): the host's own name first, then its aliases."""
+    out = []
+    try:
+        for line in open(os.path.expanduser("~/.ssh/config")):
+            parts = line.split()
+            if len(parts) >= 2 and parts[0].lower() == "host":
+                names = [h for h in parts[1:] if not any(c in h for c in "*?!")]
+                if names:
+                    out.append(names)
+    except OSError:
+        pass
+    return out
+
+
+def suggest_pools():
+    """[gpu_pools] as ~/.ssh/config names the hosts now: each by its own name (an old name kept as an alias leads to it),
+    hosts gone from it dropped, and numbered hosts no pool lists (h01, h02, …) as a new pool. None if nothing changes."""
+    pools = {k: list(v) for k, v in (load_config().get("gpu_pools") or {}).items() if isinstance(v, list)}
+    lines = ssh_host_lines()
+    if not pools or not lines:
+        return None
+    own = {n: names[0] for names in lines for n in names}
+    out, notes = {}, []
+    for pool, hosts in pools.items():
+        renamed = [f"{h} → {own[h]}" for h in hosts if h in own and own[h] != h]
+        gone = [h for h in hosts if h not in own]
+        if renamed:
+            notes.append(f"{pool}: {', '.join(renamed)}")
+        if gone:
+            notes.append(f"{pool}: {', '.join(gone)} {'is' if len(gone) == 1 else 'are'} no longer in ~/.ssh/config" + ("" if len(gone) < len(hosts) else ", so the pool goes"))
+        if len(gone) < len(hosts):
+            out[pool] = list(dict.fromkeys(own[h] for h in hosts if h in own))
+    used, groups = {h for hs in out.values() for h in hs}, {}
+    for names in lines:
+        m = re.fullmatch(r"([A-Za-z]+)(\d+)", names[0])
+        if m and names[0] not in used:
+            groups.setdefault(m.group(1), []).append(names[0])
+    for hs in groups.values():
+        hs.sort(key=lambda h: int(re.search(r"\d+$", h).group()))
+        if len(hs) >= 2:
+            out[f"{hs[0]}-{hs[-1]}"] = hs
+            notes.append(f"new pool {hs[0]}-{hs[-1]}: {len(hs)} hosts in ~/.ssh/config that no pool lists (rename it in Settings)")
+    return {"pools": out, "notes": notes} if out != pools else None
+
+
+def write_pools(b):
+    """Replace the [gpu_pools] table in the projects file (the rest kept as written; the old file saved as .bak)."""
+    pools, known = b.get("pools"), {n for names in ssh_host_lines() for n in names}
+    if not isinstance(pools, dict) or not pools or not all(isinstance(v, list) and v and all(isinstance(h, str) and h in known for h in v)
+                                                           for v in pools.values()):
+        raise ApiError(400, "pools must name hosts from ~/.ssh/config")
+    block = "[gpu_pools]\n" + "".join(f"{k if re.fullmatch(r'[A-Za-z0-9_-]+', k) else json.dumps(k)} = {json.dumps(v)}\n"
+                                     for k, v in pools.items())
+    text = open(CONFIG).read() if os.path.exists(CONFIG) else ""
+    m = re.search(r"(?m)^\[gpu_pools\][^\n]*\n", text)
+    if m:
+        lines, end = text[m.end():].split("\n"), 0
+        for i, line in enumerate(lines):          # the table runs to the next [table]; comments just before it stay
+            if line.startswith("["):
+                break
+            if line.strip() and not line.lstrip().startswith("#"):
+                end = i + 1
+        text = text[:m.start()] + block + "\n".join(lines[end:])
+    else:
+        text = text.rstrip("\n") + "\n\n" + block
+    return save_config(text)
 
 
 def gpus(host, fresh):
@@ -1571,17 +1931,116 @@ def search(p, q):
 
 
 def archive(session, around):
-    """One saved conversation around a message (a search hit), read-only."""
+    """One saved conversation around a message (a search hit, a step of a ticket's trace), read-only. `<id>@<machine>`:
+    a conversation on a saved herdr machine, copied here when opened."""
+    session, _, key = (session or "").partition("@")
     if not re.fullmatch(r"[0-9a-fA-F-]{8,64}", session or ""):
         raise ApiError(400, "bad session id")
-    path = rg_chat.transcript_path(session) or rg_chat.transcript_path(session, "codex")
+    path = machine_archive(machine(key), session) if key else \
+        rg_chat.transcript_path(session) or rg_chat.transcript_path(session, "codex")
     if not path:
         raise ApiError(404, "no saved conversation with that id")
     items, focus = rg_chat.read_around(path, around or "")
-    return {"pane": "session:" + session, "agent": "codex" if "/.codex/" in path else "claude", "status": "archive",
+    return {"pane": "session:" + session + (f"@{key}" if key else ""), "agent": "codex" if "rollout-" in path else "claude", "status": "archive",
             "title": rg_chat.title_of(path) or "saved conversation", "session": session, "items": items, "offset": None,
             "focus": focus, "cut": True}
 
+
+
+ARCHIVE_CAP = 60 << 20
+
+
+def machine_archive(m, sid):
+    """A whole conversation from a machine (Claude Code or Codex), copied once into the mirror; again after a minute
+    when it was still growing."""
+    dest = os.path.join(MACHINE_SESSIONS, m["key"], ".archive", sid + ".jsonl")
+    if os.path.exists(dest) and time.time() - os.path.getmtime(dest) < 60:
+        return dest
+    script = (f'f=$(find ~/.claude/projects ~/.codex/sessions -maxdepth 4 -name "*{sid}.jsonl" 2>/dev/null | head -1); '
+              f'[ -n "$f" ] || exit 3; [ $(($(wc -c < "$f"))) -le {ARCHIVE_CAP} ] || exit 4; cat < "$f"')
+    code, out, err = machine_ssh(m, "sh -c " + shlex.quote(script), timeout=RSYNC_LIMIT, wait=10, force=True)
+    if code == 3:
+        raise ApiError(404, f"no conversation {sid} on {m['label']}")
+    if code == 4:
+        raise ApiError(413, f"conversation {sid} on {m['label']} is over {ARCHIVE_CAP >> 20} MB: open it there")
+    if code != 0:
+        raise ApiError(502, f"couldn't read it on {m['label']}: {err.strip()[:150]}")
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest + ".tmp", "wb") as f:
+        f.write(out)
+    os.replace(dest + ".tmp", dest)
+    return dest
+
+
+# ---------- a ticket's trace: what its sessions did, step by step (rg_trace) ----------
+
+def ticket_trace(q):
+    """The steps of every session that worked a ticket, here and on each herdr machine (rg_trace runs there and sends
+    back only the steps). Each session says where it ran and, while it runs, its live pane."""
+    p = project(q.get("project"))
+    if p.get("remote_host"):
+        raise ApiError(400, f"{p['name']} is on {p['remote_host']}: its tickets' traces are read there, not yet here")
+    mf, tf = q.get("map") or "", q.get("ticket") or ""
+    if not re.fullmatch(r"[\w.-]+", mf) or not re.fullmatch(r"[\w.-]+", tf):
+        raise ApiError(400, "bad map or ticket folder")
+    needle = f"{mf}/tickets/{tf}"
+    s = project_state(p)
+    live = [a for a in s["agents"] if a.get("map_folder") == mf and a.get("ticket_folder") == tf and a.get("session_id")]
+    found, errors = {}, []
+
+    def add(sessions, where, key=None):
+        for x in sessions:
+            x.update(where=where, key=x["sid"] + (f"@{key}" if key else ""))
+            x.pop("path", None)
+            old = found.get(x["sid"])
+            if not old or (x.get("last") or "") > (old.get("last") or ""):   # an old copy here, the live one there
+                found[x["sid"]] = x
+    add(rg_trace.trace(p["path"], needle, [a["session_id"] for a in live if not a.get("machine")]), "this Mac")
+    with open(os.path.join(HERE, "rg_trace.py"), "rb") as f:
+        source = f.read()
+    for m in machines():
+        st = _msnap.get(m["key"]) or {}
+        if machine_paused(m) or st.get("agents") is None:
+            continue
+        sids = [a["session_id"] for a in live if a.get("machine") == m["label"]]
+        try:
+            code, out, err = machine_ssh(m, "python3 - " + shlex.join([p["path"], needle, *sids]), input=source,
+                                         timeout=60, wait=10, force=True)
+            if code != 0:
+                raise ApiError(502, (err.strip().splitlines() or [f"exit {code}"])[-1][:150])
+            add(json.loads(out), m["label"], m["key"])
+        except (ApiError, ValueError) as e:
+            errors.append(f"{m['label']}: {e}")
+    by_sid = {a["session_id"]: a for a in s["agents"] if a.get("session_id")}
+    for x in found.values():
+        a = by_sid.get(x["sid"])
+        if a:
+            x.update(pane=a["pane"], status=a["status"], label=label_of(a))
+    return {"needle": needle, "sessions": sorted(found.values(), key=lambda x: x.get("first") or ""), "errors": errors}
+
+
+# ---------- a marked-up figure: ask a session to fix it ----------
+
+def figure_fix(b):
+    """Upload the person's marked copy of a figure where the session can read it, then send it the original's path,
+    the marked copy's and the note."""
+    p = project(b.get("project"))
+    rel, side, pane = clean_rel(b.get("path")), b.get("side") or "local", b.get("pane") or ""
+    if not pane:
+        raise ApiError(400, "pick a session to send it to")
+    base = os.path.splitext(os.path.basename(rel))[0] or "figure"
+    up = paste_file({"pane": pane, "b64": b.get("b64"), "name": f"{base}-marked.png", "type": "image/png"})
+    if side == "server":
+        orig = f"{p['server']}:{p['server_root'].rstrip('/')}/{rel}"
+    elif p.get("remote_host"):
+        orig = f"{p['remote_path'].rstrip('/')}/{rel}"
+    else:
+        orig = os.path.join(p["path"], rel)
+    note = (b.get("note") or "").strip()
+    text = (f"Fix this figure: {orig}\nMy marked copy (numbered red marks on what to change): {up['path']}\n"
+            + (note or "See the marks.") + "\nRead both images first, regenerate the figure from its script, and tell me what changed.")
+    r = chat_send({"pane": pane, "text": text})
+    return dict(r, marked=up["path"])
 
 # ---------- raw file bytes (PDFs and images open in the viewer) ----------
 
@@ -1662,11 +2121,13 @@ def chat(pane, after, session, want_screen=False, around=None):
         return {"pane": pane, "agent": "claude", "status": a["status"] if a else "idle", "remote": p["remote_host"],
                 "title": (a or {}).get("title") or "", "session": sid, "items": items, "offset": offset, "cut": cut,
                 "reset": reset, "transcript": path}
+    m, _ = split_pane(pane)
     try:
         a, snap = live_agent(pane)
     except ApiError as e:
         # the agent's tab closed (a driver ends finished workers): its transcript stays readable
-        path = rg_chat.transcript_path(session) if e.code == 404 and session else None
+        path = ((machine_transcript(m, session) if m else rg_chat.transcript_path(session))
+                if e.code == 404 and session else None)
         if not path:
             raise
         items, offset, cut, reset = rg_chat.read(path, after)
@@ -1674,15 +2135,18 @@ def chat(pane, after, session, want_screen=False, around=None):
                 "items": items, "offset": offset, "cut": cut, "reset": reset, "transcript": path}
     sess = (a.get("agent_session") or {}).get("value")
     out = {"pane": pane, "agent": a.get("agent"), "status": a.get("agent_status"),
-           "title": a.get("terminal_title_stripped"), "session": sess, "cwd": a.get("cwd")}
-    path = rg_chat.transcript_path(sess, a.get("agent")) if a.get("agent") in ("claude", "codex") else None
+           "title": a.get("terminal_title_stripped"), "session": sess, "cwd": a.get("cwd"), "machine": m and m["label"]}
+    if m:
+        path = pull_machine(m, sess) if a.get("agent") == "claude" else None
+    else:
+        path = rg_chat.transcript_path(sess, a.get("agent")) if a.get("agent") in ("claude", "codex") else None
     if path:
         if session != sess:
             after = None
         items, offset, cut, reset = rg_chat.read(path, after)
         name_role(items, a.get("cwd"))
         out.update({"items": items, "offset": offset, "cut": cut, "reset": reset, "transcript": path})
-    elif (rec := btw_of(pane)) and (ppath := rg_chat.transcript_path(rec["parent_sid"])):
+    elif (rec := btw_of(pane)) and (ppath := pull_machine(m, rec["parent_sid"]) if m else rg_chat.transcript_path(rec["parent_sid"])):
         # a btw fork writes its own conversation only at its first message: until then show what it starts from
         key = rec["parent_sid"] + "#btw"
         items, offset, cut, reset = rg_chat.read(ppath, after if session == key else None)
@@ -1713,8 +2177,13 @@ def name_role(items, cwd):
 
 
 def screen(pane, source, lines=None):
-    args = ["agent", "read", pane, "--source", source] + (["--lines", str(lines)] if lines else [])
-    code, out, err = run(["herdr", *args], timeout=15)
+    m, rp = split_pane(pane)
+    args = ["agent", "read", rp, "--source", source] + (["--lines", str(lines)] if lines else [])
+    try:
+        code, out, err = host_call(m["key"], ["herdr", "--machine", m["id"], *args], timeout=15, wait=10, force=True,
+                                   link=False) if m else run(["herdr", *args], timeout=15)
+    except ApiError as e:
+        code, out, err = 1, b"", str(e)
     text = out.decode(errors="replace") if code == 0 else f"(could not read the screen: {err.strip()})"
     return "\n".join(l.rstrip() for l in text.splitlines()).strip("\n")
 
@@ -1737,6 +2206,13 @@ def input_box(text):
 SENT = {}   # pane -> when the human last sent it something from the app
 
 
+def refreshed(m):
+    """After typing into a session: read its herdr again on the next look (a machine's at once, in the background)."""
+    _snap["t"] = 0
+    if m:
+        threading.Thread(target=refresh_machine, args=(m,), kwargs={"wait": 5}, daemon=True).start()
+
+
 def chat_send(b):
     pane, text = b.get("pane"), (b.get("text") or "").strip()
     if not text:
@@ -1744,6 +2220,7 @@ def chat_send(b):
     if (pane or "").startswith("remote:"):
         return remote_send(b)
     a, _ = live_agent(pane)
+    m, rp = split_pane(pane)
     if a.get("agent_status") == "blocked":
         raise ApiError(409, "the agent is waiting at a prompt: answer it first")
     cleared = ""
@@ -1751,12 +2228,12 @@ def chat_send(b):
         cleared, n = input_box(screen(pane, "visible"))
         if cleared:                                 # left over (a rewind restores the removed message there): it would
             for _ in range(n):                      # be sent together with this one; Ctrl+U clears a line, ⌫ joins lines
-                herdr("agent", "send-keys", pane, "ctrl+u", "backspace", timeout=15)
+                herdr("agent", "send-keys", rp, "ctrl+u", "backspace", timeout=15, machine=m)
     try:
-        herdr("agent", "prompt", pane, text, timeout=30)
+        herdr("agent", "prompt", rp, text, timeout=30, machine=m)
     except HerdrError as e:
         raise ApiError(409 if e.code == "agent_blocked" else 502, str(e))
-    _snap["t"] = 0
+    refreshed(m)
     SENT[pane] = time.time()
     return {"ok": True, "cleared": cleared}
 
@@ -1766,10 +2243,11 @@ def chat_keys(b):
     if not keys or any(k not in KEYS for k in keys):
         raise ApiError(400, f"keys must be among {sorted(KEYS)}")
     live_agent(b.get("pane"))
-    herdr("agent", "send-keys", b["pane"], *keys, timeout=15)
+    m, rp = split_pane(b["pane"])
+    herdr("agent", "send-keys", rp, *keys, timeout=15, machine=m)
     if any(k == "enter" or k.isdigit() for k in keys):
         SENT[b["pane"]] = time.time()
-    _snap["t"] = 0
+    refreshed(m)
     return {"ok": True}
 
 
@@ -1780,11 +2258,12 @@ def chat_text(b):
         raise ApiError(409, "typing into the screen is only for answering a prompt or a menu; send a message instead")
     if len(text) > 2000 or re.search(r"[\x00-\x1f\x7f]", text):
         raise ApiError(400, "answers are one line of plain text (at most 2000 characters)")
-    herdr("pane", "send-text", b["pane"], text, timeout=15)
+    m, rp = split_pane(b["pane"])
+    herdr("pane", "send-text", rp, text, timeout=15, machine=m)
     if b.get("enter"):
-        herdr("agent", "send-keys", b["pane"], "enter", timeout=15)
+        herdr("agent", "send-keys", rp, "enter", timeout=15, machine=m)
         SENT[b["pane"]] = time.time()
-    _snap["t"] = 0
+    refreshed(m)
     return {"ok": True}
 
 
@@ -2082,9 +2561,10 @@ def run_plan(p, plan, job):
 
 def focus(pane):
     a, _ = live_agent(pane)
-    herdr("workspace", "focus", a["workspace_id"])
-    herdr("tab", "focus", a["tab_id"])
-    herdr("agent", "focus", pane)
+    m, rp = split_pane(pane)
+    herdr("workspace", "focus", a["workspace_id"], machine=m)
+    herdr("tab", "focus", a["tab_id"], machine=m)
+    herdr("agent", "focus", rp, machine=m)
     app = load_config().get("terminal_app")
     if app:
         run(["open", "-a", app], timeout=10)
@@ -2127,6 +2607,9 @@ def monitor_view():
     for a in (snap or {}).get("agents", []):
         if a["pane_id"] not in view["agents"] and not is_asker(a):
             view["agents"][a["pane_id"]] = dict(agent_view(a, snap, {}), project=None)
+    for m, a, msnap in machine_agents():
+        if mpane(m, a["pane_id"]) not in view["agents"] and not is_asker(a):
+            view["agents"][mpane(m, a["pane_id"])] = dict(agent_view(a, msnap, {}, m), project=None)
     return view
 
 
@@ -2199,6 +2682,129 @@ def monitor():
         time.sleep(5)
 
 
+# ---------- pictures of the app's own screens, for a session working on its look ----------
+# A session in a container has no browser. On the person's click (Settings), or on a session's request once the person
+# allowed that, this Mac's Chrome (headless, with an empty profile of its own) opens the app's main screens and saves
+# pictures in tools/gui/.shots (never committed). The screens are fixed here: a request is an empty file and carries
+# nothing, so it can only ever produce these pictures.
+
+SHOTS = os.path.join(HERE, ".shots")
+SHOT_ALLOW = os.path.expanduser("~/.config/research-gui/shots-on-request")
+SHOT_EVERY = 20             # s between two rounds, at least
+BROWSERS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/Applications/Chromium.app/Contents/MacOS/Chromium",
+            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"]
+PORT = 8765
+_shots = {"running": False, "started": 0.0}
+
+
+def shot_plan():
+    """(name, route, action) of the screens worth a look, around the first local project with an open map."""
+    plan = [("inbox", "#/inbox", ""), ("gpus", "#/gpus", ""), ("settings", "#/settings", "")]
+    q = lambda x: urllib.parse.quote(x, safe="")
+    for name, p in load_config()["projects"].items():
+        if p.get("remote_host") or not os.path.isdir(p["path"]):
+            continue
+        m = next((m for m in tracker.load(p["path"]) if tracker.status_of(m) != "closed" and m["_tickets"]), None)
+        if not m:
+            continue
+        k = next((k for k in m["_tickets"] if tracker.status_of(k) in ("running", "resolved")), m["_tickets"][0])
+        base = f"#/p/{q(name)}"
+        tk = f"{base}/map/{q(os.path.basename(os.path.dirname(m['_path'])))}/dag"
+        return [("project", base, ""), ("map", tk, ""),
+                ("ticket", f"{tk}/{q(os.path.basename(os.path.dirname(k['_path'])))}", ""),
+                ("trace", f"{tk}/{q(os.path.basename(os.path.dirname(k['_path'])))}", "trace"), ("files", f"{base}/files", "")] + plan \
+            + [("chat", base, "chat")]             # last: an open chat stays open in the pictures after it
+    return plan
+
+
+def take_shots():
+    """One round: each screen in light, the project and chat also in dark. Writes status.json beside the pictures."""
+    st = {"started": time.time(), "finished": None, "files": [], "errors": [], "browser": None}
+
+    def save():
+        with open(os.path.join(SHOTS, "status.json"), "w") as f:
+            json.dump(st, f, indent=1)
+    try:
+        os.makedirs(SHOTS, exist_ok=True)
+        with open(os.path.join(SHOTS, ".gitignore"), "w") as f:      # research content: never in a commit
+            f.write("*\n")
+        for old in glob.glob(os.path.join(SHOTS, "*.png")):
+            os.remove(old)
+        browser = st["browser"] = next((b for b in BROWSERS if os.path.exists(b)), None)
+        if not browser:
+            st["errors"].append("no Chrome, Chromium, Edge or Brave in /Applications to take the pictures with")
+            return st
+        profile = os.path.expanduser("~/Library/Caches/research-gui/shot-profile")
+        shutil.rmtree(profile, ignore_errors=True)       # each round from a clean browser: no chat left open, no saved state
+        plan = shot_plan()
+        todo = [(n, r, a, False) for n, r, a in plan] + [(n + "-dark", r, a, True) for n, r, a in plan if n == "chat"]
+        for name, route, action, dark in todo:
+            out = os.path.join(SHOTS, name + ".png")
+            cmd = [browser, "--headless=new", f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check",
+                   "--hide-scrollbars", "--window-size=1440,900", "--force-device-scale-factor=2", "--virtual-time-budget=9000",
+                   *(["--force-dark-mode"] if dark else []), f"--screenshot={out}",
+                   f"http://127.0.0.1:{PORT}/?shot={action or 'still'}{route}"]
+            for _ in range(3):                          # a page that failed to load comes out blank (a small file): again
+                code, _, err = run_group(cmd, 60)
+                if os.path.exists(out) and os.path.getsize(out) > 80 << 10:
+                    break
+            if os.path.exists(out):
+                st["files"].append(name + ".png")
+            else:
+                st["errors"].append(f"{name}: {(err.strip().splitlines() or [f'exit {code}'])[-1][:200]}")
+            save()
+    except Exception as e:
+        st["errors"].append(f"{type(e).__name__}: {e}")
+    finally:
+        st["finished"] = time.time()
+        try:
+            save()
+        except OSError:
+            pass
+        _shots["running"] = False
+    return st
+
+
+def shots_start():
+    if _shots["running"]:
+        raise ApiError(409, "a round of pictures is being taken")
+    if time.time() - _shots["started"] < SHOT_EVERY:
+        raise ApiError(429, f"a round was taken less than {SHOT_EVERY} s ago")
+    _shots.update(running=True, started=time.time())
+    threading.Thread(target=take_shots, daemon=True).start()
+    return shots_info()
+
+
+def shots_info():
+    try:
+        with open(os.path.join(SHOTS, "status.json")) as f:
+            status = json.load(f)
+    except (OSError, ValueError):
+        status = None
+    return {"running": _shots["running"], "on_request": os.path.exists(SHOT_ALLOW), "folder": SHOTS, "status": status}
+
+
+def shots_allow(b):
+    """Let a session ask for a new round by touching .shots/request (off unless the person turns it on)."""
+    if b.get("on"):
+        os.makedirs(os.path.dirname(SHOT_ALLOW), exist_ok=True)
+        open(SHOT_ALLOW, "w").close()
+    elif os.path.exists(SHOT_ALLOW):
+        os.remove(SHOT_ALLOW)
+    return shots_info()
+
+
+def shots_loop():
+    while True:
+        time.sleep(3)
+        try:
+            req = os.path.join(SHOTS, "request")
+            if os.path.exists(SHOT_ALLOW) and os.path.exists(req) and os.path.getmtime(req) > _shots["started"]:
+                shots_start()
+        except Exception:
+            pass
+
+
 # ---------- settings ----------
 
 def config_text():
@@ -2244,6 +2850,11 @@ def term_argv(q):
     kind = q.get("kind")
     if kind == "attach":
         a, _ = live_agent(q.get("pane"))
+        m, rp = split_pane(q.get("pane"))
+        if m:                                       # herdr --machine doesn't attach: its own herdr does, over ssh
+            dest, opts = ssh_dest(m["target"])
+            return (["ssh", "-t", "-o", "ClearAllForwardings=yes", *opts, dest, f"{REMOTE_HERDR} agent attach {shlex.quote(rp)}"],
+                    os.path.expanduser("~"), b"\x02q")
         return ["herdr", "agent", "attach", a["pane_id"]], a.get("cwd") or os.path.expanduser("~"), b"\x02q"
     if kind == "tmux":                          # a job's tmux session: validated host and name, no project needed
         check_job(q.get("host"), q.get("session"))
@@ -2415,6 +3026,8 @@ class Handler(BaseHTTPRequestHandler):
                         q.get("around"))
         if path == "/api/search":
             return search(project(q.get("project")), q.get("q") or "")
+        if path == "/api/ticket-trace":
+            return ticket_trace(q)
         if path == "/api/events":
             after = q.get("after")
             return rg_notify.events_after(int(after) if after and after.isdigit() else 0)
@@ -2428,6 +3041,10 @@ class Handler(BaseHTTPRequestHandler):
             return tmux_peek(q.get("host"), q.get("session"))
         if path == "/api/gpu-hosts":
             return {"hosts": gpu_hosts(), "pools": gpu_pools()}
+        if path == "/api/gpu-pools-suggest":
+            return {"suggest": suggest_pools()}
+        if path == "/api/shots":
+            return shots_info()
         if path == "/api/config":
             return config_text()
         raise ApiError(404, "unknown endpoint")
@@ -2467,6 +3084,14 @@ class Handler(BaseHTTPRequestHandler):
             return set_inbox(b)
         if path == "/api/paste":
             return paste_file(b)
+        if path == "/api/figure-fix":
+            return figure_fix(b)
+        if path == "/api/gpu-pools":
+            return write_pools(b)
+        if path == "/api/shots":
+            return shots_start()
+        if path == "/api/shots-allow":
+            return shots_allow(b)
         if path == "/api/btw":
             return btw_start(b)
         if path == "/api/btw-close":
@@ -2547,7 +3172,8 @@ def main():
         subprocess.run(["open", app])          # the app starts (or reuses) the backend itself
         print(f"opening {APP_NAME} (its backend runs in the herdr workspace research-desk; --browser for a browser tab)")
         return
-    port = ARGS.port or load_config().get("port", 8765)
+    global PORT
+    port = PORT = ARGS.port or load_config().get("port", 8765)
     url = f"http://127.0.0.1:{port}/"
     live = already_running(port)
     if live:
@@ -2580,6 +3206,8 @@ def main():
     threading.Thread(target=monitor, daemon=True).start()
     threading.Thread(target=remote_sync_loop, daemon=True).start()
     threading.Thread(target=remote_herdr_loop, daemon=True).start()
+    threading.Thread(target=machine_loop, daemon=True).start()
+    threading.Thread(target=shots_loop, daemon=True).start()
     print(f"research-gui at {url}{'  (dry run: Start buttons send nothing)' if ARGS.dry_run else ''}"
           f"  [{dt.datetime.now():%H:%M}]", flush=True)
     if not (ARGS.no_open or ARGS.serve):

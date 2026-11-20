@@ -17,6 +17,14 @@ kind goes to a Mac banner, a Mac sound and/or a Moshi push, set in `~/.config/re
 Keychain item `moshi-push` (`security add-generic-password -a "$USER" -s moshi-push -w`), are bundled per 20 s and
 capped per hour. A `--dry-run` backend records events but plays and pushes nothing.
 
+Figures: an image in the file viewer has **Mark & ask**: circle or box what's wrong on a copy (numbered marks), add a
+note, pick a session (the ticket's worker by default, else the desk); the copy goes where that session runs and the
+session gets the original's path, the copy's and the note (`/api/figure-fix`). A ticket's **Trace** tab lists what
+the sessions that worked it did (commands, edits, reads, web, messages, failures), each step opening the conversation
+at that moment. Its sessions are those whose first prompt names the ticket's folder (`/research-work …`, as
+team-worker starts them), found here and on each herdr machine by `rg_trace.py`, which runs there over ssh so only the
+steps cross.
+
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).
 `research-gui` opens the app if installed; `--browser` uses a browser tab; `--serve` runs only the backend;
 `--dry-run` makes Start buttons print their herdr commands instead.
@@ -25,6 +33,11 @@ Testing without touching live agents: `research-gui --serve --port 8799 --dry-ru
 `app/node_modules/.bin/electron app/shoot.js spec.json` (navigate, run JS, save screenshots). For a live test, point a
 second backend at a scratch project with `--config` and start sessions there.
 
+A session that can't open a browser (one in a container) sees the app through Settings → Pictures for review: Chrome,
+headless with its own empty profile, saves a picture of each main screen in `tools/gui/.shots` (ignored by git), on
+the person's click, or when the session touches `.shots/request` once the person ticked the box that allows it. The
+screens are fixed in `server.py` (`shot_plan`); `status.json` there says what was saved and what failed.
+
 Remote projects (`host = "<ssh alias>"` in a project block) are reached only through `host_call` in `server.py`: one call
 at a time per host, only over the shared connection a person opened (`ssh -O check` first; the app never opens one, since
 Engaging needs Duo), a hard deadline that kills the call's whole process group (a ProxyCommand hop included), and back-off
@@ -32,3 +45,11 @@ after a failure (30 s, then 1, 2, 4, 8, 15 min). Records sync every 5 minutes an
 are checked every 20 s only while a page or chat of that host is open. `tests/remote_calls_test.py` (run by
 `scripts/check.py`) points the app at a host that never answers and fails if it ever floods it; it was written after
 the app took down Engaging's login008 that way.
+
+herdr machines (`herdr machine add`: a Docker container on this Mac, another computer) need no config: the app lists
+every enabled saved machine and shows its sessions beside this Mac's, each in the project whose folder holds its cwd
+(the same path there: a shared folder or a clone at the same place). Status, messages, keys, screens and btw go through
+`herdr --machine`; conversations come over ssh to the machine's target, mirrored read-only (the last 2 MB at first,
+then what was added). Same `host_call` rules, minus the shared-connection check; a look every 10 s (3 s while one of its
+chats is open). A host in `~/.config/research-gui/remote-paused` gets no call by any name: an alias or a machine's
+target that resolves to it (`ssh -G`) counts, and so do the GPU page and server file views.

@@ -1,11 +1,11 @@
 // A map: its DAG of tickets (blocked_by edges, destination, fog), the ticket panel with skill actions, the map document,
 // and its files.
-import { S, $, esc, icon, pill, go, goMap, hooks, popMenu, toast, store, safeCls, agentLabel, AGENT_WORD } from "./core.js";
+import { S, $, esc, icon, pill, go, goMap, hooks, popMenu, toast, store, safeCls, agentLabel, AGENT_WORD, get } from "./core.js";
 const workersOf = (m) => (S.data?.agents || []).filter((a) => a.role === "worker" && a.map_folder === m.folder);
 const workerFor = (t) => (S.data?.agents || []).find((a) => a.role === "worker" && a.ticket === t.id);
 import { renderFiles, showDoc, filesState, vscode, serverMapDir, localMapDir, openFile } from "./files.js";
 
-const M = { showClosed: false, view: null };
+const M = { showClosed: false, view: null, ttab: "ticket" };
 export const curMap = () => S.data && S.data.maps.find((m) => m.folder === S.route.map);
 export function resetMap() { M.view = null; }
 
@@ -60,7 +60,7 @@ function renderHead(m) {
         `<button class="btn sm" data-wpane="${esc(w.pane)}" title="${esc(w.ticket_title || "")} · ${esc(AGENT_WORD[w.status] || w.status)}"><span class="dot ${safeCls(w.status)}"></span>${esc(w.ticket)}</button>`).join("")}</div>` : ""}</div>
     <div class="actions">
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
-      <button class="btn primary" id="mh-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
+      <button class="btn ${live && !m.driven ? "" : "primary"}" id="mh-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
       <button class="btn" id="mh-ticket">${icon("plus")} Add ticket</button>
       ${m.driver ? `<button class="btn" id="mh-driverchat" title="For planning this map with the driver that owns it (charting, re-charting, the next questions)">${icon("map")} Plan with driver</button>` : ""}
       <button class="btn icon" id="mh-more" title="More">${icon("more")}</button></div></div>
@@ -243,7 +243,7 @@ function renderTicket(m) {
   panel.hidden = false;
   const wk = workerFor(t);
   // redraw when anything shown changes: the file (answer, assets, verdict), jobs, or the worker's state
-  const key = [t.path, t.status_text, t.mtime, t.jobs.join(";"), wk ? wk.pane + wk.status + wk.title + (wk.codex || []).length : ""].join("|");
+  const key = [t.path, t.status_text, t.mtime, t.jobs.join(";"), wk ? wk.pane + wk.status + wk.title + (wk.codex || []).length : "", M.ttab].join("|");
   if (panel.dataset.key === key) return;
   const keepTop = panel.dataset.path === t.path ? panel.scrollTop : 0;    // same ticket redrawn: stay where you were
   panel.dataset.key = key;
@@ -261,7 +261,8 @@ function renderTicket(m) {
       ${t.status === "resolved" ? `<button class="btn sm" id="tp-review">${icon("check")} Review</button>` : ""}
       <button class="btn sm" id="tp-ask">${icon("chat")} ${esc(hooks.askLabel(S.route.project))}</button>
       <button class="btn sm" id="tp-files">${icon("folder")} Files</button>
-      <button class="btn sm icon" id="tp-more" title="More">${icon("more")}</button></div></div>
+      <button class="btn sm icon" id="tp-more" title="More">${icon("more")}</button></div>
+    <div class="tabs tp-tabs">${[["ticket", "Ticket"], ["trace", "Trace"]].map(([k, l]) => `<a class="${M.ttab === k ? "on" : ""}" data-tt="${k}" title="${k === "trace" ? "What the sessions that worked it did, step by step" : ""}">${l}</a>`).join("")}</div></div>
     ${wk ? `<div class="panel-body" style="padding-bottom:0"><div class="card rows"><div class="row">
       <span class="dot ${safeCls(wk.status)}"></span><div class="grow"><div class="t1">${esc(agentLabel(wk))} is ${esc(AGENT_WORD[wk.status] || wk.status)}</div>
       <div class="t2">${esc(wk.title || "")}</div></div>
@@ -270,6 +271,7 @@ function renderTicket(m) {
       <div class="card rows">${t.jobs.map((j, i) => jobRow(j, i)).join("")}</div></div>` : ""}
     <div class="panel-body" id="tdoc"><div class="spin"></div></div>`;
   $("#tp-close").onclick = () => goMap(S.route.project, m.folder, null);
+  panel.querySelectorAll("[data-tt]").forEach((a) => a.onclick = () => { M.ttab = a.dataset.tt; renderTicket(m); });
   panel.querySelectorAll("[data-goto]").forEach((a) => a.onclick = () => {
     const hit = S.data.maps.flatMap((mm) => mm.tickets.map((x) => [mm, x])).find(([, x]) => x.id === a.dataset.goto);
     if (hit) goMap(S.route.project, hit[0].folder, hit[1].folder);
@@ -296,7 +298,69 @@ function renderTicket(m) {
       { label: `Terminal in its code folder on ${S.data.server}`, icon: "server", run: () => hooks.openTerminal({ kind: "ssh", project: S.route.project, path: sdir, label: `ssh ${S.data.server}:${t.id}` }) }] : []),
     { label: "Copy ticket path", icon: "doc", run: () => navigator.clipboard.writeText(t.path).then(() => toast("Copied")) },
   ], { right: true });
+  if (M.ttab === "trace") return renderTrace($("#tdoc"), m, t);
   showDoc($("#tdoc"), "local", t.path, { bare: true, frontMatter: "details", dropTitle: true, skipKeys: ["id", "title", "type", "status", "legacy", "superseded_by", "verdict", "blocked_by", "jobs"], onLink: (p, side) => linkTo(p, side) }).then(() => { panel.scrollTop = keepTop; });
+}
+
+// ---------- a ticket's trace: what the sessions that worked it did, step by step (/api/ticket-trace) ----------
+
+const TR = { cache: new Map(), hide: new Set(["read"]), failed: false };
+const KINDS = [["run", "Commands"], ["edit", "Edits"], ["read", "Reads"], ["web", "Web"], ["agent", "Subagents"], ["prompt", "Messages in"], ["say", "Replies"]];
+const KLABEL = { run: "run", edit: "edit", read: "read", web: "web", agent: "agent", prompt: "message", say: "reply", tool: "tool", compact: "", gap: "" };
+const hhmm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "";
+const day = (iso) => iso ? new Date(iso).toLocaleDateString([], { month: "short", day: "numeric" }) : "";
+function span(a, b) {
+  if (!a || !b) return "";
+  const min = Math.round((Date.parse(b) - Date.parse(a)) / 60000);
+  return `${day(a)} ${hhmm(a)} → ${day(b) !== day(a) ? day(b) + " " : ""}${hhmm(b)} · ${min < 60 ? `${min} min` : `${Math.floor(min / 60)} h ${min % 60} min`}`;
+}
+
+async function renderTrace(el, m, t, fresh) {
+  const key = `${S.route.project}|${m.folder}|${t.folder}`;
+  let hit = TR.cache.get(key);
+  if (!hit || fresh || Date.now() - hit.at > 30000) {          // a live worker keeps adding steps: read again after 30 s
+    if (!hit) el.innerHTML = `<div class="spin"></div><div class="muted" style="text-align:center;font-size:12px">Reading the sessions that worked ${esc(t.id)}…</div>`;
+    try { hit = { at: Date.now(), d: await get("/api/ticket-trace", { project: S.route.project, map: m.folder, ticket: t.folder }) }; TR.cache.set(key, hit); }
+    catch (e) { if (el.isConnected) el.innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+    if (!el.isConnected || M.ttab !== "trace") return;
+  }
+  drawTrace(el, hit.d, m, t);
+}
+
+function drawTrace(el, d, m, t) {
+  const all = d.sessions.flatMap((s) => s.events);
+  const n = (k) => all.filter((e) => e.k === k).length, failed = all.filter((e) => e.ok === false).length;
+  const shown = (e) => !TR.hide.has(e.k) && (!TR.failed || e.ok === false);
+  const row = (e, si) => e.k === "gap" || e.k === "compact"
+    ? `<div class="tr-row tr-note">${esc(e.text)}</div>`
+    : `<div class="tr-row k-${esc(e.k)} ${e.ok === false ? "fail" : ""}" ${e.uuid ? `data-s="${si}" data-u="${esc(e.uuid)}"` : ""} title="${esc(e.why || e.text)}">
+        <span class="tr-t">${esc(hhmm(e.t))}</span><span class="tr-k">${e.ok === false ? "✗ " : ""}${esc(e.k === "edit" ? e.verb || "edit" : KLABEL[e.k] || e.k)}</span>
+        <span class="tr-x">${esc(e.text)}</span></div>`;
+  const name = (s) => s.label || s.title || (s.agent === "codex" ? "Codex run" : "Session") + " " + s.sid.slice(0, 8);
+  el.innerHTML = `<div class="tr-bar">
+      ${KINDS.map(([k, l]) => n(k) ? `<button class="chip ${TR.hide.has(k) ? "" : "on"}" data-k="${k}">${l} <b>${n(k)}</b></button>` : "").join("")}
+      ${failed ? `<button class="chip fail ${TR.failed ? "on" : ""}" data-failed="1">Failed only <b>${failed}</b></button>` : ""}
+      <span class="grow"></span><button class="btn ghost sm icon" id="tr-ref" title="Read again">${icon("refresh")}</button></div>
+    ${d.errors.length ? `<div class="err" style="font-size:12px;margin:6px 0">${d.errors.map(esc).join("<br>")}</div>` : ""}
+    ${d.sessions.length ? d.sessions.map((s, si) => `<details class="tr-s" ${si === d.sessions.length - 1 || d.sessions.length <= 2 ? "open" : ""}>
+      <summary><span class="dot ${safeCls(s.status || "done")}"></span><b>${esc(name(s))}</b>${s.where !== "this Mac" ? ` <span class="htag">${esc(s.where)}</span>` : ""}
+        <span class="muted tr-span">${esc(span(s.first, s.last))} · ${s.events.filter((e) => !["say", "prompt", "gap", "compact"].includes(e.k)).length} steps</span>
+        <span class="grow"></span><button class="btn sm" data-open="${si}">${icon("chat")} ${s.pane ? "Open chat" : "Conversation"}</button></summary>
+      <div class="tr-rows">${s.events.filter(shown).map((e) => row(e, si)).join("") || `<div class="muted tr-note">Nothing of these kinds.</div>`}</div></details>`).join("")
+      : `<div class="empty">No session has worked ${esc(t.id)} yet: one starts with <code>/research-work</code> on its ticket (Work on it, or a driver's worker).</div>`}`;
+  el.querySelectorAll("[data-k]").forEach((b) => b.onclick = () => { TR.hide.has(b.dataset.k) ? TR.hide.delete(b.dataset.k) : TR.hide.add(b.dataset.k); drawTrace(el, d, m, t); });
+  el.querySelectorAll("[data-failed]").forEach((b) => b.onclick = () => { TR.failed = !TR.failed; drawTrace(el, d, m, t); });
+  $("#tr-ref", el).onclick = () => renderTrace(el, m, t, true);
+  el.querySelectorAll("[data-open]").forEach((b) => b.onclick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const s = d.sessions[+b.dataset.open];
+    if (s.pane) return hooks.openChat(s.pane);
+    hooks.openArchive(s.key, (s.events.find((x) => x.uuid) || {}).uuid || "", { title: name(s), project: S.route.project });
+  });
+  el.querySelectorAll(".tr-row[data-u]").forEach((r) => r.onclick = () => {      // that moment in its conversation
+    const s = d.sessions[+r.dataset.s];
+    hooks.openArchive(s.key, r.dataset.u, { title: name(s), project: S.route.project, live_pane: s.pane });
+  });
 }
 
 export { openFile, store };

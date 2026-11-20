@@ -219,10 +219,10 @@ if (isApp) window.desk.onCommand((cmd, arg) => {
 
 // ---------- dropping or pasting files: their paths are typed where they land, as in Terminal ----------
 // A file from Finder keeps its own path; bytes with no file (a screenshot, an image copied from a page) are saved first
-// (/api/paste). For a session on a remote host every file is uploaded there and its path there is typed.
+// (/api/paste). For a session on a remote host or a herdr machine every file is uploaded there and its path there is typed.
 
 async function filePaths(files, pane) {
-  const remote = (pane || "").startsWith("remote:"), out = [];
+  const remote = /^(remote|m):/.test(pane || ""), out = [];
   for (const f of files) {
     const local = window.desk?.pathForFile ? window.desk.pathForFile(f) : "";
     if (local && !remote) { out.push(shellPath(local)); continue; }
@@ -293,6 +293,9 @@ document.addEventListener("drop", async (e) => {
   window.addEventListener("hashchange", route);
   await route();
   window.rdReady = true;                                // boot.js stops watching
+  // ?shot=<action>: a still for a session reviewing the look (server.py take_shots): the first session's chat, or a ticket's Trace
+  const shot = new URLSearchParams(location.search).get("shot"), want = { chat: ".agent-row", trace: '[data-tt="trace"]' }[shot];
+  if (want) { let n = 0; const t = setInterval(() => { const el = document.querySelector(want); if (el || ++n > 20) clearInterval(t); if (el) el.click(); }, 300); }
   try { sessionStorage.removeItem("rd.boot"); } catch (_) { /* no storage */ }
   setInterval(poll, POLL_MS);
   if (store("chatOpen")) openChat(null, { focus: false });

@@ -1,5 +1,5 @@
 // Pages: project overview, inbox, GPUs, settings, project files; and the title bar.
-import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur, loopNote, loopDead, store, modelTag } from "./core.js";
+import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur, loopNote, loopDead, store, modelTag, machineTag, placesOf } from "./core.js";
 import { renderFiles, vscode } from "./files.js";
 import { renderMap, curMap } from "./map.js";
 
@@ -13,7 +13,7 @@ export function renderTitlebar() {
   else if (r.project) {
     crumbs.push(r.view === "project" ? esc(r.project) : `<a href="${href({ project: r.project })}">${esc(r.project)}</a>`);
     if (r.view === "files") crumbs.push("Files");
-    if (r.view === "map") { const m = curMap(); crumbs.push(m ? `<span class="cur">${esc(m.id)} · ${esc(m.title)}</span>` : esc(r.map)); }
+    if (r.view === "map") { const m = curMap(); crumbs.push(m ? `<span class="cur" title="${esc(m.title)}">${esc(m.id)}</span>` : esc(r.map)); }
   }
   const unread = S.unread.size;
   $("#titlebar").innerHTML = `<div class="crumbs">${crumbs.map((c, i) => (i ? `<span class="sep">/</span>` : "") + `<span class="${i === crumbs.length - 1 ? "cur" : ""}">${c}</span>`).join("")}</div>
@@ -44,7 +44,6 @@ export function renderOverview() {
         : d.team ? (desk ? `<button class="btn primary" id="ov-desk">${icon("chat")} Talk to the desk</button>` : `<button class="btn primary" id="ov-team">${icon("users")} Start team</button>`)
           : `<button class="btn primary" id="ov-new">${icon("plus")} New session</button>${d.agents.length ? `<button class="btn" id="ov-ask">${icon("chat")} Ask Claude</button>` : ""}`}
         ${!d.remote && d.team && desk && open.some((m) => ["open", "claimed"].includes(m.status) && !m.driven) ? `<button class="btn" id="ov-team">${icon("users")} Start drivers</button>` : ""}
-        ${!d.remote && d.team ? `<button class="btn" id="ov-new">${icon("plus")} New session</button>` : ""}
         ${!d.remote && (d.maps.length || d.team) ? `<button class="btn" id="ov-idea">${icon("spark")} New map from an idea</button>` : ""}
         <button class="btn icon" id="ov-more" title="More">${icon("more")}</button></div></div>
     <div class="statline">
@@ -58,7 +57,7 @@ export function renderOverview() {
       <div class="sec"><h2>Maps</h2><span class="meta">${open.length} open · ${closed.length} closed</span></div>
       <div class="grid">${open.map(mapCard).join("") || `<div class="card empty">No open map. Chart one with “New map from an idea”.</div>`}</div>
     </div><div>
-      <div class="sec"><h2>${d.remote ? `Sessions on ${esc(d.remote.host)}` : d.team ? "Team" : "Sessions"}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
+      <div class="sec"><h2>${d.remote ? `Sessions on ${esc(d.remote.host)}` : d.team ? "Team" : "Sessions"}${!d.remote && placesOf(d.agents) ? ` <span class="htag" title="where these sessions run">${esc(placesOf(d.agents))}</span>` : ""}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
       <div class="card rows">${d.remote ? (d.agents.length ? teamRows(d.agents) : "") + `<div class="empty" style="font-size:12px">Sessions on ${esc(d.remote.host)} active in the last day, read from their conversations (mirrored every minute): read-only here. To talk to one, <a id="ov-ssh2">open a terminal there</a>.</div>`
         : teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
       ${d.remote ? "" : `<div class="sec"><h2>GPUs</h2><span class="grow"></span><a href="#/gpus" class="meta">every node</a></div><div class="card pad" id="ov-gpus">${gpuCache.all || `<div class="spin"></div>`}</div>`}
@@ -88,6 +87,7 @@ export function renderOverview() {
   host.querySelectorAll("[data-restart]").forEach((b) => b.onclick = (e) => { e.stopPropagation(); restartLoop(b.dataset.restart); });
   if ($("#ov-seen")) $("#ov-seen").onclick = () => post("/api/seen", { project: d.name }).then(() => hooks.refresh());
   $("#ov-more").onclick = (e) => popMenu(e.currentTarget, [
+    ...(!d.remote && d.team ? [{ label: "New session", icon: "plus", hint: "⌘N", run: () => hooks.newSession(d.name) }] : []),
     ...(desk ? [{ label: "Ask the desk for a digest", icon: "doc", run: () => hooks.openChat(desk.pane, { text: "digest" }) }, "-"] : []),
     ...(!d.team && d.maps.length ? [{ label: "Start a team (desk and drivers)", icon: "users", run: () => hooks.startTeam(d.name) }, "-"] : []),
     { label: "Search conversations", icon: "search", run: () => go({ project: d.name, view: "search" }) },
@@ -145,8 +145,8 @@ function waitingRow(w) {
 }
 
 function agentRow(a, sub = false) {
-  return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${modelTag(a)}</div>
-    <div class="t2 ${loopDead(a) ? "err" : ""}">${esc(a.status === "blocked" ? "waiting for your answer" : [loopNote(a), codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>
+  return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
+    <div class="t2 one ${loopDead(a) ? "err" : ""}">${modelTag(a)}${S.data && placesOf(S.data.agents).includes(" + ") ? machineTag(a) : ""}${esc(a.status === "blocked" ? "waiting for your answer" : [loopNote(a), codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>
     ${loopDead(a) && a.status !== "working" ? `<button class="btn sm primary" data-restart="${esc(a.pane)}" title="Send ${esc(a.loop.prompt)}">Restart loop</button>` : ""}${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
     ${a.remote ? `<span class="meta muted" style="font-size:11.5px;white-space:nowrap">${esc(ago(a.last_active))}</span>` : `<button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button>`}</div>`;
 }
@@ -262,9 +262,13 @@ export async function renderGpus(fresh = false, quiet = false) {
   if (!$("#gp-body")) return;
   const mine = [];
   Object.entries(data.by).forEach(([h, g]) => (g.gpus || []).forEach((x) => { if (x.mine) mine.push({ h, x, me: g.me }); }));
+  let sug = null;
+  try { sug = (await get("/api/gpu-pools-suggest")).suggest; } catch (_) { /* no suggestion */ }
   const cell = (h, x) => `<div class="gcell ${x.mine ? "mine" : isFree(x) ? "free" : "busy"}" title="${esc(h)} GPU ${x.index} · ${x.util}% · ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB · ${x.temp}°C${x.procs.length ? "\n" + x.procs.map((p) => `${p.user} pid ${p.pid} ${p.mem} MiB`).join("\n") : "\nidle"}">
       <div class="gfill" style="height:${Math.max(4, x.util)}%"></div><div class="gmem" style="width:${(100 * x.mem / Math.max(1, x.total)).toFixed(0)}%"></div><span>${x.index}</span></div>`;
   $("#gp-body").innerHTML = `
+    ${sug ? `<div class="callout gp-fix"><div class="grow"><b>Host names changed in your ~/.ssh/config.</b> Update the pools to match?
+      <ul>${sug.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul></div><button class="btn sm primary" id="gp-fix">Update pools</button></div>` : ""}
     <div class="sec" style="margin-top:0"><h2>Your jobs</h2><span class="meta">${mine.length ? `${mine.length} GPU${mine.length > 1 ? "s" : ""}` : "none running"}</span></div>
     ${mine.length ? `<div class="card rows">${mine.map(({ h, x, me }) => `<div class="row"><b class="mono">${esc(h)}</b><span class="mono muted">GPU ${x.index}</span>
       <div class="grow"><div class="bar" style="max-width:260px"><span style="width:${x.util}%;background:var(--c-work)"></span></div></div>
@@ -279,7 +283,11 @@ export async function renderGpus(fresh = false, quiet = false) {
         return `<div class="row grow-row"><b class="mono gname">${esc(h)}</b><div class="gcells">${gs.map((x) => cell(h, x)).join("")}</div>
           <span class="gfree">${gs.filter(isFree).length}/${gs.length} free</span></div>`; }).join("")}</div>`;
     }).join("")}
-    <div class="legend-inline"><span><i class="gcell mine"></i> yours</span><span><i class="gcell busy"></i> someone's job</span><span><i class="gcell free"></i> free</span><span class="muted">bar height: utilisation · line: memory</span></div>`;
+    <div class="legend-inline" id="gp-legend"><span><i class="gcell mine"></i> yours</span><span><i class="gcell busy"></i> someone's job</span><span><i class="gcell free"></i> free</span><span class="muted">bar height: utilisation · line: memory</span></div>`;
+  if ($("#gp-fix")) $("#gp-fix").onclick = async () => {
+    try { await post("/api/gpu-pools", { pools: sug.pools }); toast("Pools updated (the old file is kept as projects.toml.bak)"); renderGpus(true); }
+    catch (e) { toast(e.message, "err", 6000); }
+  };
 }
 
 const gpuCache = {};
@@ -412,6 +420,11 @@ export async function renderSettings() {
       <span class="k">Claude token</span><span>${S.data ? (S.data.keychain ? "Keychain item found; agents get it when they start" : "no Keychain item; agents use claude's own login") : "—"}</span>
       <span class="k">Start buttons</span><span>${sum.dry_run ? "dry run: they only show the herdr commands" : "live"}</span>
       <span class="k">Projects file</span><span class="mono">${esc(cfg.path)}</span></div>
+    <div class="sec"><h2>Pictures for review</h2><span class="meta">so a session working on this app's look can see it</span></div>
+    <div class="card pad" style="display:flex;flex-direction:column;gap:10px">
+      <div class="muted" style="font-size:12.5px">Chrome opens this app's main screens in the background and saves a picture of each in <code>tools/gui/.shots</code>. Nothing is clicked or sent; the pictures stay on this Mac and are never committed.</div>
+      <div class="actions"><button class="btn" id="st-shots">Take pictures now</button><span class="muted" id="st-shots-msg" style="font-size:12.5px"></span></div>
+      <label><input type="checkbox" id="st-shots-allow"> Let a session ask for a new round by itself (it can only get these same pictures)</label></div>
     <div class="sec"><h2>Projects</h2><span class="grow"></span><button class="btn sm" id="st-add">${icon("plus")} Add a project</button></div>
     <div class="card pad"><div class="muted" style="font-size:12px;margin-bottom:8px">The whole file: projects, servers, Claude flags and per-role environment. Saved only if it parses; the old copy is kept as <code>.bak</code>.</div>
       <textarea class="code" id="st-cfg" spellcheck="false">${esc(cfg.text)}</textarea>
@@ -426,6 +439,18 @@ export async function renderSettings() {
   if (location.hash.includes("notify") || S.scrollToNotify) { S.scrollToNotify = false; setTimeout(() => $("#notify")?.scrollIntoView({ block: "start" }), 50); }
   $("#st-add").onclick = () => hooks.addProject();
   $("#st-close").onclick = () => hooks.leaveSettings();
+  const shotsMsg = (r) => {
+    if (!$("#st-shots-msg")) return;
+    const s = r.status;
+    $("#st-shots-allow").checked = r.on_request;
+    $("#st-shots").disabled = r.running;
+    $("#st-shots-msg").innerHTML = r.running ? `<span class="spin"></span> taking them… ${s && !s.finished ? `${s.files.length} so far` : ""}`
+      : !s ? "" : `${s.files.length} picture${s.files.length === 1 ? "" : "s"} saved ${esc(ago(s.finished))}${s.errors.length ? ` · <span class="err">${esc(s.errors[0])}${s.errors.length > 1 ? ` (+${s.errors.length - 1} more)` : ""}</span>` : ""}`;
+    if (r.running) setTimeout(() => get("/api/shots").then(shotsMsg).catch(() => {}), 2000);
+  };
+  get("/api/shots").then(shotsMsg).catch(() => {});
+  $("#st-shots").onclick = () => post("/api/shots", {}).then(shotsMsg).catch((e) => toast(e.message, "err", 6000));
+  $("#st-shots-allow").onchange = (e) => post("/api/shots-allow", { on: e.target.checked }).then(shotsMsg).catch((x) => toast(x.message, "err"));
   $("#st-save").onclick = async () => {
     try { await post("/api/config", { text: $("#st-cfg").value }); $("#st-msg").textContent = "Saved."; hooks.refresh(); }
     catch (e) { $("#st-msg").innerHTML = `<span class="err">${esc(e.message)}</span>`; }

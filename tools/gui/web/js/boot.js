@@ -16,7 +16,7 @@
       box.textContent = tries < 5 ? `Research Desk didn't start (${why}). Retrying…` : `Research Desk didn't start: ${why}. Press ⌘R to try again.`;
       document.body.appendChild(box);
     };
-    document.body ? show() : addEventListener("DOMContentLoaded", show);
+    if (!/[?&]shot=/.test(location.search)) document.body ? show() : addEventListener("DOMContentLoaded", show);   // a still for a review: retry quietly
     if (tries < 5) {
       try { sessionStorage.setItem("rd.boot", tries + 1); } catch (_) { /* no storage */ }
       setTimeout(() => location.reload(), 1500 * (tries + 1));
