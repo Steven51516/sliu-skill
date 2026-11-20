@@ -166,19 +166,21 @@ fixed task list.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef4fb', 'primaryBorderColor': '#2f6fb3', 'primaryTextColor': '#1a1a1a', 'lineColor': '#2f6fb3'}}}%%
 flowchart TD
-    idea(["Idea"]) -->|"wayfinder / to-map: chart it"| map["MAP<br/>destination, Contract, decisions so far, fog"]
-    map -->|"to-tickets: the questions sharp enough now"| tickets["TICKETS<br/>one question each, blocking edges, pre-registration"]
+    idea(["Idea"]) --> chart["CHARTING, with you<br/>wayfinder (an interview) or to-map"]
+    chart -->|"writes"| map["MAP<br/>destination, Contract, decisions so far, fog"]
+    chart -->|"files the first tickets (to-tickets)"| tickets["TICKETS<br/>one question each, blocking edges, pre-registration"]
     tickets -->|"the frontier: tickets ready to start"| drive["DRIVER: research-drive<br/>one pass per wake-up, repeated with /loop"]
     drive -->|"1. dispatches each ready ticket"| work["research-work<br/>a fresh session per ticket: runs jobs, follows rigor, writes the answer"]
     work --> review["review<br/>one fresh reviewer: Fair, Spec, Code"]
     review -->|"2. the driver merges the reviewed answer"| map
-    drive -->|"3. frontier empty: files the next tickets from the fog"| tickets
+    drive -->|"3. files the next tickets (to-tickets): from the fog when the frontier is empty, or your new question"| tickets
     map --> done(["Destination reached, or measured unreachable:<br/>the map closes and its outcome is a milestone"])
 ```
 
-The driver is the hub. Charting gives it a map and the first tickets; from then on each pass does three things: it
-dispatches every ticket that is ready, merges each answer that passed review into the map, and, when nothing is left
-to dispatch, files the next tickets itself from the map's fog.
+The driver is the hub. Charting, done with you, writes the map and files the first tickets; from then on the driver
+files every ticket. Each pass it dispatches every ticket that is ready, merges each answer that passed review into the
+map, and, when nothing is left to dispatch, files the next tickets from the map's fog. A new question from you becomes a
+ticket the same way: in a team the desk passes it to the driver, which files it; the desk files nothing itself.
 
 **Projects and maps.** A project is the whole research effort, often months long (say, "a protein language model that
 folds well"). A map is one line of work inside it with one measurable finish line: "a 2B model with discrete tokens
