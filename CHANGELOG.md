@@ -5,6 +5,13 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Three repeated mistakes became checks or tool behaviour:** `research-status --check` flags a ticket line stamped
+  later than now (workers wrote Log times 10-30 min ahead); `team-worker` tells each worker to claim as
+  `worker <pane>` (two workers claiming as one name blocked a dispatch twice); STYLE: a wait ends on its condition, in
+  a loop, not on one timed check (a worker sat idle 1 h 50 min).
+- **`trash --empty`** only empties under one folder (default: the current one) and lists each entry; unscoped, it
+  deleted 46 entries of other sessions. **`codex-run`** fails when Codex could not start its tools (it printed "done").
+- Removed the unused `wait-what` skill.
 - **Map ids** are `M1`, `M2`, … and ticket ids `M1-01`, … throughout the docs, examples and `team-up`.
 - **`research-preset`** lists presets in sections (this machine, each pick-one choice, bundles, per project), each with
   on / partly / off and one short line; the long descriptions moved to the README.

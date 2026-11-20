@@ -48,6 +48,8 @@
 ## Waiting on jobs and servers
 - Never wait with a foreground `sleep`: Claude Code refuses it, and a sleeping session hears nothing. Wait in a
   background command (`sleep N; <check>`) or a Monitor loop.
+- A wait ends on its condition, not on a timer: loop until the condition holds (`until <check>; do sleep N; done`). One
+  check after a fixed time that finds the job still running leaves nobody waiting.
 
 ## Git
 - Small commits with messages that say what changed and why. Commit before launching a run that will back a result,

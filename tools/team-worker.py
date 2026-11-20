@@ -114,7 +114,7 @@ def open_worker(path):
         if "trust" in screen.lower():
             fail(f"{pane} waits at {kind}'s folder-trust check: open {kind} in {here} once and accept, then retry")
         fail(f"{kind} did not start in {pane}: {(r.stderr or r.stdout).strip()[:200]}")
-    prompt = (f"{first} You are a worker: when you finish, stop or need the user, send the driver one line with "
+    prompt = (f"{first} You are a worker; claim the ticket as `worker {pane}`. When you finish, stop or need the user, send the driver one line with "
               f"herdr agent prompt {driver} 'done|running|ask|blocked {tid}: <path of the file that holds the result or "
               f"question>', or 'handback {tid}: <request>' for a request beyond your ticket.")
     submit(name, pane, prompt)

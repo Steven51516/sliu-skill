@@ -46,6 +46,10 @@ else
     env $STRIP codex exec -C "$PWD" "${SET[@]}" - > "$LOG" 2>&1 || RC=$?
 fi
 tidy
+# Codex answered but could not run anything (seen in a container: no code-mode host, no sandbox namespace): not "done"
+if grep -qE "failed to spawn code-mode host|codex-code-mode-host missing|bwrap: No permissions to create a new namespace" "$LOG"; then
+  echo "codex-run: Codex could not start its tools on this machine (see $LOG); run it on a host where Codex works"; exit 1
+fi
 grep -q "^model: $M" "$LOG" || { echo "codex-run: model is not $M in $LOG"; exit 1; }
 grep -q "^reasoning effort: $E" "$LOG" || { echo "codex-run: effort is not $E in $LOG"; exit 1; }
 [[ -s "$D/last.md" ]] || { echo "codex-run: no final message (see the end of $LOG, e.g. model at capacity)"; exit 1; }

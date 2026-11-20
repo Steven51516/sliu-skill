@@ -307,7 +307,7 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `grilling` | copied | the interview tickets |
 | `run-card` | none in Matt's repo | a one-page reproduction record of a run that affects a milestone (a reference, a result a map relies on, an artifact later work builds on) |
 
-**personal/**: everyday helpers: `wait-what` (adapted: re-pitch the last message), `ketchup` (from pstack: catch up on a long chat and every
+**personal/**: everyday helpers: `ketchup` (from pstack: catch up on a long chat and every
 call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **team/**: `team` (none in Matt's repo): run a project as a desk, a driver per map, and a worker session per ticket
@@ -354,7 +354,6 @@ Only differences in logic; renamed paths, examples and tracker wiring are not li
 - `to-tickets`, `research-work` and `research-drive` can be called by the model, not only by the user (Matt's counterparts are user-invoked), because a driver files and dispatches tickets itself.
 - `research-init` (vs `setup-matt-pocock-skills`): adds the scope and delegation sections and drops triage labels; the domain docs record decisions in `docs/decisions.md`; it keeps both `AGENTS.md` and `CLAUDE.md` (Codex reads only `AGENTS.md`), where Matt edits one of them.
 - `retro`: four research categories (orientation, repeated instructions, judgement slips, vocabulary); each fix names where it lands.
-- `wait-what`: also defines each project term on first use.
 - `research`: not included. A research ticket's subagent reads from primary sources and cites each claim (`wayfinder`
   says so); the skill's "spin up a background agent" and "write a file" are what a subagent cannot do.
 
@@ -383,7 +382,7 @@ FEEDBACK.md  local only (gitignored): problems found while using the harness, un
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `retro`, `wait-what`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); `ketchup` is from pstack; the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from commit `a496f55`): copied `research`, `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review` (from `code-review`), `retro`. Failure classification and the "no viable branch" stop are distilled from [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from [pstack](https://github.com/backnotprop/pstack) (MIT, `licenses/pstack-MIT.txt`) are folded in as single lines: *Attack the Premise* (`research-drive`), *Explain the Number* (`rigor`), *Make Operations Idempotent* (`research-work`), *Encode Lessons in Structure* (the CLAUDE.md template and this README); `ketchup` is from pstack; the codex-run preamble follows the prompting rules of [openai/codex-plugin-cc](https://github.com/openai/codex-plugin-cc).
 
 ## License
 

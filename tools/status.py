@@ -11,7 +11,7 @@ Usage (from the project root, or pass it):
       --now       print what is live: waiting on you, running or claimed, the frontier (never stored)
       --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
                   missing fields, resolved tickets missing from their map or their answer, a map grown past
-                  12,000 characters; run cards with an unknown status, a missing field, or no link from their
+                  12,000 characters; a ticket line stamped later than now; run cards with an unknown status, a missing field, or no link from their
                   ticket); exit 1 if any
       --frontier  only list the frontier (open, unblocked, unclaimed tickets), one per line
       --map ID    with --check or --frontier: only that map (its id or folder name), as a driver checks its own
@@ -42,6 +42,7 @@ STATUS_ALIASES = {"done": "resolved", "final": "resolved", "planned": "open", "s
                   "handed-off": "open"}
 TYPE_ALIASES = {"lit": "research", "decision": "grilling", "baseline": "experiment", "diagnostic": "experiment",
                 "analysis": "experiment"}
+STAMPED = re.compile(r"^\s*[-*]\s+(\d{4}-\d\d-\d\d[T ]\d\d:\d\d)", re.M)   # a dated Log line, to the minute
 CHECKBOX = re.compile(r"^- \[[ xX]\] ")
 
 
@@ -182,6 +183,7 @@ def load(project):
             kmeta, kbody = parse_front_matter(kpath)
             kmeta["_path"] = os.path.relpath(kpath, project)
             kmeta["_answered"] = answered(kbody)
+            kmeta["_stamps"] = STAMPED.findall(kbody)
             kmeta["_cards"] = [(os.path.relpath(c, project), parse_front_matter(c)[0])      # run-card skill
                                for c in sorted(glob.glob(os.path.join(os.path.dirname(kpath), "runs", "*.md")))]
             kmeta["_run_links"] = set(re.findall(r"runs/([^)\s`|'\"]+?\.md)", kbody))
@@ -240,6 +242,8 @@ def analyse(maps):
     by_id = {k.get("id"): k for m in maps for k in m["_archived"]}
     by_id.update({k.get("id"): k for m in maps for k in m["_tickets"]})
     problems, frontier = [], {}
+    utc = dt.datetime.now(dt.timezone.utc)
+    now_utc, soon = utc.strftime("%Y-%m-%d %H:%M"), (utc + dt.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M")
     seen = {}
     for m in maps:                        # duplicate map ids make every ticket id ambiguous
         prev = seen.get(m.get("id"))
@@ -289,6 +293,10 @@ def analyse(maps):
                     problems.append(f"{k['_path']}: unknown blocker `{b}`")
                 elif status_of(k) == "open" and status_of(by_id[b]) == "parked":
                     problems.append(f"{k['_path']}: blocked by parked `{b}`: waive the edge or unpark it")
+            ahead = [t for t in k.get("_stamps", []) if t.replace("T", " ") > soon]
+            if ahead:
+                problems.append(f"{k['_path']}: a line is stamped {max(ahead)}, later than now ({now_utc} UTC): stamp "
+                                f"lines from `date -u`")
             for cpath, c in k["_cards"]:          # run cards: RUN-CARD.md in the run-card skill
                 missing = [f"`{f}`" for f in ("run", "ticket", "status") if not c.get(f)]
                 if missing:

@@ -5,7 +5,8 @@ instant rename, never a copy. Emptying the trash is the human's call.
   trash <path>...                  move into <parent>/.trash/<UTC time>-<name>, and print where it went
   trash --list                     the entries still in the trash, oldest first
   trash --restore <path>           put an entry back (give its trash path or its original path)
-  trash --empty --older <days>     delete the entries trashed more than <days> days ago (the human runs this)
+  trash --empty --older <days> [<folder>]   delete the entries trashed more than <days> days ago under <folder>
+                                   (default: the current folder), listing each one (the human runs this)
 
 Every move is a line in ~/.local/state/trash.log (tab-separated: UTC time, action, original path, trash path), so the
 trash can be found again from any folder. A path that cannot be renamed in place (a mount point, no write access to its
@@ -83,19 +84,22 @@ def restore(path):
     print(f"trash: restored {orig}")
 
 
-def empty(days):
-    cutoff = time.time() - days * 86400
+def empty(days, folder="."):
+    """Only what was trashed under `folder`: the log holds every session's trash, and an unscoped empty once deleted 46
+    entries that belonged to other sessions."""
+    cutoff, root = time.time() - days * 86400, os.path.abspath(folder).rstrip("/") + "/"
     n = 0
     for dest, (t, orig) in sorted(entries().items(), key=lambda kv: kv[1][0]):
-        if calendar.timegm(time.strptime(t, STAMP)) > cutoff:
+        if calendar.timegm(time.strptime(t, STAMP)) > cutoff or not dest.startswith(root):
             continue
+        print(f"trash: deleting {dest} (was {orig})")
         if os.path.isdir(dest) and not os.path.islink(dest):
             shutil.rmtree(dest)
         else:
             os.remove(dest)
         log("empty", orig, dest)
         n += 1
-    print(f"trash: deleted {n} entr{'y' if n == 1 else 'ies'} older than {days:g} days")
+    print(f"trash: deleted {n} entr{'y' if n == 1 else 'ies'} older than {days:g} days under {root}")
 
 
 def main():
@@ -107,8 +111,8 @@ def main():
             print(f"{t}  {orig}  ->  {dest}")
     elif a[0] == "--restore" and len(a) == 2:
         restore(a[1])
-    elif a[:2] == ["--empty", "--older"] and len(a) == 3:
-        empty(float(a[2]))
+    elif a[:2] == ["--empty", "--older"] and len(a) in (3, 4):
+        empty(float(a[2]), *a[3:])
     elif a[0].startswith("--"):
         sys.exit(__doc__)
     else:
