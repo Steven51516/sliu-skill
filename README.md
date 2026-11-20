@@ -4,7 +4,7 @@
 
 # sliu-skill
 
-**A research harness for coding agents: map the questions, pre-register, review every answer.**
+**Coding agents that run your research project while you sleep, and keep it honest.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-2f6fb3.svg)](LICENSE)
 [![Check](https://github.com/Steven51516/sliu-skill/actions/workflows/check.yml/badge.svg)](https://github.com/Steven51516/sliu-skill/actions/workflows/check.yml)
@@ -21,9 +21,10 @@
 
 </div>
 
-Agent skills for running research projects with coding agents: Claude Code first, Codex supported. You give a project a
-destination ("beat baseline X on benchmark Y"); the agent keeps a map of the questions between here and there, works
-them one ticket at a time with pre-registered criteria, reviews every answer before it counts, and asks you only for the
+sliu-skill turns Claude Code or Codex into a research team that keeps working while you are away. You give a project
+a destination ("beat baseline X on benchmark Y"). A driver agent maps the questions between here and there and runs
+them in parallel, one worker agent per question, each with criteria fixed before it starts and a review before its
+answer counts. The project's memory lives in files, so it survives any session, and you are asked only for the
 decisions that are yours.
 
 > [!NOTE]
@@ -33,18 +34,21 @@ decisions that are yours.
 
 ## What You Get
 
-- 🗺️ **A map, not a task list.** Each answer changes the next question, so the plan keeps growing until the destination
-  is reached.
-- 🎯 **One finish line per map.** A map closes when its destination is reached, or when a measured answer says it can't
-  be.
-- 📝 **Pre-registered experiments.** Success and stop criteria are written and approved before anything runs, never
-  edited after.
-- 🔍 **Every answer reviewed.** One fresh reviewer checks it on three axes (Fair, Spec, Code) before it enters the map.
-- 🙋 **Only your decisions reach you.** A cost over your threshold, a change of destination, a decision ticket, a
-  failure.
-- 💾 **State lives in files.** Sessions can stop, compact or be replaced without losing anything.
-- 👥 **A team in herdr tabs, or one session.** A desk you talk to, a driver per map and a worker per ticket; one terminal
-  session also runs the whole loop.
+- 🌙 **Research that runs while you sleep.** A driver loops on each line of work, a watcher restarts what stalls, and an
+  alert reaches your phone only when a decision is yours.
+- ⚡ **Parallel agents.** One worker per question and one driver per line of work, so independent experiments and
+  several lines of work run side by side.
+- 🧠 **Long-term project memory.** Maps, tickets, decisions and run records are files, so a project lasting months
+  survives every restart, compaction and model change.
+- 📝 **Results you can trust.** Success and stop criteria are fixed before a run, and a fresh reviewer checks every
+  answer (Fair, Spec, Code) before it enters the map.
+- 🧩 **Skills for most research projects.** Plain markdown that names no machine, person or field: edit a rule once
+  and every project follows it.
+- 🖥️ **One terminal to watch it all.** With [herdr](https://herdr.dev), the desk, drivers and workers are tabs you can
+  read and answer in one window.
+- 📊 **A visual monitor.** The optional Research Desk app shows each map as a graph, with its tickets, runs and
+  sessions.
+- 🔁 **Claude Code or Codex.** The same skills drive either agent, or Claude with Codex as a second opinion.
 
 | Part | What it is |
 |---|---|
