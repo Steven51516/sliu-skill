@@ -25,6 +25,6 @@ An answer counts when it can be trusted. This skill is the reference for produci
 
 ## Rules of the result
 
-- **Screen, then confirm.** A single run or a fixed cheap budget is a **screen**: its answer is `[tentative]`. A claim the map stands on is **confirmed**: before results, the pre-registration fixes the repeats (seeds or draws; 3 by default), the comparison (paired where possible), the smallest gap that matters, and how the spread is reported. It is `[established]` when the gap clears both that threshold and the spread between repeats.
+- **Screen, then confirm.** A single run or a fixed cheap budget is a **screen** (`repeats: 1` in its ticket). A claim the map stands on is **confirmed**: before results, the pre-registration fixes the repeats (seeds or draws; 3 by default), the comparison (paired where possible), the smallest gap that matters, and how the spread is reported. It is confirmed when the gap clears both that threshold and the spread between repeats. The ticket's `repeats:` records how many independent repeats stand behind its headline comparison; `research-status --now` lists each answer resting on one run that other tickets build on, so the confirm run gets scheduled.
 - **Criteria before results.** The pre-registration's success and stop rules are fixed before anything runs; amendments are dated and come before the numbers they touch.
 - **Classify a failure before calling it negative.** Execution, measurement, data, method or hypothesis: only the last two are negative; the rest are inconclusive, with the fix.

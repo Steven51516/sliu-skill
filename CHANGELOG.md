@@ -5,6 +5,11 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Confirmation is derived, not tagged.** A resolved experiment records `repeats: <n>`; `research-status --now` lists
+  each answer resting on one run that open tickets build on. The hand-written `[tentative]` / `[established]` tags are
+  gone from the skills: in one project 82 tickets resolved in 12 days without a single `[established]` line.
+- **`wayfinder`**'s map and ticket format moved, word for word, to `MAP-FORMAT.md` beside it; the skill keeps the
+  procedures (15 KB to 7 KB for the sessions that only need those).
 - **Three repeated mistakes became checks or tool behaviour:** `research-status --check` flags a ticket line stamped
   later than now (workers wrote Log times 10-30 min ahead); `team-worker` tells each worker to claim as
   `worker <pane>` (two workers claiming as one name blocked a dispatch twice); STYLE: a wait ends on its condition, in

@@ -16,7 +16,7 @@ The issue tracker should have been provided to you. If not, tell the user to run
 
 Check with the user that this benchmark matches their expectations.
 
-3. Write the map in the wayfinder skill's map body ([SKILL.md](../wayfinder/SKILL.md), "The map body"): the Destination with
+3. Write the map in the wayfinder skill's map body ([MAP-FORMAT.md](../wayfinder/MAP-FORMAT.md), "The map body"): the Destination with
    the number or answer that decides it, the Contract from step 2, the fog as loosely or as fully as the view allows. Then
    publish it to the project issue tracker.
 

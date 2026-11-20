@@ -8,7 +8,8 @@ Usage (from the project root, or pass it):
     research-status [PROJECT] [--print] [--now] [--check] [--frontier] [--map ID]
       (none)      write STATUS.md, the project page: milestones (closed maps' outcomes) and open maps
       --print     the same page to stdout instead
-      --now       print what is live: waiting on you, running or claimed, the frontier (never stored)
+      --now       print what is live: waiting on you, running or claimed, answers resting on one run that open
+                  tickets build on, the frontier (never stored)
       --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
                   missing fields, resolved tickets missing from their map or their answer, a map grown past
                   12,000 characters; a ticket line stamped later than now; run cards with an unknown status, a missing field, or no link from their
@@ -386,6 +387,17 @@ def render_now(maps, frontier, problems):
                    + (f" · jobs {', '.join(jobs[-3:])}" if jobs else "") + (f" · {holder(k)}" if holder(k) else ""))
     if not running:
         out.append("  none")
+    builds = {}                                  # resolved one-run experiments that tickets still open build on
+    for m in maps:
+        for k in m["_tickets"]:
+            if status_of(k) not in CLOSED:
+                for b in k.get("blocked_by") or []:
+                    builds.setdefault(b, []).append(k.get("id"))
+    one_run = [k for m in maps for k in m["_tickets"] if status_of(k) == "resolved" and type_of(k) == "experiment"
+               and str(k.get("repeats")) == "1" and builds.get(k.get("id"))]
+    if one_run:
+        out.append("Resting on one run (confirm before building further; rigor, screen then confirm):")
+        out += [f"  {k.get('id')}  {k.get('title')} · built on by {', '.join(builds[k.get('id')])}" for k in one_run]
     out.append("Frontier (open, unblocked, unclaimed):")
     fr = [k for m in maps for k in frontier.get(m.get("id")) or []]
     out += [f"  {k.get('id')}  {k.get('title')}" for k in fr] or ["  empty"]
