@@ -171,8 +171,9 @@ flowchart TD
     desk -->|"your instructions: a new question, hold, re-chart"| driver["DRIVER agent, one per map<br/>charts the map with you, files tickets,<br/>dispatches, merges, files the next tickets"]
     driver -->|"what closed, what needs you"| desk
     driver -->|"opens one per ready ticket"| worker["WORKER agents, one per ticket<br/>run the jobs, follow rigor, write the answer"]
-    worker -->|"the answer"| reviewer["REVIEWER, a fresh subagent<br/>checks it: Fair, Spec, Code"]
-    reviewer -->|"PASS, EDIT or FAIL"| driver
+    worker -->|"asks for a review of its answer"| reviewer["REVIEWER, a fresh subagent<br/>checks it: Fair, Spec, Code"]
+    reviewer -->|"PASS, EDIT or FAIL"| worker
+    worker -->|"done: the reviewed answer"| driver
     driver -->|"reads and writes"| files[("MAP and TICKETS, as files<br/>destination, Contract, decisions so far,<br/>one question per ticket")]
     worker -->|"writes its ticket"| files
 ```
@@ -185,8 +186,9 @@ Three kinds of agent, and the files they share:
   runs `research-drive` in a loop: each pass it opens a worker for every ticket that is ready, merges each answer that
   passed review into the map, and files the next tickets from the map's fog when nothing is left to dispatch. It does
   no ticket work itself.
-- **Worker**, one per ticket. A fresh session that runs `research-work`: the jobs, the numbers, the answer. A fresh
-  reviewer checks the answer before the driver merges it.
+- **Worker**, one per ticket. A fresh session that runs `research-work`: the jobs, the numbers, the answer. It hands
+  the answer to a fresh reviewer, fixes what the verdict asks for, resolves the ticket and reports to the driver,
+  which then merges it into the map.
 - **The map and its tickets** are files, so any agent can stop or be replaced without losing anything. The map closes
   when its destination is reached, or measured unreachable; that outcome is a milestone.
 
