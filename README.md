@@ -19,8 +19,6 @@
 [Presets](#presets-and-extras) &nbsp;•&nbsp;
 [Skills](#skills)
 
-<img src="docs/images/overview.png" alt="Research Desk's project page for the demo project tiny-lm: one decision waiting on you, one running ticket, the open map with its progress, and a milestone" width="100%">
-
 </div>
 
 Agent skills for running research projects with coding agents: Claude Code first, Codex supported. You give a project a
@@ -52,7 +50,7 @@ decisions that are yours.
 | [Skills](#skills) | the research loop: chart a map, file tickets, work them, review, drive |
 | [`research-status`](#commands) | the project page, the live state, the frontier and the checks, all read from the files |
 | [Team mode](#team-mode-with-herdr-optional) (optional) | a desk you talk to, a driver per map and a worker per ticket, in herdr tabs |
-| [Research Desk](#research-desk-app-optional-macos) (optional) | a desktop app over the same files |
+| [Research Desk](#research-desk-app-optional-macos) (optional) | a desktop app to watch the same files: maps as graphs, tickets, sessions |
 | [Presets](#presets-and-extras) (optional) | alerts, delete safety, a Claude–Codex split |
 
 ## Quick Start
@@ -95,18 +93,7 @@ Then, in Claude Code:
 
 ## What It Looks Like
 
-A made-up demo project, `tiny-lm`, in the Research Desk app (optional; everything also works from a terminal).
-
-**The project page.** What needs you first (here, a decision only you can make), what is running, each open map with its
-progress, and the milestones: closed maps with their one-line outcomes. That page is the image at the top.
-
-<img src="docs/images/map.png" alt="A map drawn as a graph: tickets as boxes coloured by state, blocking edges as arrows, one dashed fog box, all flowing to the destination on the right" width="100%">
-
-**A map, drawn as a graph.** Each box is a ticket (one question), each arrow a blocking edge, each colour a state
-(resolved, running, ready, blocked, needs you, held); the dashed box is fog, a question not yet sharp enough to ticket.
-Everything flows to the destination on the right.
-
-**The same state, in a terminal.** `research-status --now` reads it from the map and ticket files:
+A made-up demo project, `tiny-lm`. **Where things stand**, read from the map and ticket files:
 
 ```console
 $ research-status --now
@@ -119,43 +106,39 @@ Frontier (open, unblocked, unclaimed):
   M2-07  Spend 2 more GPU-days on the 2x-tokens run?
 ```
 
-<table>
-<tr>
-<td width="50%" valign="top">
+**A team, in [herdr](https://herdr.dev) tabs.** You talk to the desk; the driver opens a worker tab per ticket and
+closes it when the ticket is done.
 
-<img src="docs/images/ticket.png" alt="A ticket page: its question, its pre-registration and its runs with their progress" width="100%">
+```text
+tiny-lm
+├─ A desk         you talk here: it reports results, puts each decision to you, passes your answers on
+├─ B driver M2    /loop /research-drive: merges reviewed answers, dispatches ready tickets, files the next ones
+├─ watch          team-watch: the driver's log, and an alert when something needs you
+├─ M2-04          worker: Does a 2x longer warmup lower perplexity?
+└─ M2-05          worker: Does adding 10% books data lower perplexity?
+```
 
-**A ticket.** Its question, its pre-registration (fixed before anything ran), and its assets: the runs, with their
-progress.
+**A map, as a graph**, in the optional [Research Desk](#research-desk-app-optional-macos) app, for watching a project
+while it runs:
 
-</td>
-<td width="50%" valign="top">
+<img src="docs/images/map.png" alt="A map drawn as a graph: tickets as boxes coloured by state, blocking edges as arrows, one dashed fog box, all flowing to the destination on the right" width="100%">
 
-<img src="docs/images/start-team.png" alt="The Start team dialog: a desk and a driver per open map, on Claude Code or Codex" width="100%">
-
-**Start the team.** One click opens a desk and a driver per open map in herdr tabs, all Claude Code or all Codex; the
-drivers open a worker tab per ticket as they go. You then talk to the desk.
-
-</td>
-</tr>
-</table>
+Each box is a ticket (one question), each arrow a blocking edge, each colour a state
+(resolved, running, ready, blocked, needs you, held); the dashed box is fog, a question not yet sharp enough to ticket.
+Everything flows to the destination on the right.
 
 ## Two Ways to Use It
 
-**With the app and a team (easiest).** You talk to one session, the desk, and the rest runs in herdr tabs you can watch.
+**With a team, in herdr.** You talk to one session, the desk, and the rest runs in tabs you can watch.
 
-1. Set up herdr and the Research Desk app once: [Team mode](#team-mode-with-herdr-optional) and
-   [Research Desk](#research-desk-app-optional-macos).
-2. In the app, press **New project**: it makes the folder and starts `/research-init`, which sets up the scope, tracker
-   and docs by asking you a section at a time. For an existing folder, use **Add project** and run `/research-init`
-   once.
-3. Chart a first map: **New session → Chart a new map** runs `/wayfinder` with you.
-4. Press **Start team** and pick Claude Code or Codex. The app opens a desk, a driver for each open map, and a watch
-   tab; each driver opens a worker tab per ticket and closes it when the ticket is done.
-5. Talk to the desk in the app's chat. It reports results, puts each decision to you, and passes your answers to the
-   drivers. The app shows what waits on you and can notify your phone.
-
-Without the app, the same team starts from a herdr pane in the project folder: `team-up <map>` (or `--codex`).
+1. Set up herdr once: [Team mode](#team-mode-with-herdr-optional).
+2. In the project folder, run `/research-init <name>` once in a Claude Code (or Codex) session: it sets up the scope,
+   tracker and docs by asking you a section at a time. Chart a first map with `/wayfinder "<idea>"`.
+3. From a herdr pane in that folder: `team-up <map>` (or `team-up --codex <map>`). It opens a desk, a driver for the map
+   and a watch tab; the driver opens a worker tab per ticket and closes it when the ticket is done.
+4. Talk to the desk. It reports results, puts each decision to you, and passes your answers to the drivers.
+5. Optional: keep the [Research Desk](#research-desk-app-optional-macos) app open to watch maps, tickets and sessions,
+   and to be notified.
 
 **By hand, in one session.** Everything also works in a single Claude Code (or Codex) session, one command at a time:
 
@@ -244,7 +227,7 @@ tractable:
 | catch up on a long chat and every call waiting on you | `/ketchup` |
 | turn optional setup on or off (alerts, delete safety) | `research-preset` ([Presets and extras](#presets-and-extras)) |
 | optional: a team in herdr tabs (a desk you talk to, a driver per map, worker tabs) | `team-up <map>` ([Team mode](#team-mode-with-herdr-optional)) |
-| optional: everything in one desktop app | `research-gui` ([Research Desk](#research-desk-app-optional-macos)) |
+| optional: watch everything in a desktop app | `research-gui` ([Research Desk](#research-desk-app-optional-macos)) |
 
 ## Using Codex
 
@@ -261,8 +244,7 @@ The skills are plain markdown and work in Codex too: `install.sh` links them int
 **Mixing the two:** a Claude Code session can hand work to Codex with `codex-run` (every call carries the same model,
 effort and sandbox, checks its exit code and answer, and strips tokens from the environment); which work goes there is a
 per-project rule in `docs/agents/delegation.md` (the author sends biology-heavy coding, analysis and reviews to Codex:
-the `claude-codex` preset). A **team** is all Claude Code or all Codex, never mixed: `team-up --codex <map>`, or pick
-Codex in the Research Desk's Start team. The flags every Codex team session starts with are in `tools/codex-team.args`
+the `claude-codex` preset). A **team** is all Claude Code or all Codex, never mixed: `team-up --codex <map>`. The flags every Codex team session starts with are in `tools/codex-team.args`
 (model, workspace-write sandbox with network, never ask for approval; medium effort for the desk and driver, xhigh for
 workers).
 
@@ -311,12 +293,33 @@ and is a Codex driver's schedule.
 
 ## Research Desk App (Optional, macOS)
 
-A desktop app over the same files and herdr: every project, maps as graphs, tickets, local and server files, chat with
-any agent (Claude Code or Codex), terminals, GPUs, and Start team with a click (Claude Code or Codex). Build once:
+A desktop app for watching what the terminal sessions do, over the same files and herdr: every project, maps as
+graphs, tickets, local and server files, chat with any agent (Claude Code or Codex), terminals and GPUs. Build once:
 `cd ~/research-harness/tools/gui/app && npm install && npm run pack`, then `research-gui` opens it. Projects live in
 `~/.config/research-gui/projects.toml` (template: `tools/gui/projects.example.toml`). Notifications go to Mac banners,
 sounds or a Moshi phone push. `tools/gui/README.md` has the details. It is built for macOS (Keychain logins, banners);
 other systems are untested.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/images/overview.png" alt="Research Desk's project page for the demo project tiny-lm: one decision waiting on you, one running ticket, the open map with its progress, and a milestone" width="100%">
+
+**The project page.** What needs you first (here, a decision only you can make), what is running, each open map with its
+progress, and the milestones: closed maps with their one-line outcomes. That page is the image at the top.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/images/ticket.png" alt="A ticket page: its question, its pre-registration and its runs with their progress" width="100%">
+
+**A ticket.** Its question, its pre-registration (fixed before anything ran), and its assets: the runs, with their
+progress.
+
+</td>
+</tr>
+</table>
 
 ## Presets and Extras
 
