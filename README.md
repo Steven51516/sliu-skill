@@ -194,10 +194,12 @@ In one session without herdr the roles are the same: the session is the driver, 
 subagent.
 
 **Projects and maps.** A project is the whole research effort, often months long (say, "a protein language model that
-folds well"). A map is one line of work inside it with one measurable finish line: "a 2B model with discrete tokens
-reaches TM-score 0.7 on our benchmark", or "continuous tokens beat that". A project has several maps over its life,
-often a few at once, much as a thesis has chapters and each chapter one claim. A map is what makes a line of work
-tractable:
+folds well"). A map is one part of it, with one measurable finish line. Give each part its own map, not one map for
+the whole project: one for the benchmark and its baselines ("AF3 and ESMFold scored on our test set"), one for the
+data ("a 20M-chain training set, deduplicated against the test set"), one for developing the model ("a 2B model with
+discrete tokens reaches TM-score 0.7 on our benchmark"), a later one for the next idea ("continuous tokens beat that").
+A project has several maps over its life, often a few at once, much as a thesis has chapters and each chapter one
+claim. A map is what makes a part tractable:
 - **a finish line:** it closes when its destination is reached, or when a measured answer says it can't be. That outcome
   is a milestone, not an open-ended exploration;
 - **comparable results:** its Contract fixes the benchmark, baselines and recipe, so every ticket on it compares like
