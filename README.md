@@ -61,9 +61,10 @@ decisions that are yours.
 ## Quick Start
 
 You need Claude Code (or Codex, see [Using Codex](#using-codex)), git and Python 3.10+. A team of sessions runs in any
-terminal that holds several of them, tmux included; [herdr](https://herdr.dev) is recommended because agents can start,
-read and prompt each other in it, so one command starts the team, the driver opens and closes worker tabs by itself, and
-a watcher restarts what stalls and alerts you. One session in one terminal also runs the whole loop.
+terminal that holds several of them, tmux included. [herdr](https://herdr.dev) is recommended because it is the easier
+one to live in: one sidebar shows every agent, on every machine, and which of them needs you; agents keep working when
+you close it; and the team commands here (`team-up`, `team-worker`, `team-watch`) are written for it, so you set up
+nothing by hand. One session in one terminal also runs the whole loop.
 
 ```bash
 git clone https://github.com/Steven51516/sliu-skill ~/research-harness
@@ -278,9 +279,9 @@ workers).
 
 The recommended way to run a project: a **desk** you talk to, a **driver** per map in its own tab, and a **worker** tab
 per ticket that the driver opens and closes, so you can watch or answer each one and several maps run side by side. In tmux
-the same roles work with more by hand: you start the desk and each driver yourself (`/team desk`, `/team driver <map>`),
-they message each other directly, each driver uses subagents in place of worker tabs, and there is no `team-up`,
-`team-worker` or `team-watch`. One session per map, with no team, is enough for small projects. They run the same skills; `skills/team/team/TEAM-PROTOCOL.md` has the
+the same roles work, with the setup done by hand: you start the desk and each driver yourself (`/team desk`,
+`/team driver <map>`) and they message each other directly; `team-up`, `team-worker` and `team-watch` are written for
+herdr, so starting the team, opening worker windows and watching for stalls are yours to do or script. One session per map, with no team, is enough for small projects. They run the same skills; `skills/team/team/TEAM-PROTOCOL.md` has the
 roster and the one-line messages between them.
 
 Teams run in [herdr](https://herdr.dev), a terminal workspace manager that can start, read and prompt agents in tabs.
