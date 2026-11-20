@@ -46,13 +46,41 @@ def note(text):
 FILE_HEREDOC = re.compile(                    # cat/tee writing a heredoc into a file (not piped into a shell)
     r"^(?=[^\n]*\b(?:cat|tee)\b)(?=[^\n]*(?:(?<![0-9&])>(?!&)|\btee\b))(?![^\n]*\|\s*(?:ba|z)?sh\b)"
     r"[^\n]*<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n.*?\n\1[ \t]*$", re.S | re.M)
-TEXT_ONLY = re.compile(r"\b(?:grep|rg|sed|echo|printf|git\s+commit)\b[^|;&\n]*")
+TEXT_CMD = re.compile(r"\b(?:grep|rg|sed|echo|printf|git\s+commit|herdr\s+agent\s+prompt)\b")
+SUBST = re.compile(r"\$\(([^()]*)\)|`([^`]*)`")
+
+
+def drop_text(cmd):
+    """Blank the arguments of commands that only carry text (a pattern, a message, a prompt for another agent), up to
+    the end of that command, quotes honoured; what a $(...) or backtick inside them runs is kept."""
+    out, i = [], 0
+    for m in TEXT_CMD.finditer(cmd):
+        if m.start() < i:
+            continue
+        j, q = m.end(), None
+        while j < len(cmd):
+            ch = cmd[j]
+            if q:
+                if ch == "\\" and q == '"':
+                    j += 1
+                elif ch == q:
+                    q = None
+            elif ch in "'\"":
+                q = ch
+            elif ch in ";&|\n":
+                break
+            j += 1
+        runs = [a or b for a, b in SUBST.findall(cmd[m.start():j])]
+        out.append(cmd[i:m.start()] + " " + " ; ".join(runs) + " ")
+        i = j
+    return "".join(out) + cmd[i:]
 
 
 def recursive_delete(cmd):
     """What makes this command a recursive delete, or None. Text that only mentions one (a file written from a heredoc,
-    a grep or sed pattern, an echo, a commit message) does not count: 43 of 383 past asks were only that."""
-    cmd = TEXT_ONLY.sub(" ", FILE_HEREDOC.sub(" ", cmd))
+    a grep or sed pattern, an echo, a commit message, a message to another agent) does not count: 43 of 383 past asks
+    were only that, and twice a driver sat 15 min for telling a worker which delete it had declined."""
+    cmd = drop_text(FILE_HEREDOC.sub(" ", cmd))
     for m in RM.finditer(cmd):
         if re.search(r"\bgit\s+$", cmd[:m.start() + 1]):
             continue                                                  # git rm: the files stay in git's history

@@ -217,7 +217,9 @@ Setup, once:
    from stalling one ([Presets and extras](#presets-and-extras)).
 
 5. Optional, to save tokens, in `~/.claude/settings.json`: `"autoCompactWindow": 400000`, so long sessions compact at
-   400k tokens instead of near the model's full window (every call re-reads the context); and in its `env` block,
+   400k tokens instead of near the model's full window (every call re-reads the context). `team-up` starts the desk and
+   the driver, the sessions that run for days, with that window whatever your settings say (`TEAM_COMPACT` changes
+   it). In the settings' `env` block,
    `"CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-5-5"` (plus `"CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"` to apply it to every
    subagent), so subagents run on a cheaper model.
 

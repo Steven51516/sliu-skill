@@ -744,11 +744,13 @@ def project_state(p, with_agents=True):
         fr = {k.get("id") for k in frontier.get(m.get("id")) or []}
         for t in tickets:
             t["frontier"] = t["id"] in fr
-            t["waiting"] = t["type"] in tracker.HITL and t["status"] not in tracker.CLOSED | tracker.HUMAN_ONLY   # held: parked by the human
+            t["waiting"] = (t["type"] in tracker.HITL and t["status"] not in tracker.CLOSED | tracker.HUMAN_ONLY   # held: parked by the human
+                            and tracker.status_of(m) not in ("paused", "closed"))   # a paused map's questions wait with it
             if t["waiting"]:
                 waiting.append({"kind": "ticket", "map": m.get("id"), "map_folder": folder, "id": t["id"],
                                 "text": t["title"], "path": t["path"], "folder": t["folder"]})
-        waiting += [{"kind": "needs", "map": m.get("id"), "map_folder": folder, "text": n} for n in m["_needs"]]
+        if tracker.status_of(m) not in ("paused", "closed"):
+            waiting += [{"kind": "needs", "map": m.get("id"), "map_folder": folder, "text": n} for n in m["_needs"]]
         counts = {}
         for t in tickets:
             counts[t["status"]] = counts.get(t["status"], 0) + 1

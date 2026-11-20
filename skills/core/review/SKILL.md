@@ -10,7 +10,7 @@ Three-axis review of a ticket's answer, by one reviewer with a fresh context win
 - **Spec**: is the pre-registered rule (for a `task`, its acceptance) applied exactly as written, and does the answer
   claim no more than its numbers show: no wider scope, no cause credited to one of several changes, no single run treated
   as replicated, no deviation left unrecorded? An `experiment` answer without its four labelled lines (Set, Runs,
-  Deviations, Does not show; `research-work`), or with one that disagrees with the files or with the ticket's `repeats:`, fails here.
+  Deviations, Does not show; `research-work`), or with one that disagrees with the files or with the ticket's `repeats:`, is an EDIT here.
 - **Code**: does the code that produced the result do what the ticket says, and nothing else that changes the numbers (a
   default, a filter, a seed, an eval path, a data range)?
 
@@ -34,8 +34,12 @@ new, never from the doer's view of the result (a sub-agent gets the files, not t
 one pass, one line each, worst first, each with its evidence (a file and line, a re-derived number, a quoted hunk);
 ignore style.
 
-Write one PASS/FAIL line per axis under the Answer, with its worst finding and a pointer. Don't merge or rerank them: an
-answer can pass one axis and fail another (a fair comparison that claims more than it measured; a faithful answer built on
-code that changed something else; correct code scored on another eval set). Any FAIL keeps the ticket open. A FAIL whose
-fix changes only wording is fixed by the doer and noted under its line; a fix that changes code or numbers gets a re-check
-of only what changed.
+Write one line per axis under the Answer, with its worst finding and a pointer: **PASS**, **EDIT** or **FAIL**.
+- **EDIT**: the numbers, the rule's application and the code stand; only the wording must change (a claim wider than its
+  numbers, a deviation not listed, a labelled line that disagrees with the files). List each edit. The doer applies them
+  and notes it under the line; no re-check, and the ticket may resolve.
+- **FAIL**: a number, the rule's application or the code is wrong, or a file is missing. It keeps the ticket open; the
+  fix gets a re-check of only what changed.
+
+Don't merge or rerank the axes: an answer can pass one and fail another (a fair comparison that claims more than it
+measured; a faithful answer built on code that changed something else; correct code scored on another eval set).

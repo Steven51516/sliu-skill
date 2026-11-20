@@ -20,3 +20,4 @@ paper/*.bbl
 paper/*.blg
 paper/*.out
 paper/*.synctex.gz
+.trash/

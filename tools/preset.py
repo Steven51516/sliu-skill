@@ -341,12 +341,15 @@ def plan(name, remove=False, project=None, topic=None, quiet_project=False):
 
 
 def state(n, m):
-    """`on`, `partly`, `off`, `edited` (on, with a config file of yours) or None (a per-project preset)."""
+    """`on`, `partly`, `off`, `edited` (on, with a config file of yours), `broken` (on, but a program it needs is not on
+    this machine) or None (a per-project preset)."""
     parts = load(n)
     if not m.get("group") and all(not any(k in mm for k in MACHINE) for _, _, mm in parts):
         return None
     p = plan(n, quiet_project=True)
     if not p.changed():
+        if any(not shutil.which(t) for _, _, mm in parts if any(k in mm for k in MACHINE) for t in mm.get("needs", [])):
+            return "broken"
         return "edited" if p.conflicts else "on"
     have = {what for mark, what in p.items if mark == "=" and not re.search(r": \$\w+$", what)}   # `$defaults` says nothing
     if m.get("group"):                     # what the other choices also install (the trash link) does not count
@@ -370,7 +373,7 @@ def show_list():
             title = "This machine"
         sections.setdefault(title, []).append((m.get("order", 50), n, state(n, m), m.get("about", "")))
     color = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
-    paint = {"on": "32", "edited": "32", "partly": "33", "off": "2"}
+    paint = {"on": "32", "edited": "32", "partly": "33", "off": "2", "broken": "31"}
     print("Optional setup. research-preset <name> applies one (--dry-run first shows what it changes; --remove undoes it).")
     order = ["This machine"] + sorted(t for t in sections if t.endswith("(pick one)")) + ["Bundles"] + \
         [t for t in sections if t.startswith("Per project")]
@@ -380,6 +383,8 @@ def show_list():
             word = st or ""
             cell = f"\033[{paint[st]}m{word:7}\033[0m" if color and st else f"{word:7}"
             print(f"  {n:15} {cell} {about}")
+    if any(st == "broken" for rows in sections.values() for _, _, st, _ in rows):
+        print("\nbroken: set up, but a program it needs is missing on this machine (research-preset <name> --dry-run names it).")
     if any(st == "partly" for rows in sections.values() for _, _, st, _ in rows):
         print("\npartly: some of it is set up here; research-preset <name> finishes it.")
 

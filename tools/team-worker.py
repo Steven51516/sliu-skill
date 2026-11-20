@@ -7,6 +7,7 @@
                                      told to work the ticket and to report to the calling driver with one line:
                                      `done|running|ask|blocked <id>: <path of the file that holds the result>`,
                                      or `handback <id>: <request>` for a request beyond its ticket
+  team-worker --close <ticket id>    end the worker in the tab labelled <id> and close its tab; refuses while it works
   team-worker --rescue <ticket id>   the worker in the tab labelled <id>: exited and its own session resumed on Sonnet 5.5
                                      at high effort, keeping its chat, then told to continue (after a safeguard stop)
 
@@ -122,14 +123,50 @@ def open_worker(path):
     if not ok:
         fail(f"{tid} in {pane} did not start: {why}")
     print(f"team-worker: {tid} working in {pane} (agent {name}, {what})")
+    left = finished_tabs()
+    if left:                           # every open tab is a live process; 22 of them once ran a 6 GB machine out of memory
+        print(f"team-worker: still open on resolved tickets: {', '.join(left)}. Close each with `team-worker --close <id>` "
+              f"once nothing of yours runs in it.")
 
 
-def rescue(tid):
+def worker_tab(tid):
+    """(tab id, its agent or None) of the tab labelled with this ticket id, this workspace first."""
     tabs = json.loads(herdr("tab", "list").stdout or "{}").get("result", {}).get("tabs", [])
     tabs.sort(key=lambda t: t.get("workspace_id") != os.environ.get("HERDR_WORKSPACE_ID"))   # `tab list` spans workspaces: ours first
     tab = next((t["tab_id"] for t in tabs if t.get("label") == tid), None) or fail(f"no tab labelled {tid}")
     agents = json.loads(herdr("agent", "list").stdout or "{}").get("result", {}).get("agents", [])
-    a = next((a for a in agents if a.get("tab_id") == tab), None) or fail(f"no agent in the tab of {tid}")
+    return tab, next((a for a in agents if a.get("tab_id") == tab), None)
+
+
+def finished_tabs():
+    """Ticket ids of this workspace's tabs whose ticket is resolved, parked or superseded."""
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+        import status as tracker
+        closed = {str(k.get("id")) for m in tracker.load(".") for k in m["_tickets"] if tracker.status_of(k) in tracker.CLOSED}
+        tabs = json.loads(herdr("tab", "list").stdout or "{}").get("result", {}).get("tabs", [])
+    except Exception:                  # a hint only: never fail a launch over it
+        return []
+    return sorted(t.get("label") for t in tabs if t.get("workspace_id") == os.environ.get("HERDR_WORKSPACE_ID")
+                  and t.get("label") in closed)
+
+
+def close(tid):
+    tab, a = worker_tab(tid)
+    if a and a.get("agent_status") in ("working", "blocked"):
+        fail(f"{tid} is {a['agent_status']} in {a['pane_id']}: let it finish or answer it first")
+    if a:
+        herdr("agent", "prompt", a["pane_id"], "/exit")   # a clean exit; background commands of that session end with it
+        time.sleep(8)
+    r = herdr("tab", "close", tab)
+    if r.returncode != 0:
+        fail(f"could not close the tab of {tid}: {(r.stderr or r.stdout).strip()[:200]}")
+    print(f"team-worker: closed the tab of {tid}")
+
+
+def rescue(tid):
+    tab, a = worker_tab(tid)
+    a = a or fail(f"no agent in the tab of {tid}")
     if a.get("agent") != "claude":
         fail(f"{tid} runs on {a.get('agent')}: --rescue is for Claude sessions stopped by Claude's safeguards")
     session = (a.get("agent_session") or {}).get("value") or fail(f"the session of {tid} is unknown")
@@ -155,6 +192,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if args[:1] == ["--rescue"] and len(args) == 2:
         rescue(args[1])
+    elif args[:1] == ["--close"] and len(args) == 2:
+        close(args[1])
     elif len(args) == 1 and os.path.isfile(args[0]):
         open_worker(args[0])
     else:

@@ -5,6 +5,23 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **What waits on the human is one list, from tickets.** `waiting()` leaves out paused and closed maps (two asks of a
+  map paused that day still showed); `research-status --check` flags a live map whose tickets are all closed with no
+  question open (a driver waited on a route decision it had asked only in its pane); `team-watch` tells a driver whose
+  `needs-you` line names no open question ticket to file one; the desk starts each turn from the list, not from relays.
+- **A failed alert is visible.** The alert command's exit code is recorded per alert in `scratch/agents/alerts.log`;
+  `research-status --now` says how many did not reach you, `driver.log` gets "ALERT NOT DELIVERED", and
+  `research-preset` shows a preset as `broken` when a program it needs is missing. 15 of 15 alerts had failed silently
+  for 9 days: the watch ran in a container without the Mac's programs.
+- **`team-watch`** alerts when its clock jumped (the machine or its VM slept; 4 h on 11-20 with every wait stalled).
+- **`team-worker --close <ticket id>`** ends a worker and closes its tab; opening a worker names the tabs still open
+  on resolved tickets (8 of 13 were; 25 sessions held 8.5 of 12 GB).
+- **`review`** has a third verdict, **EDIT**: wording only, applied by the doer, no re-check. FAIL now means a number,
+  the rule or the code is wrong. Reviewers were already writing "FAIL (wording only)": 55% of Spec verdicts were FAIL.
+- **`delete-guard`** treats a message to another agent (`herdr agent prompt`) as text and honours quotes: a driver sat
+  15 min, twice, for telling a worker which delete it had declined.
+- **`team-up`** starts the desk and the driver with a 400k compaction window (`TEAM_COMPACT`), and no longer needs
+  `USER` set (a container). New projects' `.gitignore` covers `.trash/`.
 - **Confirmation is derived, not tagged.** A resolved experiment records `repeats: <n>`; `research-status --now` lists
   each answer resting on one run that open tickets build on. The hand-written `[tentative]` / `[established]` tags are
   gone from the skills: in one project 82 tickets resolved in 12 days without a single `[established]` line.

@@ -9,7 +9,8 @@ argument and the kind in RH_EVENT: `question` (an open question or a needs-you l
 
 notify.json: {"channels": {<name>: {"run": "<command>", "message": true|false}}, "events": {<kind>: [<channel>...]}}.
 A channel's command gets the message as its last argument when "message" is true. A kind with no line uses "other".
-If no channel of the kind succeeds, a banner is tried (macOS). Every send is a line in ~/.local/state/notify.log.
+If no channel of the kind succeeds, a banner is tried (macOS). Every send is a line in ~/.local/state/notify.log, and
+the exit code is 1 when nothing got through, so the caller can say the alert was not delivered.
 Optional (README, "Presets and extras"): no skill relies on it.
 """
 import json
@@ -63,6 +64,7 @@ def send(kind, message, dry=False):
             rc = f"failed: {e}"
         log(f"{kind} -> {name}: {rc}: {message[:120]}")
         ok = ok or rc == 0
+    return ok
 
 
 def main():
@@ -71,10 +73,10 @@ def main():
         sys.exit(__doc__)
     if a[0] == "--test":
         kind = a[1] if len(a) > 1 else "question"
-        return send(kind, f"research-harness: test alert ({kind})")
+        sys.exit(0 if send(kind, f"research-harness: test alert ({kind})") else "notify: the test alert did not get through")
     if a[0] == "--dry-run":
         return send(os.environ.get("RH_EVENT") or "other", " ".join(a[1:]), dry=True)
-    send(os.environ.get("RH_EVENT") or "other", " ".join(a))
+    sys.exit(0 if send(os.environ.get("RH_EVENT") or "other", " ".join(a)) else 1)
 
 
 if __name__ == "__main__":

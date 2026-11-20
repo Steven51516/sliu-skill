@@ -8,8 +8,9 @@ in a herdr pane in the project folder; workers' tabs come and go as tickets star
 The roles run the same skills as a single session, with two swaps:
 - **"use implementer subagents"** (the driver): open a worker per ticket (below). A worker runs `research-work` in a
   session of its own, so it can open subagents itself (a subagent cannot), and the human can watch or answer it in its tab.
-- **"ask the user" / "tell the user"**: the driver sends the desk `needs-you <pointer>: <one line>` and writes the same
-  line once in `driver.log`, from where `team-watch` passes it once to the human's alert command, if one is set; a worker sends the
+- **"ask the user" / "tell the user"**: a question for the human is a `grilling` ticket first: only a ticket shows as
+  waiting on them (`research-status --now`, Research Desk, the alert) and closes with their answer, quoted. Then the driver
+  sends the desk `needs-you <ticket>: <one line>` and writes the same line once in `driver.log`; a worker sends the
   driver `ask` and keeps working (`blocked` once nothing is left that doesn't need the answer), and the driver tells the desk. The desk puts it to the human (STYLE.md) and relays
   the answer to the driver.
 
@@ -27,9 +28,10 @@ the map.
 - **Open** one per ticket, at most as many as `research-drive` allows at once: `team-worker <ticket path>`. It opens
   a tab labelled with the ticket id on the driver's own agent (Claude Code on Opus 5.5 at medium effort, logged in, or Codex), tells it
   to work the ticket and report back to you, and fails loudly if the worker did not start.
-- **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker
-  (`herdr agent prompt <ticket id> "/exit"`, then `herdr tab close <tab>`). First check that no job depends on that
-  session: a session's cleanup can stop jobs it launched.
+- **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker with
+  `team-worker --close <ticket id>` (it refuses while the worker is working). First check that no job depends on that
+  session: a session's cleanup can stop jobs it launched. Every open tab is a live process: `team-worker` names the tabs
+  still open on resolved tickets each time it opens a new one.
 - **On `ask` or `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
 - **On `handback`** (the human asked the worker, in its tab, for something beyond its ticket): the driver takes it as the
   human's request: a trivial edit it does itself, anything else becomes a ticket draft (`to-tickets`).
@@ -86,11 +88,13 @@ sessions of a team run on the same machine.
 - A team is all Claude Code (`team-up <map>`) or all Codex (`team-up --codex <map>`); Research Desk's Start team offers
   both. Workers run on their driver's agent. In a Codex team, a delegation rule that sends work to Codex is the session's
   own work, and one that names a Claude subagent goes to a fresh Codex session (`codex-run`) instead.
-- Team sessions run for days and re-read their whole context on every call: set a compaction window in your Claude Code
-  settings (`"autoCompactWindow": 400000`) instead of the model's default near the full window.
+- The desk and the driver run for days and re-read their whole context on every call: `team-up` starts them with a
+  compaction window of 400,000 tokens (`TEAM_COMPACT`) instead of the model's default near the full window.
 - The driver's schedule: in Claude Code, `/loop` (the `team` skill starts it). Codex has no loop command: `team-watch`
   types `tick` into an idle Codex driver every 25 minutes.
-- The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS).
+- The driver runs on this machine: keep it awake while the driver runs (`caffeinate -dimsu` in a pane on macOS). In a
+  container or VM, keep the host awake, on the host: nothing inside can. `team-watch` alerts when it finds its clock
+  jumped (the machine slept), since no wake-up or wait fired meanwhile.
 - Nobody watching (a night): `team-watch` runs in a tab of its own (`team-up` starts it; otherwise run
   `caffeinate -dimsu team-watch` once in the project folder). It watches every driver on the roster and shows the driver's log. A driver stopped by Claude's safeguards is resumed in its own
   session on Sonnet 5.5, keeping its chat, at most 3 times; a worker is rescued once the same way. A driver waiting on

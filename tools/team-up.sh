@@ -4,7 +4,8 @@
 # starts its team role (TEAM-PROTOCOL.md). Worker tabs open and close as the driver starts and finishes tickets, on the
 # driver's own agent. Claude Code (default): sessions start logged in (Keychain item claude-code-oauth) and on an explicit
 # model and effort (TEAM_MODEL, default claude-opus-5-5; TEAM_EFFORT, default xhigh), so a /model or /effort saved
-# elsewhere cannot change them. Extra claude flags: CLAUDE_ARGS.
+# elsewhere cannot change them, and with a compaction window (TEAM_COMPACT, default 400000 tokens): the desk and the
+# driver run for days, and every call re-reads the whole context. Extra claude flags: CLAUDE_ARGS.
 # --codex: every session is Codex, with the flags in codex-team.args at medium effort (workers: xhigh); the watch tab
 # is the driver's schedule, since Codex has no /loop.
 set -euo pipefail
@@ -19,7 +20,7 @@ HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 
 TOK=""; CODEX=()
 if [[ $AGENT == claude ]]; then
-  TOK=$(security find-generic-password -a "$USER" -s claude-code-oauth -w 2>/dev/null || true)   # login for new tabs
+  TOK=$(security find-generic-password -a "${USER:-$(id -un)}" -s claude-code-oauth -w 2>/dev/null || true)   # login for new tabs
 else
   while IFS= read -r l; do [[ -z "$l" || "$l" == \#* ]] || CODEX+=("${l/#\~/$HOME}"); done < "$HERE/codex-team.args"
 fi
@@ -32,7 +33,7 @@ go() {  # go <agent name> <pane> <team role, e.g. "driver maps/M8-x">
     herdr agent start "$1" --kind codex --pane "$2" --timeout 120000 -- "${CODEX[@]}" -c 'model_reasoning_effort="medium"' >/dev/null
     herdr agent prompt "$1" "Read ~/.agents/skills/team/SKILL.md and follow it as \`team $3\`." >/dev/null
   else
-    herdr agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --model "${TEAM_MODEL:-claude-opus-5-5}" --effort "${TEAM_EFFORT:-xhigh}" ${CLAUDE_ARGS:-} >/dev/null
+    herdr agent start "$1" --kind claude --pane "$2" --timeout 120000 -- --model "${TEAM_MODEL:-claude-opus-5-5}" --effort "${TEAM_EFFORT:-xhigh}" --settings "{\"autoCompactWindow\": ${TEAM_COMPACT:-400000}}" ${CLAUDE_ARGS:-} >/dev/null
     herdr agent prompt "$1" "/team $3" >/dev/null
   fi
 }

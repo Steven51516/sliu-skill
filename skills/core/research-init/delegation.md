@@ -17,7 +17,7 @@ work it matches.
   <ticket> in <project>. End with one line: `done | running | blocked <ticket>: <one line>`." A subagent cannot open
   subagents of its own: what it would hand to a Claude subagent it does itself (a team's workers are full sessions and can).
 - **"review"**: once per ticket that `review` says needs it, plus a re-check of only what a fix changed: a fresh session of the same agent that did not do the work (Claude Code: a Claude subagent, never a fork of the session that did; Codex: `codex-run`); another agent only where a rule names one. It
-  writes only its PASS/FAIL lines under the answer.
+  writes only its PASS / EDIT / FAIL lines under the answer.
 - **"ask the user"**, **"tell the user"**: in this session.
 
 ## Briefs and commands

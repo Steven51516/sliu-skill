@@ -21,7 +21,8 @@ and until 11-10 all 15 resumes were of such drivers, each moved to Sonnet): the 
 driver whose map is paused is not reported.
 
 Questions for the human go to the alert command once each: every open grilling or prototype ticket of a map that is neither
-paused nor closed, and every new driver.log line that says `needs-you` (unless it names a ticket already sent). What
+paused nor closed, and every new driver.log line that says `needs-you` without naming such a ticket; that line's
+driver is also told once to file the question as a ticket. What
 was sent is kept in scratch/agents/team-watch.pushed, so restarting the watch sends nothing twice.
 
 A Codex driver has no /loop: the watchdog is its schedule. It types `tick` into the driver's pane once the pane has been
@@ -33,7 +34,9 @@ safeguards stopped is resumed once with `team-worker --rescue`, so it does not w
 hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line.
 
 An alert runs the command in ~/.config/research-harness/notify, if that file exists, with the message as its last
-argument and its kind in RH_EVENT: `question`, `silent` or `gave-up`. Your command routes it (a phone push, a sound, a
+argument and its kind in RH_EVENT: `question`, `silent`, `gave-up` or `slept` (the watch found its clock had jumped: the
+machine or its VM was asleep). An alert the command could not deliver is marked in scratch/agents/alerts.log and shown
+by `research-status --now`. Your command routes it (a phone push, a sound, a
 banner; the `alerts` preset installs one that routes by kind). Without the file, alerts go only to driver.log.
 Every action is logged to driver.log.
 """
@@ -51,6 +54,7 @@ import time
 EVERY, STALE_MIN, MAX_RESTARTS, MODEL, EFFORT, TICK_MIN = 300, 90, 3, "sonnet", "high", 25
 LOG = os.path.join("scratch", "agents", "driver.log")
 ROSTER = os.path.join("scratch", "agents", "roster.md")
+ALERTS = os.path.join("scratch", "agents", "alerts.log")    # time, kind, delivered | undelivered, text (tab-separated)
 PUSHED = os.path.join("scratch", "agents", "team-watch.pushed")   # what the human was already told, one key per line
 HERE = os.path.dirname(os.path.realpath(__file__))
 TEAM_WORKER = os.path.join(HERE, "team-worker.py")
@@ -129,18 +133,25 @@ NOTIFY = os.path.expanduser("~/.config/research-harness/notify")   # optional: y
 def alert(text, kind="other"):
     """note(), plus the human's own alert: the command in ~/.config/research-harness/notify, if any, with the
     message added as its last argument and the kind in RH_EVENT (question, silent, gave-up), so the command can route
-    it (e.g. extras/notify.py, the `alerts` preset; or `ntfy publish <topic>`). Best effort."""
+    it (e.g. extras/notify.py, the `alerts` preset; or `ntfy publish <topic>`). Whether the command got it through
+    (exit 0) is a line in scratch/agents/alerts.log, which `research-status --now` reads: an alert that failed must not
+    fail silently (15 of 15 did, 11-11..11-20, from a container without the Mac's programs)."""
     note(text)
     try:
         cmd = shlex.split(open(NOTIFY).read().strip())
     except (OSError, ValueError):
+        return                                        # no alert command: driver.log is the record, by choice
+    if not cmd:
         return
-    if cmd:
-        try:
-            subprocess.run([os.path.expanduser(c) for c in cmd] + [text], capture_output=True, timeout=60,
-                           env={**os.environ, "RH_EVENT": kind})
-        except (OSError, subprocess.SubprocessError):
-            pass
+    try:
+        rc = subprocess.run([os.path.expanduser(c) for c in cmd] + [text], capture_output=True, timeout=60,
+                            env={**os.environ, "RH_EVENT": kind}).returncode
+    except (OSError, subprocess.SubprocessError) as e:
+        rc = f"{type(e).__name__}"
+    with open(ALERTS, "a") as f:
+        f.write(f"{now()}\t{kind}\t{'delivered' if rc == 0 else 'undelivered'}\t{text[:300]}\n")
+    if rc != 0:
+        note(f"ALERT NOT DELIVERED ({cmd[0]}: {rc}); it is only in this log. Check the alert command: research-preset")
 
 
 def load_pushed():
@@ -164,11 +175,9 @@ def push_once(key, text, pushed, kind):
 
 
 def push_questions(maps, pushed):
-    """Each open question for the human (a grilling or prototype ticket, an old map's Needs-you item) once. Paused and
-    closed maps are left alone. More than 3 new at once (a first run) go as one alert."""
-    quiet = {m.get("id") for m in maps if tracker.status_of(m) in ("paused", "closed")}
-    new = [(mid, text, f"ask {key}") for mid, text, key in tracker.waiting(maps)
-           if mid not in quiet and f"ask {key}" not in pushed]
+    """Each open question for the human (a grilling or prototype ticket, an old map's Needs-you item) once; `waiting`
+    leaves paused and closed maps out. More than 3 new at once (a first run) go as one alert."""
+    new = [(mid, text, f"ask {key}") for mid, text, key in tracker.waiting(maps) if f"ask {key}" not in pushed]
     if len(new) > 3:
         pushed.update(key for _, _, key in new)
         alert(f"{len(new)} questions wait on you ({', '.join(sorted({str(mid) for mid, _, _ in new}))}): research-status --now", "question")
@@ -183,13 +192,29 @@ def asked(maps):
     return paths | {str(k.get("id")) for m in maps for k in m["_tickets"] if k["_path"] in paths}
 
 
-def push_needs(lines, pushed, covered=()):
-    """Each new driver.log line that says `needs-you`, once: what a driver sends the desk reaches the human's phone too."""
+def driver_for(line, drivers):
+    """The driver pane a log line belongs to: the one whose map id the line names, or the only driver."""
+    ids = {p: os.path.basename(str(label).rstrip("/")).split("-")[0] for p, label in drivers.items()}
+    hits = [p for p, i in ids.items() if i and re.search(rf"\b{re.escape(i)}\b", line, re.I)]
+    return hits[0] if len(hits) == 1 else next(iter(drivers)) if len(drivers) == 1 else None
+
+
+def push_needs(lines, pushed, covered=(), drivers=None):
+    """Each new driver.log line that says `needs-you` and names no open question ticket: once to the human, and once to
+    its driver, to file it. Only a ticket shows as waiting on the human and closes with their answer; an ask that lived
+    in a pane and this log was dropped twice on 2026-11-20."""
     for line in lines:
         m = NEEDS.search(line)
-        if m and "watchdog:" not in line and not NO_NEEDS.search(line) and not any(c.lower() in line.lower() for c in covered):
-            push_once("log " + STAMP.sub("", line)[:160], "driver.log: …" + line[max(0, m.start() - 160):m.start() + 240], pushed,
-                      "question")
+        key = "log " + STAMP.sub("", line)[:160]
+        if not m or "watchdog:" in line or NO_NEEDS.search(line) or key in pushed or \
+                any(c.lower() in line.lower() for c in covered):
+            continue
+        push_once(key, "no ticket yet; driver.log: …" + line[max(0, m.start() - 160):m.start() + 240], pushed, "question")
+        pane = driver_for(line, drivers or {})
+        if pane:
+            herdr("agent", "prompt", pane, f"watchdog: your driver.log line \"…{line[m.start():m.start() + 70]}…\" names no open "
+                                           f"grilling ticket. A question for the human is a ticket first (`to-tickets`, type "
+                                           f"grilling): only then does it show as waiting on them, and their answer closes it.")
 
 
 def ended_on_safeguard_stop(session_id):
@@ -368,7 +393,7 @@ def single():
     return fd                                   # kept open for the process's life: closing it releases the lock
 
 
-def show_log(seen, pushed, covered=()):
+def show_log(seen, pushed, covered=(), drivers=None):
     """Print what the drivers added to driver.log since `seen` (whole lines; the watchdog's own were printed by note())
     and push its needs-you lines, except those about a ticket in `covered`. Returns the new offset."""
     if not os.path.exists(LOG) or os.path.getsize(LOG) <= seen:
@@ -380,7 +405,7 @@ def show_log(seen, pushed, covered=()):
     lines = [l for l in chunk.decode(errors="replace").splitlines() if "  watchdog: " not in l]
     if lines:
         print("\n".join(lines), flush=True)
-    push_needs(lines, pushed, covered)
+    push_needs(lines, pushed, covered, drivers)
     return seen + len(chunk)
 
 
@@ -394,16 +419,21 @@ def main():
     pushed = load_pushed()
     seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
+    beat = time.time()
     while True:
+        gap = (time.time() - beat) / 60
+        if gap > EVERY / 60 + 10:      # the clock jumped: this machine (or its VM) was asleep or stopped
+            alert(f"this machine was asleep or stopped for {gap:.0f} min until {now()}: wake-ups and waits inside "
+                  f"sessions did not fire; check each driver and worker", "slept")
         os.utime(LOCK)        # a session that cannot list processes (Codex's sandbox) reads this file's age instead
         told = set(pushed)
         maps = load_maps()
+        roster = {pane: map_state(maps, ref, name) + (ref,) for pane, (ref, name) in (fixed or roster_drivers()).items()}
+        drivers, spaces = {pane: map_id or ref for pane, (map_id, _, ref) in roster.items()}, set()
         push_questions(maps, pushed)
-        seen = show_log(seen, pushed, asked(maps))
-        drivers, spaces = {}, set()
-        for pane, (ref, name) in (fixed or roster_drivers()).items():
-            map_id, state = map_state(maps, ref, name)
-            label = drivers[pane] = map_id or ref
+        seen = show_log(seen, pushed, asked(maps), {p: l for p, l in drivers.items() if roster[p][1] != "closed"})
+        for pane, (map_id, state, ref) in roster.items():
+            label = drivers[pane]
             agent = agent_at(pane)
             spaces.add((agent or {}).get("workspace_id"))
             if not agent or state == "closed":
@@ -416,6 +446,7 @@ def main():
             check_worker(pane, tid, agent, drivers, rescued)
         if pushed != told:
             save_pushed(pushed)
+        beat = time.time()
         time.sleep(EVERY)
 
 

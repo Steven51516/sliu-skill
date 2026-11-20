@@ -12,7 +12,7 @@ Usage (from the project root, or pass it):
                   tickets build on, the frontier (never stored)
       --check     only report problems (unknown or unmet blockers, dependency cycles, unknown statuses, stale claims,
                   missing fields, resolved tickets missing from their map or their answer, a map grown past
-                  12,000 characters; a ticket line stamped later than now; run cards with an unknown status, a missing field, or no link from their
+                  12,000 characters; a ticket line stamped later than now; a live map with every ticket closed and no question open; run cards with an unknown status, a missing field, or no link from their
                   ticket); exit 1 if any
       --frontier  only list the frontier (open, unblocked, unclaimed tickets), one per line
       --map ID    with --check or --frontier: only that map (its id or folder name), as a driver checks its own
@@ -275,6 +275,11 @@ def analyse(maps):
         if m["_chars"] > MAX_MAP_CHARS and status_of(m) != "closed":   # STYLE: a live map stays short; detail lives in its tickets
             problems.append(f"{m['_path']}: {m['_chars']:,} characters (max {MAX_MAP_CHARS:,}): move detail into its "
                             f"tickets, keep one line and a link per finding")
+        if status_of(m) in ("open", "claimed") and m["_tickets"] and not m["_needs"] and \
+                all(status_of(k) in CLOSED | HUMAN_ONLY for k in m["_tickets"]):
+            # nothing can move and nobody is asked: the driver waits on the human without saying so, or the map is done
+            problems.append(f"{m['_path']}: every ticket is closed or held and no question is open: file the next "
+                            f"tickets, or the question that blocks them as a `grilling` ticket, or close the map")
         fr = []
         for k in m["_tickets"]:
             for f in ("id", "title", "type", "status"):
@@ -364,18 +369,38 @@ def render_page(project, maps):
 
 def waiting(maps):
     """What waits on the human, as (map id, text, key): each open grilling or prototype ticket (key: its path) and each
-    open item of an old map's `Needs you` (key: its text). team-watch pushes each key to the human once."""
-    out = [(m.get("id"), f"{k.get('title')} ({k['_path']})", k["_path"]) for m in maps for k in m["_tickets"]
+    open item of an old map's `Needs you` (key: its text). team-watch pushes each key to the human once. A paused or
+    closed map's questions wait with it: the human set them aside with the map (2026-11-20: two asks of a map paused
+    that day still showed as needing the human)."""
+    live = [m for m in maps if status_of(m) not in ("paused", "closed")]
+    out = [(m.get("id"), f"{k.get('title')} ({k['_path']})", k["_path"]) for m in live for k in m["_tickets"]
            if type_of(k) in HITL and status_of(k) not in CLOSED | HUMAN_ONLY]   # held: the human parked it
-    return out + [(m.get("id"), n, n) for m in maps for n in m["_needs"]]
+    return out + [(m.get("id"), n, n) for m in live for n in m["_needs"]]
 
 
-def render_now(maps, frontier, problems):
+def undelivered(project="."):
+    """(time, kind, text) of team-watch's alerts that failed since the last one that got through."""
+    out = []
+    try:
+        for line in open(os.path.join(project, "scratch", "agents", "alerts.log"), errors="replace"):
+            p = line.rstrip("\n").split("\t")
+            if len(p) >= 4:
+                out = out + [(p[0], p[1], p[3])] if p[2] == "undelivered" else []
+    except OSError:
+        pass
+    return out
+
+
+def render_now(maps, frontier, problems, project="."):
     """What is live: printed, never stored."""
     out = []
     asks = waiting(maps)
     out.append("Waiting on you:")
-    out += [f"  {mid}  {w}" for mid, w, _ in asks[:MAX_WAITING]] or ["  nothing open"]
+    lost = undelivered(project)
+    if lost:
+        out.append(f"  {len(lost)} alert(s) did not reach you since {lost[0][0]} (scratch/agents/alerts.log); the alert "
+                   f"command fails on the machine that runs team-watch: research-preset")
+    out += [f"  {mid}  {w}" for mid, w, _ in asks[:MAX_WAITING]] or ([] if lost else ["  nothing open"])
     if len(asks) > MAX_WAITING:
         out.append(f"  … {len(asks) - MAX_WAITING} more")
     running = [k for m in maps for k in m["_tickets"] if status_of(k) in ACTIVE]
@@ -435,7 +460,7 @@ def main():
                 print(f"{k.get('id')}\t{type_of(k)}\t{k['_path']}\t{k.get('title')}")
         return
     if a.now:
-        sys.stdout.write(render_now(maps, frontier, problems))
+        sys.stdout.write(render_now(maps, frontier, problems, a.project))
         return
     text = render_page(a.project, maps)
     if a.print:

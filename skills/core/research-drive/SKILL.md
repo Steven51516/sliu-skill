@@ -23,7 +23,7 @@ Each pass:
 2. **Jobs:** check each running job the way the scope file says (alive, its progress file moving, finished) and the GPUs
    in use; idle granted GPUs are a finding. A finished job nobody is working goes back to an implementer.
 3. **Merge:** a ticket reported done is resolved once its review passed (or `review` says it needs none, or can finish
-   later); advance the map as wayfinder's "Work through the map" says. A FAIL goes back to an implementer; a FAIL on a
+   later); advance the map as wayfinder's "Work through the map" says. A FAIL goes back to an implementer (an EDIT, wording only, is applied by the doer and does not); a FAIL on a
    resolved task reopens it and stops the runs that use it (your subagents' runs are yours; others need the user's yes).
 4. **Dispatch:** each frontier ticket inside the Contract and not on hold goes to a fresh implementer subagent, an
    experiment once you approve its pre-registration (a dated line). `grilling` and `prototype` tickets go to the user.
