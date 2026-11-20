@@ -15,7 +15,7 @@
 [Quick Start](#quick-start) &nbsp;•&nbsp;
 [How It Works](#how-it-works) &nbsp;•&nbsp;
 [Commands](#commands) &nbsp;•&nbsp;
-[Team Mode](#team-mode-with-herdr-optional) &nbsp;•&nbsp;
+[Team Mode](#team-mode-with-herdr-recommended) &nbsp;•&nbsp;
 [Presets](#presets-and-extras) &nbsp;•&nbsp;
 [Skills](#skills)
 
@@ -43,20 +43,21 @@ decisions that are yours.
 - 🙋 **Only your decisions reach you.** A cost over your threshold, a change of destination, a decision ticket, a
   failure.
 - 💾 **State lives in files.** Sessions can stop, compact or be replaced without losing anything.
-- 👥 **One session or a team.** One terminal runs the whole loop; a desk, drivers and workers in tabs are optional.
+- 👥 **A team in herdr tabs, or one session.** A desk you talk to, a driver per map and a worker per ticket; one terminal
+  session also runs the whole loop.
 
 | Part | What it is |
 |---|---|
 | [Skills](#skills) | the research loop: chart a map, file tickets, work them, review, drive |
 | [`research-status`](#commands) | the project page, the live state, the frontier and the checks, all read from the files |
-| [Team mode](#team-mode-with-herdr-optional) (optional) | a desk you talk to, a driver per map and a worker per ticket, in herdr tabs |
+| [Team mode](#team-mode-with-herdr-recommended) (recommended) | a desk you talk to, a driver per map and a worker per ticket, in herdr tabs |
 | [Research Desk](#research-desk-app-optional-macos) (optional) | a desktop app to watch the same files: maps as graphs, tickets, sessions |
 | [Presets](#presets-and-extras) (optional) | alerts, delete safety, a Claude–Codex split |
 
 ## Quick Start
 
-You need Claude Code (or Codex, see [Using Codex](#using-codex)), git and Python 3.10+. Nothing else is required: one
-session in one terminal runs the whole loop.
+You need Claude Code (or Codex, see [Using Codex](#using-codex)), git and Python 3.10+, plus [herdr](https://herdr.dev)
+for the recommended way to run it: a team in tabs. Without herdr, one session in one terminal runs the whole loop.
 
 ```bash
 git clone https://github.com/Steven51516/sliu-skill ~/research-harness
@@ -86,8 +87,10 @@ Then, in Claude Code:
    doc, the delegation doc and a scope file pointer (where the project runs; see [Make it yours](#make-it-yours)).
 3. **Chart a map:** `/wayfinder "<a loose idea>"` interviews you and charts it; `/to-map` turns what you already
    discussed into one.
-4. **Drive it:** `/loop /research-drive <map>`. Each pass merges finished tickets, dispatches the ready ones to fresh
-   subagents, and files the next questions when the frontier runs dry.
+4. **Drive it:** from a herdr pane, `team-up <map>` starts a desk, a driver and a watch tab
+   ([Team mode](#team-mode-with-herdr-recommended)); you talk to the desk. Without herdr, `/loop /research-drive <map>`
+   in one session does the same work. Either way, each pass of the driver merges finished tickets, dispatches the ready
+   ones to fresh sessions, and files the next questions when the frontier runs dry.
 5. **Check in:** `research-status --now` prints what is running, what waits on you and what is ready; `STATUS.md` lists
    milestones and open maps.
 
@@ -129,9 +132,9 @@ Everything flows to the destination on the right.
 
 ## Two Ways to Use It
 
-**With a team, in herdr.** You talk to one session, the desk, and the rest runs in tabs you can watch.
+**With a team, in herdr (recommended).** You talk to one session, the desk, and the rest runs in tabs you can watch.
 
-1. Set up herdr once: [Team mode](#team-mode-with-herdr-optional).
+1. Set up herdr once: [Team mode](#team-mode-with-herdr-recommended).
 2. In the project folder, run `/research-init <name>` once in a Claude Code (or Codex) session: it sets up the scope,
    tracker and docs by asking you a section at a time. Chart a first map with `/wayfinder "<idea>"`.
 3. From a herdr pane in that folder: `team-up <map>` (or `team-up --codex <map>`). It opens a desk, a driver for the map
@@ -140,7 +143,7 @@ Everything flows to the destination on the right.
 5. Optional: keep the [Research Desk](#research-desk-app-optional-macos) app open to watch maps, tickets and sessions,
    and to be notified.
 
-**By hand, in one session.** Everything also works in a single Claude Code (or Codex) session, one command at a time:
+**In one session, without herdr.** Everything also works in a single Claude Code (or Codex) session, one command at a time:
 
 | Step | Command |
 |---|---|
@@ -163,15 +166,19 @@ fixed task list.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#eef4fb', 'primaryBorderColor': '#2f6fb3', 'primaryTextColor': '#1a1a1a', 'lineColor': '#2f6fb3'}}}%%
 flowchart TD
-    idea(["Idea"]) -->|"wayfinder / to-map"| map["MAP<br/>destination, Contract, decisions so far, fog"]
-    map -->|"to-tickets"| tickets["TICKETS<br/>one question each, blocking edges, pre-registration"]
-    tickets --> drive["research-drive<br/>one pass, repeated with /loop"]
-    drive -->|"dispatch the frontier"| work["research-work<br/>a fresh session per ticket: runs jobs, follows rigor, writes the answer"]
+    idea(["Idea"]) -->|"wayfinder / to-map: chart it"| map["MAP<br/>destination, Contract, decisions so far, fog"]
+    map -->|"to-tickets: the questions sharp enough now"| tickets["TICKETS<br/>one question each, blocking edges, pre-registration"]
+    tickets -->|"the frontier: tickets ready to start"| drive["DRIVER: research-drive<br/>one pass per wake-up, repeated with /loop"]
+    drive -->|"1. dispatches each ready ticket"| work["research-work<br/>a fresh session per ticket: runs jobs, follows rigor, writes the answer"]
     work --> review["review<br/>one fresh reviewer: Fair, Spec, Code"]
-    review -->|"merge"| map
-    drive -->|"frontier empty: new tickets from the fog"| tickets
-    drive --> done(["Destination reached, or measured unreachable:<br/>the map closes and its outcome is a milestone"])
+    review -->|"2. the driver merges the reviewed answer"| map
+    drive -->|"3. frontier empty: files the next tickets from the fog"| tickets
+    map --> done(["Destination reached, or measured unreachable:<br/>the map closes and its outcome is a milestone"])
 ```
+
+The driver is the hub. Charting gives it a map and the first tickets; from then on each pass does three things: it
+dispatches every ticket that is ready, merges each answer that passed review into the map, and, when nothing is left
+to dispatch, files the next tickets itself from the map's fog.
 
 **Projects and maps.** A project is the whole research effort, often months long (say, "a protein language model that
 folds well"). A map is one line of work inside it with one measurable finish line: "a 2B model with discrete tokens
@@ -221,12 +228,12 @@ tractable:
 | open a new map from a loose idea (it interviews you) | `/wayfinder "<loose idea>"` |
 | add a ticket | `/to-tickets <map> "<question>"` |
 | work one ticket | `/research-work <ticket>` |
-| **default:** work a map in one session, a fresh subagent per ticket | `/loop /research-drive <map>` |
+| **recommended:** run a map as a team in herdr tabs (a desk you talk to, a driver per map, worker tabs) | `team-up <map>` ([Team mode](#team-mode-with-herdr-recommended)) |
+| work a map in one session instead, a fresh subagent per ticket | `/loop /research-drive <map>` |
 | re-plan a map | `/wayfinder <map> --rechart` |
 | review a ticket's answer yourself | `/review <ticket>` |
 | catch up on a long chat and every call waiting on you | `/ketchup` |
 | turn optional setup on or off (alerts, delete safety) | `research-preset` ([Presets and extras](#presets-and-extras)) |
-| optional: a team in herdr tabs (a desk you talk to, a driver per map, worker tabs) | `team-up <map>` ([Team mode](#team-mode-with-herdr-optional)) |
 | optional: watch everything in a desktop app | `research-gui` ([Research Desk](#research-desk-app-optional-macos)) |
 
 ## Using Codex
@@ -248,11 +255,11 @@ the `claude-codex` preset). A **team** is all Claude Code or all Codex, never mi
 (model, workspace-write sandbox with network, never ask for approval; medium effort for the desk and driver, xhigh for
 workers).
 
-## Team Mode with herdr (Optional)
+## Team Mode with herdr (Recommended)
 
-One session per map is the default and enough for most work. A team helps when several maps run at once and you want
-to watch or answer each worker: a **desk** you talk to, a **driver** per map in its own tab, and a **worker** tab per
-ticket that the driver opens and closes. They run the same skills; `skills/team/team/TEAM-PROTOCOL.md` has the
+The recommended way to run a project: a **desk** you talk to, a **driver** per map in its own tab, and a **worker** tab
+per ticket that the driver opens and closes, so you can watch or answer each one and several maps run side by side. One
+session per map, without herdr, also works and is enough for small projects. They run the same skills; `skills/team/team/TEAM-PROTOCOL.md` has the
 roster and the one-line messages between them.
 
 Teams run in [herdr](https://herdr.dev), a terminal workspace manager that can start, read and prompt agents in tabs.
@@ -396,7 +403,7 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 call waiting on you), `retro` (adapted: retrospectives), `writing-for-agents` (copied: writing skills and agent docs).
 
 **team/**: `team` (none in Matt's repo): run a project as a desk, a driver per map, and a worker session per ticket
-([Team mode](#team-mode-with-herdr-optional)); the only skill that needs herdr and the team tools.
+([Team mode](#team-mode-with-herdr-recommended)); the only skill that needs herdr and the team tools.
 
 **local/** (gitignored): skills kept on one machine and never pushed.
 
@@ -470,7 +477,7 @@ holds the project's rules, each a must for the work it matches: by topic, kind o
 coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the
 delegate a rule names fails, the session waits or asks; it never hands the work to someone else.
 
-**Team layer, optional and separate.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human
+**Team layer, separate from the core.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human
 talks to, and a driver per active map running `research-drive` under `/loop`, with a roster and short messages
 (`skills/team/team/TEAM-PROTOCOL.md`). Two verbs resolve to the team: implementer subagents become **workers**, a fresh
 session per ticket that the driver opens in a tab and closes when the ticket is done, so a worker can open subagents of
