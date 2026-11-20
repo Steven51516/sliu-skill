@@ -193,13 +193,13 @@ Three kinds of agent, and the files they share:
 In one session without herdr the roles are the same: the session is the driver, you are its desk, and each worker is a
 subagent.
 
-**Projects and maps.** A project is the whole research effort, often months long (say, "a protein language model that
-folds well"). A map is one part of it, with one measurable finish line. Give each part its own map, not one map for
-the whole project: one for the benchmark and its baselines ("AF3 and ESMFold scored on our test set"), one for the
-data ("a 20M-chain training set, deduplicated against the test set"), one for developing the model ("a 2B model with
-discrete tokens reaches TM-score 0.7 on our benchmark"), a later one for the next idea ("continuous tokens beat that").
-A project has several maps over its life, often a few at once, much as a thesis has chapters and each chapter one
-claim. A map is what makes a part tractable:
+**Projects and maps.** A project is the whole research effort, often months long (say, "a small language model that
+beats a larger one on our benchmark"). A map is one part of it, with one measurable finish line. Give each part its own
+map, not one map for the whole project: one for the benchmark and its baselines ("three published models scored with
+our eval script"), one for the data ("a training set deduplicated against the test set"), one for developing the model
+("perplexity 20.0 at 120M parameters"), a later one for the next idea ("a longer context beats that"). A project has
+several maps over its life, often a few at once, much as a thesis has chapters and each chapter one claim. A map is
+what makes a part tractable:
 - **a finish line:** it closes when its destination is reached, or when a measured answer says it can't be. That outcome
   is a milestone, not an open-ended exploration;
 - **comparable results:** its Contract fixes the benchmark, baselines and recipe, so every ticket on it compares like
@@ -265,7 +265,7 @@ The skills are plain markdown and work in Codex too: `install.sh` links them int
 
 **Mixing the two:** a Claude Code session can hand work to Codex with `codex-run` (every call carries the same model,
 effort and sandbox, checks its exit code and answer, and strips tokens from the environment); which work goes there is a
-per-project rule in `docs/agents/delegation.md` (the author sends biology-heavy coding, analysis and reviews to Codex:
+per-project rule in `docs/agents/delegation.md` (for example, work in one field and large reviews go to Codex:
 the `claude-codex` preset). A **team** is all Claude Code or all Codex, never mixed: `team-up --codex <map>`. The flags every Codex team session starts with are in `tools/codex-team.args`
 (model, workspace-write sandbox with network, never ask for approval; medium effort for the desk and driver, xhigh for
 workers).
@@ -488,8 +488,8 @@ resolved tickets without an answer.
 subagent* or *a background agent*, *use implementer subagents* (sessions that each work one ticket), *review*, *ask the
 user*. The project's `docs/agents/delegation.md` says where each goes, the way Matt's issue-tracker doc says where a
 ticket is published. Delegating is optional: each session does a task itself or delegates it as it judges. The doc only
-holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. biology-related
-coding, analysis, paper reading and review go to Codex). Any session may delegate, including an implementer. If the
+holds the project's rules, each a must for the work it matches: by topic, kind of work or role (e.g. coding, analysis, paper reading
+and review in one field go to Codex). Any session may delegate, including an implementer. If the
 delegate a rule names fails, the session waits or asks; it never hands the work to someone else.
 
 **Team layer, separate from the core.** `team` and `team-up` run the same skills as long-lived sessions: a desk the human
