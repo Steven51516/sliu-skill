@@ -166,8 +166,10 @@ fixed task list.
 flowchart TD
     you(["YOU"]) -->|"an idea, decisions, answers"| desk["DESK agent<br/>the one session you talk to"]
     desk -->|"results, and each decision that is yours"| you
-    desk -->|"your instructions: a new question, hold, re-chart"| driver["DRIVER agent, one per map<br/>charts the map with you, files tickets,<br/>dispatches, merges, files the next tickets"]
+    desk -->|"your instructions: a new question, hold, re-chart"| driver["DRIVER agent for map A<br/>charts the map with you, files tickets,<br/>dispatches, merges, files the next tickets"]
     driver -->|"what closed, what needs you"| desk
+    desk <-->|"the same, in parallel"| driver2["DRIVER agent for map B<br/>its own workers, tickets and map"]
+    desk <-->|"..."| driver3["DRIVER agent for map C"]
     driver -->|"opens one per ready ticket"| worker["WORKER agents, one per ticket<br/>run the jobs, follow rigor, write the answer"]
     worker -->|"asks for a review of its answer"| reviewer["REVIEWER, a fresh subagent<br/>checks it: Fair, Spec, Code"]
     reviewer -->|"PASS, EDIT or FAIL"| worker
@@ -180,7 +182,7 @@ Three kinds of agent, and the files they share:
 
 - **Desk.** The one session you talk to. It reports results, puts each decision that is yours to you, and passes your
   words to the drivers. It files nothing and decides nothing for you.
-- **Driver**, one per map. It charts the map with you (`wayfinder`, `to-map`), files every ticket (`to-tickets`) and
+- **Driver**, one per map, several running side by side under the one desk. Each charts the map with you (`wayfinder`, `to-map`), files every ticket (`to-tickets`) and
   runs `research-drive` in a loop: each pass it opens a worker for every ticket that is ready, merges each answer that
   passed review into the map, and files the next tickets from the map's fog when nothing is left to dispatch. It does
   no ticket work itself.
