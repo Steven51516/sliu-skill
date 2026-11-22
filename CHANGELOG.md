@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`team-watch`** also resumes on Sonnet 5.5 a driver or worker that Claude Code moved to its fallback model after a
+  flag (its last reply came from Opus 4.x): such a session keeps working, so the safeguard-stop rule never saw it.
 - **What waits on the human is one list, from tickets.** `waiting()` leaves out paused and closed maps (two asks of a
   map paused that day still showed); `research-status --check` flags a live map whose tickets are all closed with no
   question open (a driver waited on a route decision it had asked only in its pane); `team-watch` tells a driver whose

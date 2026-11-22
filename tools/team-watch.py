@@ -10,7 +10,7 @@ Every 5 minutes it looks at each driver's pane. A driver whose map is closed is 
 permission prompt (`blocked`) needs the human and is left alone.
 
 Stopped by a safeguard: the driver is idle and its session ended on a safeguard stop (Claude Code then waits for a human
-to retry or switch model). It is exited and its own session resumed in the same pane on Sonnet 5.5 at high effort
+to retry or switch model), or Claude Code moved it to its fallback model after a flag (its last reply came from Opus 4.x). It is exited and its own session resumed in the same pane on Sonnet 5.5 at high effort
 (`claude --resume <session> --model sonnet --effort high`), keeping its whole chat, then told to continue. It stays on
 Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run.
 
@@ -244,11 +244,41 @@ def ended_on_safeguard_stop(session_id):
     return False
 
 
+FALLBACK = re.compile(r"opus-4")       # the model Claude Code switches a flagged session to (switchModelsOnFlag)
+
+
+def latest_model(session_id):
+    """The model of the session's last reply, from the end of its transcript; None when it cannot be told."""
+    path = transcript(session_id)
+    if not path:
+        return None
+    with open(path, "rb") as f:
+        f.seek(max(0, f.seek(0, 2) - (512 << 10)))
+        lines = f.read().split(b"\n")
+    for line in reversed(lines):
+        if b'"type":"assistant"' not in line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        model = (d.get("message") or {}).get("model")
+        if model and model != "<synthetic>" and not d.get("isSidechain"):
+            return model
+    return None
+
+
 def stuck_reason(agent):
+    """Why an idle Claude session should be resumed on Sonnet 5.5: a safeguard stopped its last reply, or Claude Code
+    moved it to its fallback model after a flag (it keeps working there, on a model nobody chose)."""
     if not agent or agent.get("agent_status") in ("working", "blocked"):
         return None
-    if ended_on_safeguard_stop((agent.get("agent_session") or {}).get("value")):
+    session = (agent.get("agent_session") or {}).get("value")
+    if ended_on_safeguard_stop(session):
         return "its last reply was stopped by Claude's safeguards"
+    model = latest_model(session)
+    if model and FALLBACK.search(model):
+        return f"it fell back to {model}"
     return None
 
 
@@ -330,25 +360,27 @@ def driver_of(tid, drivers):
 def check_worker(pane, tid, agent, drivers, rescued):
     """Rescue a worker stopped by Claude's safeguards once; after that, or for a stop older than this watch, tell its driver."""
     session = (agent.get("agent_session") or {}).get("value")
-    if rescued.get(pane) == "left" or agent.get("agent_status") in ("working", "blocked") or not ended_on_safeguard_stop(session):
+    reason = None if rescued.get(pane) == "left" else stuck_reason(agent)
+    if not reason:
         return
+    stopped = "safeguards" in reason            # a fallback is a state, acted on whenever it is seen; a stop is an event
     if pane in rescued:
         why = "again, after its Sonnet rescue"
-    elif os.path.getmtime(transcript(session)) < STARTED:
+    elif stopped and os.path.getmtime(transcript(session)) < STARTED:
         why = "before this watch started"
     else:
         rescued[pane] = "rescued"
-        note(f"worker {tid} in {pane} was stopped by Claude's safeguards; resuming it on Sonnet 5.5 (team-worker --rescue)")
+        note(f"worker {tid} in {pane}: {reason}; resuming it on Sonnet 5.5 (team-worker --rescue)")
         r = subprocess.run([sys.executable, TEAM_WORKER, "--rescue", tid], capture_output=True, text=True, timeout=300)
         if r.returncode == 0:
             return
         why = f"the rescue failed: {(r.stderr or r.stdout).strip()[:200]}"
     rescued[pane] = "left"
     driver = driver_of(tid, drivers)
-    msg = f"worker {tid} in {pane} is stopped by Claude's safeguards ({why}); left to {'its driver ' + driver if driver else 'the human'}"
+    msg = f"worker {tid} in {pane}: {reason} ({why}); left to {'its driver ' + driver if driver else 'the human'}"
     note(msg) if driver else alert(msg, "gave-up")
     if driver:
-        herdr("agent", "prompt", driver, f"watchdog: worker {tid} in {pane} was stopped by Claude's safeguards ({why}); "
+        herdr("agent", "prompt", driver, f"watchdog: worker {tid} in {pane}: {reason} ({why}); "
                                          f"read its screen and hand that step to its delegate (docs/agents/delegation.md)")
 
 
