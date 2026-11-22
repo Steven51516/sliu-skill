@@ -155,13 +155,28 @@ def close(tid):
     tab, a = worker_tab(tid)
     if a and a.get("agent_status") in ("working", "blocked"):
         fail(f"{tid} is {a['agent_status']} in {a['pane_id']}: let it finish or answer it first")
-    if a:
-        herdr("agent", "prompt", a["pane_id"], "/exit")   # a clean exit; background commands of that session end with it
-        time.sleep(8)
+    if a and not leave(a["pane_id"]):
+        fail(f"{tid} has background work running, which closing would stop: left open in {a['pane_id']}")
     r = herdr("tab", "close", tab)
     if r.returncode != 0:
         fail(f"could not close the tab of {tid}: {(r.stderr or r.stdout).strip()[:200]}")
     print(f"team-worker: closed the tab of {tid}")
+
+
+def leave(pane):
+    """Type /exit and wait for the session to end. False when Claude Code asks instead ("Background work is running:
+    exit and stop tasks?"): Esc answers Stay, so nothing the session started is stopped and it is left as it was."""
+    herdr("agent", "prompt", pane, "/exit")
+    for _ in range(10):
+        time.sleep(2)
+        agents = json.loads(herdr("agent", "list").stdout or "{}").get("result", {}).get("agents", [])
+        a = next((a for a in agents if a.get("pane_id") == pane), None)
+        if not a:
+            return True                                   # the session is gone: the pane is a shell again
+        if a.get("agent_status") == "blocked":
+            break
+    herdr("pane", "send-keys", pane, "esc")               # still there after 20 s: at the dialog, or it never took /exit
+    return False
 
 
 def rescue(tid):
@@ -171,8 +186,8 @@ def rescue(tid):
         fail(f"{tid} runs on {a.get('agent')}: --rescue is for Claude sessions stopped by Claude's safeguards")
     session = (a.get("agent_session") or {}).get("value") or fail(f"the session of {tid} is unknown")
     pane = a["pane_id"]
-    herdr("agent", "prompt", pane, "/exit")
-    time.sleep(8)
+    if not leave(pane):
+        fail(f"{tid} has background work running, which an exit would stop: left as it is in {pane}")
     name = f"{tid.lower()}-s{time.strftime('%H%M%S')}"
     for _ in range(12):                # the old session may still be exiting: its pane is not a shell yet
         r = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",

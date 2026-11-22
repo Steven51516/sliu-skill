@@ -299,7 +299,19 @@ def check_silence(pane, label, agent, pushed):
 def restart(pane, name, map_ref, reason, session, n):
     note(f"driver in {pane} is stuck ({reason}); resuming its session {session[:8]} on Sonnet 5.5 (resume {n})")
     herdr("agent", "prompt", pane, "/exit")
-    time.sleep(8)
+    for _ in range(10):                # Claude Code may ask "Background work is running: exit and stop tasks?"
+        time.sleep(2)
+        a = agent_at(pane)
+        if not a:
+            break
+        if a.get("agent_status") == "blocked":
+            break
+    else:
+        a = agent_at(pane)
+    if a:                                                 # at the dialog, or it never took /exit
+        herdr("pane", "send-keys", pane, "esc")           # Stay: nothing the driver started is stopped
+        note(f"driver in {pane} did not exit (background work is running, which an exit would stop): left as it is")
+        return False
     start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
                   "--", "--resume", session, "--model", MODEL, "--effort", EFFORT)
     if start.returncode != 0:
@@ -376,9 +388,9 @@ def check_worker(pane, tid, agent, drivers, rescued):
             return
         why = f"the rescue failed: {(r.stderr or r.stdout).strip()[:200]}"
     rescued[pane] = "left"
-    driver = driver_of(tid, drivers)
+    driver = None if "background work" in why else driver_of(tid, drivers)   # nothing for its driver to do
     msg = f"worker {tid} in {pane}: {reason} ({why}); left to {'its driver ' + driver if driver else 'the human'}"
-    note(msg) if driver else alert(msg, "gave-up")
+    note(msg) if driver or "background work" in why else alert(msg, "gave-up")
     if driver:
         herdr("agent", "prompt", driver, f"watchdog: worker {tid} in {pane}: {reason} ({why}); "
                                          f"read its screen and hand that step to its delegate (docs/agents/delegation.md)")
