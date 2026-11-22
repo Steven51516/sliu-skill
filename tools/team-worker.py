@@ -174,10 +174,14 @@ def rescue(tid):
     herdr("agent", "prompt", pane, "/exit")
     time.sleep(8)
     name = f"{tid.lower()}-s{time.strftime('%H%M%S')}"
-    r = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
-              "--", "--resume", session, "--model", RESCUE_MODEL, "--effort", RESCUE_EFFORT)
+    for _ in range(12):                # the old session may still be exiting: its pane is not a shell yet
+        r = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
+                  "--", "--resume", session, "--model", RESCUE_MODEL, "--effort", RESCUE_EFFORT)
+        if r.returncode == 0 or "not an available shell" not in (r.stderr + r.stdout):
+            break
+        time.sleep(5)
     if r.returncode != 0:
-        fail(f"could not resume {tid}: {r.stderr.strip()[:200]}")
+        fail(f"could not resume {tid}: {(r.stderr or r.stdout).strip()[:200]}")
     submit(name, pane, "continue: this session was resumed on Sonnet 5.5 after Claude's safeguards stopped it. Pick up "
                        "where you stopped, but before repeating any launch or other outside action, check the ticket's "
                        "Log and the server for what already ran; no summary; hand biology steps to their delegate by "
