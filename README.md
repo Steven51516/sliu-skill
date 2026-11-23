@@ -252,6 +252,7 @@ what makes a part tractable:
 | work a map in one session instead, a fresh subagent per ticket | `/loop /research-drive <map>` |
 | re-plan a map | `/wayfinder <map> --rechart` |
 | review a ticket's answer yourself | `/review <ticket>` |
+| hand GPUs to the project, to be used fully | `/gpu-grant <which GPUs> [until when]` |
 | catch up on a long chat and every call waiting on you | `/ketchup` |
 | turn optional setup on or off (alerts, delete safety) | `research-preset` ([Presets and extras](#presets-and-extras)) |
 | optional: watch everything in a desktop app | `research-gui` ([Research Desk](#research-desk-app-optional-macos)) |
@@ -419,6 +420,7 @@ Grouped by folder. **core** is the harness: a project needs these. The rest are 
 | `rigor` | counterpart of `tdd` | the rules for a trustworthy answer, followed while you work |
 | `review` | adapted from `code-review` | review an answer on three axes (Fair, Spec, Code) before it enters the map |
 | `grilling` | copied | the interview tickets |
+| `gpu-grant` | none in Matt's repo | you grant GPUs: every agent keeps all of them busy (real run beside its smoke test, kill fast, fill idle ones) until the grant ends |
 | `run-card` | none in Matt's repo | a one-page reproduction record of a run that affects a milestone (a reference, a result a map relies on, an artifact later work builds on) |
 
 **personal/**: everyday helpers: `ketchup` (from pstack: catch up on a long chat and every

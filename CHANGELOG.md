@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`gpu-grant`** (new skill): when you grant GPUs, the grant is written into the project's `AGENTS.md` and passed in
+  every brief, and every agent keeps all of them busy: the real run starts beside its smoke test and is killed if the
+  test fails, idle GPUs are filled, dead runs are stopped at once.
 - **`team-watch`** also resumes on Sonnet 5.5 a driver or worker that Claude Code moved to its fallback model after a
   flag (its last reply came from Opus 4.x): such a session keeps working, so the safeguard-stop rule never saw it.
 - **What waits on the human is one list, from tickets.** `waiting()` leaves out paused and closed maps (two asks of a
