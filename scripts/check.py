@@ -76,7 +76,12 @@ def main():
             problems.append(f"{rel}: name `{fm.get('name')}` differs from its folder `{name}`")
         if not fm.get("description"):
             problems.append(f"{rel}: no description")
-        elif len(fm["description"]) > 1024:
+        for line in skill.read_text().split("\n---", 1)[0].splitlines()[1:]:    # as a strict YAML parser reads it
+            m = re.match(r"([A-Za-z-]+):\s*(.+)", line)
+            if m and m.group(2)[0] not in "\"'[" and (": " in m.group(2) or m.group(2)[0] in "{}*&!|>%@`#"):
+                problems.append(f"{rel}: `{m.group(1)}` needs quotes (it holds \": \" or starts with a YAML sign), or a "
+                                f"strict installer skips the skill")
+        if fm.get("description") and len(fm["description"]) > 1024:
             problems.append(f"{rel}: description is {len(fm['description'])} characters (max 1024)")
     for doc in sorted(files("skills/**/*.md")):
         for text, target in LINK.findall(doc.read_text()):

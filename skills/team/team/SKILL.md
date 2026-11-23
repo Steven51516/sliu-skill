@@ -1,6 +1,6 @@
 ---
 name: team
-description: Start this session in a team role on a project: desk (talks to the human) or driver (drives a map on a schedule, opening a fresh worker session per ticket).
+description: "Start this session in a team role on a project: desk (talks to the human) or driver (drives a map on a schedule, opening a fresh worker session per ticket)."
 argument-hint: "desk | driver <map>"
 disable-model-invocation: true
 ---

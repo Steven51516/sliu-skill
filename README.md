@@ -559,8 +559,8 @@ FEEDBACK.md  local only (gitignored): problems found while using the harness, un
 
 ## Credits
 
-From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; synced from
-commit `a496f55`): copied `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc
+From [mattpocock/skills](https://github.com/mattpocock/skills) (MIT, `licenses/mattpocock-skills-MIT.txt`; checked against
+commit `abeeaf9`, 2026-11-19): copied `grilling`, `writing-for-agents`, the GitHub and GitLab tracker docs; adapted the domain doc
 rules (`docs/decisions.md` instead of ADRs); adapted `wayfinder`, `to-tickets`, `to-map` (from `to-spec`), `review`
 (from `code-review`), `retro`. Failure classification and the "no viable branch" stop are distilled from
 [CoAutoResearch](https://github.com/YihongT/CoAutoResearch). Four principles from

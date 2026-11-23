@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- Checked against Matt Pocock's skills at `abeeaf9` (2026-11-19): none of the skills this harness builds on changed.
+  Taken from his new CI: `check.py` fails a skill header a strict YAML parser would reject (`team`'s description was one).
 - **`team-watch`** also resumes on Sonnet 5.5 a driver or worker that Claude Code moved to its fallback model after a
   flag (its last reply came from Opus 4.x): such a session keeps working, so the safeguard-stop rule never saw it.
 - **What waits on the human is one list, from tickets.** `waiting()` leaves out paused and closed maps (two asks of a
