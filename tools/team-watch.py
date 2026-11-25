@@ -31,7 +31,8 @@ for 90 minutes despite the ticks is reported once.
 
 Workers (the Claude tabs team-worker opened in the watched drivers' workspaces) are checked too: one whose reply Claude's
 safeguards stopped is resumed once with `team-worker --rescue`, so it does not wait for the driver's next pass (up to an
-hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line.
+hour). Stopped again, or stopped before this watch started, it is left to its driver, which gets one line. A worker
+whose ticket is closed and which has sat idle for 30 minutes has its tab closed (kept if it still has background work).
 
 An alert runs the command in ~/.config/research-harness/notify, if that file exists, with the message as its last
 argument and its kind in RH_EVENT: `question`, `silent`, `gave-up` or `slept` (the watch found its clock had jumped: the
@@ -312,10 +313,17 @@ def restart(pane, name, map_ref, reason, session, n):
         herdr("pane", "send-keys", pane, "esc")           # Stay: nothing the driver started is stopped
         note(f"driver in {pane} did not exit (background work is running, which an exit would stop): left as it is")
         return False
-    start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
-                  "--", "--resume", session, "--model", MODEL, "--effort", EFFORT)
-    if start.returncode != 0:
-        note(f"could not resume the driver: {(start.stderr or start.stdout).strip()[:200]}; trying again next cycle")
+    name = re.sub(r"[^a-z0-9_-]", "", name.lower())[:32]      # herdr: lowercase letters, digits, - or _; pane ids may be w1F:p3K
+    for _ in range(6):                 # the session is gone now: this start has to work, or the human has to know
+        start = herdr("agent", "start", name, "--kind", "claude", "--pane", pane, "--timeout", "120000",
+                      "--", "--resume", session, "--model", MODEL, "--effort", EFFORT)
+        if start.returncode == 0:
+            break
+        time.sleep(5)
+    else:
+        alert(f"driver for {map_ref} in {pane} was exited to resume it on Sonnet 5.5 and the restart failed "
+              f"({(start.stderr or start.stdout).strip()[:160]}). It is NOT running: in that pane run "
+              f"`claude --resume {session} --model {MODEL} --effort {EFFORT}`", "gave-up")
         return False
     herdr("agent", "prompt", name, f"continue: the watchdog resumed this session on Sonnet 5.5 ({reason}). Pick up the "
                                    f"pass for {map_ref} where you stopped, but before repeating a dispatch, launch or other "
@@ -323,6 +331,26 @@ def restart(pane, name, map_ref, reason, session, n):
                                    f"no summary, end with one line naming the file; hand biology steps to their delegate "
                                    f"by pointer.")
     return True
+
+
+CLOSE_AFTER_MIN = 30
+
+
+def close_finished(pane, tid, agent, closed, idle_since, kept):
+    """Close a worker's tab once its ticket is resolved, parked or superseded and it has sat idle for CLOSE_AFTER_MIN:
+    every open tab is a live process, and drivers left them open (8 of 19 on 2026-11-24). team-worker --close backs
+    out when the session still has background work; such a tab is kept and noted once."""
+    if tid not in closed or agent.get("agent_status") in ("working", "blocked") or pane in kept:
+        idle_since.pop(pane, None)
+        return
+    if (time.time() - idle_since.setdefault(pane, time.time())) / 60 < CLOSE_AFTER_MIN:
+        return
+    r = subprocess.run([sys.executable, TEAM_WORKER, "--close", tid], capture_output=True, text=True, timeout=120)
+    if r.returncode == 0:
+        note(f"closed the tab of {tid} ({pane}): its ticket is closed and it sat idle {CLOSE_AFTER_MIN} min")
+    else:
+        kept.add(pane)
+        note(f"left the tab of {tid} ({pane}) open: {(r.stderr or r.stdout).strip()[:160]}")
 
 
 def tick(pane, agent, ticks, moved, pushed):
@@ -460,6 +488,7 @@ def main():
     fixed = {sys.argv[2]: (sys.argv[1], "")} if len(sys.argv) >= 3 else None
     base = sys.argv[3] if len(sys.argv) > 3 else "driver"
     restarts, fails, given_up, ticks, moved, rescued = {}, {}, set(), {}, {}, {}
+    idle_since, kept = {}, set()
     pushed = load_pushed()
     seen = os.path.getsize(LOG) if os.path.exists(LOG) else 0
     print(f"{now()}  watching " + (f"the driver in {sys.argv[2]}" if fixed else "every driver on the roster"), flush=True)
@@ -486,8 +515,10 @@ def main():
                 tick(pane, agent, ticks, moved, pushed)
             elif not handle_stuck(pane, label, agent, base, restarts, fails, given_up) and state != "paused":
                 check_silence(pane, label, agent, pushed)
+        closed = {str(k.get("id")) for m in maps for k in m["_tickets"] if tracker.status_of(k) in tracker.CLOSED}
         for pane, (tid, agent) in workers(spaces - {None}).items():
             check_worker(pane, tid, agent, drivers, rescued)
+            close_finished(pane, tid, agent, closed, idle_since, kept)
         if pushed != told:
             save_pushed(pushed)
         beat = time.time()

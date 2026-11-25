@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`team-watch`** closes a worker's tab once its ticket is closed and it has sat idle for 30 minutes (8 of 19 worker
+  tabs were on closed tickets). Its driver resume uses a valid agent name for pane ids with capitals (a resume exited
+  a driver and then failed on `invalid_agent_name`), retries the start, and alerts with the resume command if it fails.
 - Checked against Matt Pocock's skills at `abeeaf9` (2026-11-19): none of the skills this harness builds on changed.
   Taken from his new CI: `check.py` fails a skill header a strict YAML parser would reject (`team`'s description was one).
 - **`team-watch`** also resumes on Sonnet 5.5 a driver or worker that Claude Code moved to its fallback model after a
