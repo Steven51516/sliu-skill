@@ -10,7 +10,9 @@ Every 5 minutes it looks at each driver's pane. A driver whose map is closed is 
 permission prompt (`blocked`) needs the human and is left alone.
 
 Stopped by a safeguard: the driver is idle and its session ended on a safeguard stop (Claude Code then waits for a human
-to retry or switch model), or Claude Code moved it to its fallback model after a flag (its last reply came from Opus 4.x). It is exited and its own session resumed in the same pane on Sonnet 5.5 at high effort
+to retry or switch model). A session that Claude Code moved to its fallback model after a flag (its last reply came
+from Opus 4.x) is not exited: the watch types `/model` and `/effort` into it, so its background work goes on, and puts
+the saved defaults those commands change back to what they were. It is exited and its own session resumed in the same pane on Sonnet 5.5 at high effort
 (`claude --resume <session> --model sonnet --effort high`), keeping its whole chat, then told to continue. It stays on
 Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run.
 
@@ -280,6 +282,50 @@ def current(agent, session_id):
     return bool(seen and path and os.path.getmtime(path) >= seen - 120)
 
 
+SETTINGS = os.path.expanduser("~/.claude/settings.json")
+SWITCHED = {}                          # pane -> the session it was switched in, so one fallback gets one switch
+
+
+def user_defaults():
+    try:
+        d = json.load(open(SETTINGS))
+    except (OSError, ValueError):
+        return None
+    return {k: v for k, v in d.items() if k == "model" or "effort" in k.lower()}
+
+
+def switch_in_place(pane, who, reason, session):
+    """Move a fallen-back session to Sonnet 5.5 at high without exiting it, so its background work goes on: `/model`
+    and `/effort` typed into it. Both commands also save the user's default for new sessions, so the saved model and
+    effort are put back to what they were. Once per fallback; True when it acted."""
+    if SWITCHED.get(pane) == session:
+        return False
+    SWITCHED[pane] = session
+    before = user_defaults()
+    herdr("agent", "prompt", pane, "/model claude-sonnet-5-5")
+    time.sleep(4)
+    herdr("agent", "prompt", pane, f"/effort {EFFORT}")
+    time.sleep(4)
+    after, restored = user_defaults(), ""
+    if before is not None and after is not None and before != after:
+        try:
+            d = json.load(open(SETTINGS))
+            for k in set(before) | set(after):
+                if k in before:
+                    d[k] = before[k]
+                else:
+                    d.pop(k, None)
+            with open(SETTINGS + ".tmp", "w") as f:
+                json.dump(d, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+            os.replace(SETTINGS + ".tmp", SETTINGS)
+            restored = "; saved defaults put back"
+        except (OSError, ValueError) as e:
+            restored = f"; could not put the saved defaults back ({e})"
+    note(f"{who} in {pane}: {reason}; switched in place to Sonnet 5.5 at {EFFORT} (/model, /effort){restored}")
+    return True
+
+
 def stuck_reason(agent):
     """Why an idle Claude session should be resumed on Sonnet 5.5: a safeguard stopped its last reply, or Claude Code
     moved it to its fallback model after a flag (it keeps working there, on a model nobody chose)."""
@@ -414,7 +460,10 @@ def check_worker(pane, tid, agent, drivers, rescued):
     reason = None if rescued.get(pane) == "left" else stuck_reason(agent)
     if not reason:
         return
-    stopped = "safeguards" in reason            # a fallback is a state, acted on whenever it is seen; a stop is an event
+    if "fell back" in reason:              # still running, only on the wrong model: switched where it is
+        switch_in_place(pane, f"worker {tid}", reason, session)
+        return
+    stopped = "safeguards" in reason
     if pane in rescued:
         why = "again, after its Sonnet rescue"
     elif stopped and os.path.getmtime(transcript(session)) < STARTED:
@@ -442,9 +491,12 @@ def handle_stuck(pane, map_ref, agent, base, restarts, fails, given_up):
     reason = stuck_reason(agent)
     if not reason:
         return False
+    session = (agent.get("agent_session") or {}).get("value")
+    if "fell back" in reason:              # still running, only on the wrong model: no exit, no resume
+        switch_in_place(pane, f"driver for {map_ref}", reason, session)
+        return True
     if pane in given_up:
         return True
-    session = (agent.get("agent_session") or {}).get("value")
     done, failed = restarts.get(pane, 0), fails.get(pane, 0)
     if done >= MAX_RESTARTS or failed >= MAX_RESTARTS or not session:
         why = "its session id is unknown" if not session else f"{done} resumes, {failed} failed starts in a row"

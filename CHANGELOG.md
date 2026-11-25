@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`team-watch`** switches a fallen-back session to Sonnet 5.5 where it is (`/model`, `/effort` typed into it) and
+  puts the saved defaults those commands change back; it no longer exits such a session, which failed whenever the
+  session had background work.
 - **`team-watch`** acts on a fallback only when the transcript herdr names is the one the session is writing now
   (written since the watch last saw the agent work): herdr can keep an old session id after a resume, and a driver on
   Sonnet was exited for a stale Opus 4.8 line.
