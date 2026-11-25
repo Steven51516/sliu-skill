@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`team-watch`** acts on a fallback only when the transcript herdr names is the one the session is writing now
+  (written since the watch last saw the agent work): herdr can keep an old session id after a resume, and a driver on
+  Sonnet was exited for a stale Opus 4.8 line.
 - **`team-watch`** closes a worker's tab once its ticket is closed and it has sat idle for 30 minutes (8 of 19 worker
   tabs were on closed tickets). Its driver resume uses a valid agent name for pane ids with capitals (a resume exited
   a driver and then failed on `invalid_agent_name`), retries the start, and alerts with the resume command if it fails.

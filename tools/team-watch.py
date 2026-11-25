@@ -269,6 +269,17 @@ def latest_model(session_id):
     return None
 
 
+WORKED = {}                            # pane -> when this watch last saw its agent working
+
+
+def current(agent, session_id):
+    """True when the transcript herdr names for this pane is the one the session is writing now: it was written since
+    this watch last saw the agent work. herdr can keep an old session id after a resume, and that old transcript's
+    last reply is not the session's model (2026-11-25: a driver on Sonnet was exited for a stale Opus 4.8 line)."""
+    seen, path = WORKED.get(agent.get("pane_id")), transcript(session_id)
+    return bool(seen and path and os.path.getmtime(path) >= seen - 120)
+
+
 def stuck_reason(agent):
     """Why an idle Claude session should be resumed on Sonnet 5.5: a safeguard stopped its last reply, or Claude Code
     moved it to its fallback model after a flag (it keeps working there, on a model nobody chose)."""
@@ -278,7 +289,7 @@ def stuck_reason(agent):
     if ended_on_safeguard_stop(session):
         return "its last reply was stopped by Claude's safeguards"
     model = latest_model(session)
-    if model and FALLBACK.search(model):
+    if model and FALLBACK.search(model) and current(agent, session):
         return f"it fell back to {model}"
     return None
 
@@ -515,6 +526,12 @@ def main():
                 tick(pane, agent, ticks, moved, pushed)
             elif not handle_stuck(pane, label, agent, base, restarts, fails, given_up) and state != "paused":
                 check_silence(pane, label, agent, pushed)
+        try:
+            for a in json.loads(herdr("agent", "list", timeout=20).stdout or "{}").get("result", {}).get("agents", []):
+                if a.get("agent_status") == "working":
+                    WORKED[a.get("pane_id")] = time.time()
+        except (ValueError, subprocess.SubprocessError):
+            pass
         closed = {str(k.get("id")) for m in maps for k in m["_tickets"] if tracker.status_of(k) in tracker.CLOSED}
         for pane, (tid, agent) in workers(spaces - {None}).items():
             check_worker(pane, tid, agent, drivers, rescued)
