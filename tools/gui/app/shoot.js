@@ -1,5 +1,5 @@
 // Test helper: drive the page in an offscreen window and save screenshots.
-//   electron shoot.js <spec.json>   spec: {port, width, height, steps: [{hash?, js?, wait?, out?}]}
+//   electron shoot.js <spec.json>   spec: {port, width, height, dark?, light?, steps: [{hash?, js?, wait?, out?}]}
 // Each step optionally navigates, runs JS in the page (its result is printed), waits, then captures.
 const { app, BrowserWindow, nativeTheme } = require("electron");
 const fs = require("fs");
@@ -7,7 +7,7 @@ const fs = require("fs");
 const spec = JSON.parse(fs.readFileSync(process.argv[process.argv.length - 1], "utf8"));
 app.dock && app.dock.hide();
 app.whenReady().then(async () => {
-  if (spec.dark) nativeTheme.themeSource = "dark";
+  if (spec.dark || spec.light) nativeTheme.themeSource = spec.dark ? "dark" : "light";
   const win = new BrowserWindow({ width: spec.width || 1440, height: spec.height || 900, show: false,
     webPreferences: { offscreen: true, plugins: true, preload: spec.preload ? require("path").join(__dirname, "preload.js") : undefined, contextIsolation: true } });
   win.webContents.on("console-message", (e, level, msg) => {    // newer Electron passes one event object

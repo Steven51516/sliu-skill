@@ -1,5 +1,5 @@
 // Read-only file trees (records on the Mac, code on the server) and the file viewer.
-import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token, tokenNow, store } from "./core.js";
+import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token, tokenNow, store, popMenu } from "./core.js";
 import { markFigure } from "./annotate.js";
 import { showPdf } from "./reader.js";
 import { ask } from "./dialogs.js";
@@ -135,36 +135,45 @@ export async function vscode(side, path, dir) {
   catch (e) { toast(e.message, "err", 6000); }
 }
 
-// In a library, a document belongs to an item: a folder of a collection (Papers/<name>/...) or a file in one. Teach me
-// asks a session to teach it (the collection's `teach` command, or plain words; your request, to edit first); the
-// trash moves the item to the trash (extras/trash.py: undone with `trash --restore`).
-function libraryActions(el, side, path) {
+// In a library, a document belongs to an item: a folder of a collection (Papers/<name>/...) or a file in one.
+function libraryItem(side, path) {
   const parts = path.split("/");
-  if (!S.data?.library || side !== "local" || parts.length < 2 || parts.length > 3 || $("#vteach", el)) return;
-  const item = parts.slice(0, 2).join("/"), folder = parts.length === 3, name = parts[1], cfg = S.data.collections?.[parts[0]] || {};
-  $("#vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="vteach" title="Have a session teach you this, one step at a time, in the chat">${icon("spark")} Teach me</button>
-    <button class="btn sm danger icon" id="vdel" title="Delete “${esc(name)}”: move it to the trash">${icon("trash")}</button>`);
-  $("#vteach", el).onclick = async () => {
-    const words = await ask({ title: "Teach me this", label: "Your request. Edit it if you like: your level, what to focus on, the language.",
-      value: "Teach me this step by step.", ok: "Start", hint: "⌘↩ starts it." });
-    const where = `${S.data.path}/${item}`;
-    if (words) hooks.tellProject(S.route.project, cfg.teach ? `${cfg.teach} ${where} ${words.replace(/\s+/g, " ")}` : `${words}\n\nIt is here: ${where}`, folder ? name : parts[0]);
-  };
-  $("#vdel", el).onclick = async () => {
-    if (!window.confirm(`Delete “${name}”?\n\n${item}${folder ? "/ (everything in it)" : ""} moves to the trash.\nUndo: trash --restore "${S.data.path}/${item}"`)) return;
-    try {
-      const r = await post("/api/trash", { project: S.route.project, path: item });
-      toast(r.dry_run ? `Dry run: ${r.path} would move to the trash` : "Moved to the trash", "", 6000);
-      if (r.dry_run) return;
-      F.viewer = null;
-      Object.values(F.trees).filter((tr) => tr.side === "local").forEach((tr) => {
-        Object.keys(tr.nodes).forEach((k) => { if (k === item || k.startsWith(item + "/")) delete tr.nodes[k]; });
-        Object.keys(tr.nodes).filter((k) => tr.nodes[k].open || k === tr.root).forEach((k) => loadDir(tr, k, true));
-      });
-      renderViewer();
-      hooks.libraryChanged?.();
-    } catch (e) { toast(e.message, "err", 7000); }
-  };
+  if (!S.data?.library || side !== "local" || parts.length < 2 || parts.length > 3) return null;
+  return { item: parts.slice(0, 2).join("/"), folder: parts.length === 3, name: parts[1], cfg: S.data.collections?.[parts[0]] || {}, col: parts[0] };
+}
+// Teach me asks a session to teach the item (the collection's `teach` command, or plain words; your request, to edit first).
+async function teach(it) {
+  const words = await ask({ title: "Teach me this", label: "Your request. Edit it if you like: your level, what to focus on, the language.",
+    value: "Teach me this step by step.", ok: "Start", hint: "⌘↩ starts it." });
+  const where = `${S.data.path}/${it.item}`;
+  if (words) hooks.tellProject(S.route.project, it.cfg.teach ? `${it.cfg.teach} ${where} ${words.replace(/\s+/g, " ")}` : `${words}\n\nIt is here: ${where}`, it.folder ? it.name : it.col);
+}
+// Delete moves the item to the trash (extras/trash.py: undone with `trash --restore`).
+async function trashItem(it, called) {
+  if (!window.confirm(`Delete “${called}”?\n\n${it.item}${it.folder ? "/ (everything in it)" : ""} moves to the trash.\nUndo: trash --restore "${S.data.path}/${it.item}"`)) return;
+  try {
+    const r = await post("/api/trash", { project: S.route.project, path: it.item });
+    toast(r.dry_run ? `Dry run: ${r.path} would move to the trash` : "Moved to the trash", "", 6000);
+    if (r.dry_run) return;
+    F.viewer = null;
+    Object.values(F.trees).filter((tr) => tr.side === "local").forEach((tr) => {
+      Object.keys(tr.nodes).forEach((k) => { if (k === it.item || k.startsWith(it.item + "/")) delete tr.nodes[k]; });
+      Object.keys(tr.nodes).filter((k) => tr.nodes[k].open || k === tr.root).forEach((k) => loadDir(tr, k, true));
+    });
+    renderViewer();
+    hooks.libraryChanged?.();
+  } catch (e) { toast(e.message, "err", 7000); }
+}
+// A paper.pdf with a note.md beside it: one switch between the two.
+function pairSwitch(el, side, path, alive) {
+  const name = path.split("/").pop(), dir = path.split("/").slice(0, -1).join("/");
+  if (side !== "local" || !dir || (name !== "paper.pdf" && name !== "note.md")) return;
+  get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
+    const has = (n) => j.entries.some((e) => e.name === n);
+    if (!alive() || !has("paper.pdf") || !has("note.md") || !$("#vacts", el) || $("#vpair", el)) return;
+    $("#vacts", el).insertAdjacentHTML("afterbegin", `<span class="segc" id="vpair"><button class="${name === "paper.pdf" ? "on" : ""}" data-f="paper.pdf">Paper</button><button class="${name === "note.md" ? "on" : ""}" data-f="note.md">Note</button></span>`);
+    $("#vpair", el).querySelectorAll("button").forEach((b) => b.onclick = () => { if (!b.classList.contains("on")) openFile(side, `${dir}/${b.dataset.f}`); });
+  }).catch(() => {});
 }
 
 // Reading mode: the app's sidebar and the list beside the viewer step aside (app.css), so the file has the width.
@@ -177,22 +186,32 @@ const LANG = { py: "python", sh: "bash", bash: "bash", zsh: "bash", js: "javascr
 
 export async function showDoc(el, side, path, opt = {}) {
   const name = path.split("/").pop();
-  const lists = S.data?.library ? "List" : "Files";
-  const head = opt.bare ? "" : `<div class="vhead"><button class="btn ghost sm" id="vfocus" title="${reading() ? `Show the sidebar and the ${lists.toLowerCase()} list again` : "Reading mode: hide the sidebar and the list, for more room"}">${reading() ? `‹ ${lists}` : icon("side")}</button>${icon(side === "local" ? "file" : "server")}<span class="path mono" title="${esc(path)}">${esc(side === "local" ? "" : S.data.server + ":")}${esc(path)}</span>
-    <span class="muted" id="vsize"></span><button class="btn ghost sm icon" id="vref" title="Reload">${icon("refresh")}</button>
-    <button class="btn sm" id="vvs" ${S.data?.library ? `style="display:none"` : ""}>${icon("ext")} VS Code</button></div>`;
+  const lists = S.data?.library ? "List" : "Files", dir = path.split("/").slice(0, -1).join("/");
+  const about = hooks.docTitle?.(side, path), it = libraryItem(side, path);   // in a library: the item's title (library.js)
+  const called = about?.title || it?.name || name;         // what the open thing is called: its title, else its folder or file
+  const focusTip = () => (reading() ? `Show the sidebar and the ${lists.toLowerCase()} again` : "Reading mode: hide the sidebar and the list, for more room");
+  // the header: reading mode, what is open, the tools of its kind (#vtools: zoom, follow), its actions (#vacts), More
+  const head = opt.bare ? "" : `<div class="vhead"><button class="btn ghost sm ${reading() ? "" : "icon"}" id="vfocus" title="${focusTip()}">${reading() ? `‹ ${lists}` : icon("side")}</button>
+    <div class="vtitle" title="${esc(path)}"><span class="t">${esc(about?.title || name)}</span><span class="s"><span>${esc(about ? about.sub : (side === "local" ? "" : S.data.server + ":") + dir)}</span><span id="vsize"></span></span></div>
+    <span class="vslot" id="vtools"></span><span class="vslot" id="vacts">${it ? `<button class="btn sm" id="vteach" title="Have a session teach you this, one step at a time, in the chat">${icon("spark")}<span class="lbl">Teach me</span></button>` : ""}</span>
+    <button class="btn ghost sm icon" id="vmore" title="More">${icon("more")}</button></div>`;
   if (!opt.quiet || !el.querySelector(".vbody")) el.innerHTML = head + `<div class="vbody"><div class="spin"></div></div>`;
   const wire = () => {
     if (opt.bare) return;
-    $("#vref", el).onclick = () => showDoc(el, side, path, { ...opt, fresh: true });
-    $("#vvs", el).onclick = () => vscode(side, path, false);
-    libraryActions(el, side, path);
+    $("#vmore", el).onclick = (e) => popMenu(e.currentTarget, [
+      { label: "Reload", icon: "refresh", run: () => showDoc(el, side, path, { ...opt, fresh: true }) },
+      { label: "Open in VS Code", icon: "ext", run: () => vscode(side, path, false) },
+      ...(it ? ["-", { label: `Delete “${called.length > 30 ? called.slice(0, 29) + "…" : called}”…`, icon: "trash", danger: true, run: () => trashItem(it, called) }] : []),
+    ], { right: true });
+    if (it) $("#vteach", el).onclick = () => teach(it);
+    pairSwitch(el, side, path, () => el.isConnected && $("#vmore", el) && F.viewer?.path === path);
     $("#vfocus", el).onclick = () => {                 // the label says how to get back; the open file stays as it is
       const on = !reading(), b = $("#vfocus", el);
       store("reading", on);
       document.body.classList.toggle("reading", on);
+      b.classList.toggle("icon", !on);
       b.innerHTML = on ? `‹ ${lists}` : icon("side");
-      b.title = on ? `Show the sidebar and the ${lists.toLowerCase()} list again` : "Reading mode: hide the sidebar and the list, for more room";
+      b.title = focusTip();
     };
   };
   wire();
@@ -205,7 +224,7 @@ export async function showDoc(el, side, path, opt = {}) {
     el.classList.add("pdfmode");
     el.innerHTML = head + `<div class="pdfbox"><div class="spin"></div><div class="pdfscroll"><div class="pdfViewer"></div></div></div>`;
     wire();
-    const free = await showPdf(el, { side, path, url: `/api/raw?${q}`, open: (to) => openFile(side, to) });
+    const free = await showPdf(el, { side, path, url: `/api/raw?${q}` });
     if (el._req === req) el._free = free; else free?.();
     return;
   }
@@ -220,7 +239,7 @@ export async function showDoc(el, side, path, opt = {}) {
   else if (f.kind === "too-big") body.innerHTML = `<div class="muted">Image too large to show (${fmtSize(f.size)}).</div>`;
   else if (f.kind === "markdown") {
     const dir = path.split("/").slice(0, -1).join("/");
-    md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter, skipKeys: opt.skipKeys, dropTitle: opt.dropTitle, onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
+    md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter ?? (it ? "details" : undefined), skipKeys: opt.skipKeys, dropTitle: opt.dropTitle, onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
     body.querySelectorAll("img[src]").forEach((im) => {         // a picture beside the note: its bytes come from the project
       const src = im.getAttribute("src");
       if (!/^([a-z]+:|\/|#)/i.test(src)) im.src = "/api/raw?" + new URLSearchParams({ project: S.route.project, side, path: resolvePath(dir, decodeURIComponent(src)), token: tokenNow() });
@@ -253,19 +272,7 @@ export async function showDoc(el, side, path, opt = {}) {
     b.innerHTML = `${icon("mark")} Mark &amp; ask`;
     b.title = "Circle what's wrong on a copy and ask a session to fix this figure";
     b.onclick = () => markFigure({ side, path, src: `data:${f.mime};base64,${f.data}` });
-    $(".vhead", el).insertBefore(b, $("#vvs", el));
-  }
-  if (!opt.bare && side === "local" && name === "note.md") {   // a paper's note (beside its paper.pdf): the paper is one click away
-    const dir = path.split("/").slice(0, -1).join("/");
-    get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
-      if (el._req !== req || !j.entries.some((e) => e.name === "paper.pdf") || !$("#vvs", el)) return;
-      const b = document.createElement("button");
-      b.className = "btn sm";
-      b.innerHTML = `${icon("doc")} Paper`;
-      b.title = "Open this paper's PDF";
-      b.onclick = () => openFile(side, `${dir}/paper.pdf`);
-      $(".vhead", el).insertBefore(b, $("#vvs", el));
-    }).catch(() => {});
+    $("#vacts", el).prepend(b);
   }
   if (!opt.bare && f.kind === "log") {                 // follow: refetch every 5 s while this file stays open
     const b = document.createElement("button");
@@ -277,7 +284,7 @@ export async function showDoc(el, side, path, opt = {}) {
       if (opt.follow) return showDoc(el, side, path, { ...opt, follow: false });
       showDoc(el, side, path, { ...opt, follow: true, fresh: true });
     };
-    $(".vhead", el).insertBefore(b, $("#vref", el));
+    $("#vtools", el).append(b);
     clearInterval(F.follow);
     if (opt.follow) F.follow = setInterval(() => { if (!el.isConnected) return clearInterval(F.follow); showDoc(el, side, path, { ...opt, fresh: true, quiet: true }); }, 5000);
   }

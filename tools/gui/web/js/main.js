@@ -1,6 +1,7 @@
 // Entry point: routing, the 4-second poll, attention (notifications, dock badge, title), keyboard, module wiring.
 import { S, $, get, post, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
+import "./tips.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
 import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive, startBtw, tellProject, startWith, startEach, sessionNamed } from "./chat.js";
 import { initDock, toggleDock, typeIntoTerminal } from "./term.js";

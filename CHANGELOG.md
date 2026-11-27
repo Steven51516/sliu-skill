@@ -5,6 +5,12 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: the library page and the reader, redesigned to the level of the rest of the app. The viewer's
+  header showed a file path in mono and up to ten ungrouped buttons; the library list had three rows of system
+  dropdowns; highlight colours were unexplained. Now: the item's title, grouped tools (zoom, page, Highlights, Box &
+  ask), a Paper | Note switch, Teach me, and More (reload, VS Code, delete); a collection switcher with search, filter
+  and sort menus, calmer rows, arrow keys; a Highlights legend that shows or hides each kind; a small dark bar over a
+  selection. App-wide: the app's own tooltips in place of the system's (`tips.js`), its chevron on dropdowns.
 - **Research Desk**: a library's **Add** takes several lines, one thing to add on each, and starts a session for each
   in turn (it took one; six or more ask first).
 - **Research Desk**: a library holds any documents, not only papers. Its page listed the folders under `Papers/` and

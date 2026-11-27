@@ -274,6 +274,9 @@ const P = {
   more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
   check: '<path d="m5 12 5 5 9-10"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  chev: '<path d="m7 10 5 5 5-5"/>',
+  filter: '<path d="M4 6h16M7 12h10M10 18h4"/>',
+  sort: '<path d="M7 5v14M4 16l3 3 3-3M17 19V5M14 8l3-3 3 3"/>',
   spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
   mark: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',
   doc: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/>',
@@ -288,9 +291,9 @@ export const icon = (name, cls = "") => `<svg class="ico ${cls}" viewBox="0 0 24
 export function popMenu(anchor, items, opt = {}) {
   closeMenus();
   const m = document.createElement("div");
-  m.className = "menu";
+  m.className = "menu" + (opt.cls ? " " + opt.cls : "");
   m.innerHTML = items.map((it, i) => it === "-" ? `<div class="sep"></div>` : it.header ? `<div class="mh">${esc(it.header)}</div>`
-    : `<div class="mi" data-i="${i}">${it.icon ? icon(it.icon) : ""}<span class="a" style="font-family:var(--font);font-weight:500">${esc(it.label)}</span>${it.hint ? `<span class="b">${esc(it.hint)}</span>` : ""}</div>`).join("");
+    : `<div class="mi ${it.danger ? "danger" : ""} ${it.on ? "checked" : ""}" data-i="${i}">${it.icon ? icon(it.icon) : ""}<span class="a" style="font-family:var(--font);font-weight:500">${esc(it.label)}</span>${it.hint ? `<span class="b">${esc(it.hint)}</span>` : ""}</div>`).join("");
   document.body.appendChild(m);
   const r = anchor.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
   m.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, opt.right ? r.right - w : r.left)) + "px";

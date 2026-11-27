@@ -25,8 +25,10 @@ at that moment. Its sessions are those whose first prompt names the ticket's fol
 team-worker starts them), found here and on each herdr machine by `rg_trace.py`, which runs there over ssh so only the
 steps cross.
 
-Reading mode: the file viewer's first button hides the sidebar and the list beside the viewer while a file is open, and
-brings them back.
+The file viewer's header: reading mode (its first button hides the sidebar and the list beside the viewer while a file
+is open, and brings them back), what is open (in a library, the item's title), the tools of its kind, its actions, and
+More (reload, VS Code, delete). In a narrow viewer the labelled buttons become icons. Tooltips are the app's own
+(`web/js/tips.js`): any `title` becomes one.
 
 PDFs: the file viewer opens a PDF in a reader (`web/js/reader.js`, PDF.js) whose text can be selected; pinch, or the
 wheel with ⌘, zooms it. Select a passage and press **Ask**, or use **Box & ask** to drag a box around an equation or a
@@ -34,8 +36,8 @@ figure: the passage (or a crop of the box, drawn again at 3x), its page and your
 a paper has its own session, named after its folder, and one is started with the question when it has none. **Marks** are the highlights kept beside the
 PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
 session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
-result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it); the eye in
-the header hides them. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
+result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it);
+**Highlights** in the header says what each colour means and shows or hides each kind. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
 the pictures a note links beside it.
 
 Library: a project with `library = true` is a library of documents. It has its own entry in the sidebar and opens as a
@@ -45,8 +47,8 @@ PDF and text files directly in it. The list shows one collection, searched and f
 front matter names; the document opens on the right, and an item's other documents are listed under it. **Add** asks a
 session to add something to the collection (several lines: a session each, started in turn) and **Teach me** to teach the open item (your request, which you can edit
 first): in plain words, or with the commands the collection's `add` and `teach` settings name (a skill started only
-by its command). The trash in the header moves the item to the trash (`extras/trash.py`: undone with
-`trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads
+by its command). **Delete**, under More in the header, moves the item to the trash
+(`extras/trash.py`: undone with `trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads
 the folder you point it at.
 
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).

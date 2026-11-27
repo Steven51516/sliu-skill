@@ -2106,7 +2106,8 @@ def library_item(root, path):
     concepts = meta.get("concepts") or []
     text = lambda *keys: next((str(meta[k])[:600] for k in keys if meta.get(k)), "")      # noqa: E731
     rel = lambda x: os.path.relpath(x, root)                                               # noqa: E731
-    return {"path": rel(path), "folder": folder, "title": text("title") or os.path.splitext(name)[0].replace("-", " "),
+    plain = os.path.splitext(name)[0].replace("-", " ").replace("_", " ")
+    return {"path": rel(path), "folder": folder, "title": text("title") or plain[:1].upper() + plain[1:],
             "authors": text("authors", "instructor"), "date": text("date"), "verdict": text("verdict"),
             "concepts": [str(c).strip("[]") for c in (concepts if isinstance(concepts, list) else [concepts])][:12],
             "main": rel(main), "docs": [rel(os.path.join(path, d)) for d in docs][:40], "marks": marks,

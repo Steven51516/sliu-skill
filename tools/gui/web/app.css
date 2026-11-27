@@ -295,90 +295,9 @@ details.fmd .fm { margin-top: 6px; }
 .scope button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); font-weight: 500; }
 .viewer { flex: 1; min-width: 0; overflow: auto; }
 .vhead { display: flex; gap: 8px; align-items: center; position: sticky; top: 0; background: var(--bg); padding: 8px 16px; z-index: 1; border-bottom: 1px solid var(--line); }
-.vhead .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
 .vbody { padding: 14px 18px 50px; }
 .vbody pre.code { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow: auto; margin: 0; border: 1px solid var(--line); line-height: 1.5; }
 .vbody pre.code .ln { display: inline-block; width: 3.2em; color: var(--muted); opacity: .6; text-align: right; margin-right: 1.2em; user-select: none; }
-/* a question sent from the paper reader, in the chat: the passage it is about, folded, above the question */
-.msg.user .bubble .bq { font-size: 12px; color: var(--ink-2); border-left: 2px solid var(--line-2); padding-left: 8px; margin-bottom: 6px; cursor: pointer;
-  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.msg.user .bubble .bq:hover { color: var(--ink); }
-.msg.user .bubble .bq .ico { width: 12px; height: 12px; vertical-align: -2px; margin-right: 4px; }
-.msg.user .bubble .bq b { font-weight: 600; margin-right: 4px; }
-
-/* a library (library.js): a collection's items on the left, the document on the right */
-.plist { width: clamp(260px, 32%, 380px); flex: none; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
-.phead { padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
-.phead .pline { display: flex; flex-wrap: wrap; gap: 6px; }
-.phead input { flex: 1; min-width: 0; padding: 4px 8px; font-size: 12.5px; }
-.phead select { flex: 1 1 auto; min-width: 0; max-width: 100%; padding: 4px 8px; font-size: 12.5px; text-overflow: ellipsis; }   /* each as wide as its words; they stack when the column is narrow */
-.phead #pp-s { flex: 0 1 auto; }
-.prows { flex: 1; overflow: auto; padding: 4px 0 30px; }
-.prow { padding: 8px 12px; cursor: pointer; border-left: 2px solid transparent; outline: none; }
-.prow:hover, .prow:focus-visible { background: var(--hover); }
-.prow.on { background: var(--accent-soft); border-left-color: var(--accent); }
-.prow .pt { font-weight: 550; font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-.prow .pm { color: var(--muted); font-size: 11.5px; margin-top: 2px; display: flex; align-items: center; gap: 8px; }
-.prow .pm .pv { text-transform: uppercase; letter-spacing: .4px; font-size: 10px; font-weight: 600; }
-.prow .pm .pv.v-study { color: var(--accent); }
-.prow .pm .pk { display: inline-flex; align-items: center; gap: 2px; }
-.prow .pm .pk .ico { width: 11px; height: 11px; }
-.prow .pc { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
-.prow .pc span { font-size: 10.5px; color: var(--muted); background: var(--hover); border-radius: 5px; padding: 0 5px; }
-.prow .pd { margin-top: 6px; display: flex; flex-direction: column; gap: 1px; }       /* the open item's documents */
-.prow .pd a { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); padding: 2px 6px; border-radius: 6px; cursor: pointer; }
-.prow .pd a:hover { background: var(--hover); color: var(--ink); }
-.prow .pd a.on { color: var(--ink); font-weight: 550; }
-.prow .pd a .ico { width: 12px; height: 12px; flex: none; }
-
-/* reading mode (the viewer's first button, files.js): the sidebar and the list beside the viewer step aside */
-/* only while a file is open: an empty viewer says "pick one on the left" */
-body.reading:has(#viewer > .vhead) #sidebar, body.reading:has(#viewer > .vhead) #sidebar-resize,
-body.reading .files:has(#viewer > .vhead) > .trees, body.reading .files:has(#viewer > .vhead) > .plist { display: none; }
-html.app body.reading:has(#viewer > .vhead) #titlebar { padding-left: 86px; }       /* clear of the window's buttons */
-.vhead #vfocus { flex: none; font-weight: 500; }
-
-/* the paper reader (reader.js): the PDF fills the viewer under its header; pdf.js lays its pages out in .pdfscroll */
-.viewer.pdfmode { display: flex; flex-direction: column; overflow: hidden; }
-.pdfctl { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
-.pdfctl #pz-val { min-width: 46px; justify-content: center; font-variant-numeric: tabular-nums; }
-.pdfctl #pg-n { font-size: 12px; margin: 0 10px 0 6px; font-variant-numeric: tabular-nums; }
-.viewer.pdfmode .vhead { flex-wrap: wrap; row-gap: 6px; }
-.viewer.pdfmode .vhead .path { min-width: 110px; }
-.pdfbox { flex: 1; min-height: 0; position: relative; background: var(--sunken); isolation: isolate; }   /* pdf.js numbers its links' z-index up past the app's menus */
-.pdfbox > .spin { position: absolute; top: 24px; left: 50%; }
-.pdfscroll { position: absolute; inset: 0; overflow: auto; }
-.pdfbox .pdfViewer .page { padding: 0; max-width: none; box-sizing: content-box; box-shadow: 0 1px 4px rgba(0,0,0,.14); }   /* the app's own .page is a screen */
-.pdfbox.boxing .page { cursor: crosshair; }
-.pdfbox.boxing .textLayer, .pdfbox.boxing .annotationLayer { pointer-events: none; }
-.rdmarks { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-.rdmark { position: absolute; background: rgba(255, 208, 0, .38); mix-blend-mode: multiply; border-radius: 2px; }
-.rdmark.box { background: rgba(79, 107, 237, .10); mix-blend-mode: normal; outline: 1.5px solid var(--accent); }
-.rdmark.k-claim { background: rgba(52, 199, 89, .30); }      /* an agent's marks, by kind; yours stay yellow */
-.rdmark.k-method { background: rgba(64, 156, 255, .28); }
-.rdmark.k-result { background: rgba(175, 82, 222, .24); }
-.rdmark.k-limit { background: rgba(255, 99, 71, .28); }
-.rdmark.saved.box { background: rgba(255, 208, 0, .14); outline: 1.5px solid rgba(214, 160, 0, .9); }
-.pdfbox.nomarks .rdmark.saved { display: none; }
-.pdfctl #pmarks.off { opacity: .4; }
-.asktip { display: flex; gap: 4px; }
-.askpop.markpop { width: min(480px, calc(100vw - 16px)); }
-.askpop .ah .grow { flex: 1; }
-.askpop.markpop .q { font-size: 12px; color: var(--ink-2); border-left: 2px solid var(--line-2); padding-left: 8px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.askpop .mn { max-height: min(46vh, 420px); overflow: auto; font-size: 13px; }
-.askpop .mn:empty { display: none; }
-.askpop .mw { font-size: 12px; }
-.asktip, .askpop { position: fixed; z-index: 40; }
-.asktip .btn { box-shadow: var(--shadow-pop); }
-.askpop { width: min(420px, calc(100vw - 16px)); background: var(--raised); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-.askpop .ah { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
-.askpop .ah > .muted { flex: none; padding-top: 1px; }
-.askpop .ah .q { flex: 1; min-width: 0; color: var(--ink-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-.askpop .ah img { flex: 1; min-width: 0; max-height: 130px; object-fit: contain; object-position: left top; background: #fff; border-radius: 4px; border: 1px solid var(--line); }
-.askpop textarea { width: 100%; resize: vertical; }
-.askpop .af { display: flex; align-items: center; gap: 8px; font-size: 12px; }
-.askpop .af select { width: auto; max-width: 230px; padding: 3px 6px; font-size: 12px; }
-.askpop .af .grow { flex: 1; }
 .vbody img { max-width: 100%; background: #fff; border-radius: 6px; border: 1px solid var(--line); }
 .csv { font-size: 12px; border-collapse: collapse; }
 .csv th, .csv td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; white-space: nowrap; }
@@ -1033,3 +952,172 @@ input[type=checkbox], input[type=radio] { box-shadow: none; padding: 0; border-r
 .mhead .ph h1 { -webkit-line-clamp: 2; }
 .mhead .mdest { -webkit-line-clamp: 2; }
 #map-root.tkopen .mhead .ph h1 { display: block; }
+
+/* ===================================================================================================================
+   Documents and the reader (library.js, files.js, reader.js), in the manner of layer 4: a document's title where a
+   file path stood, tools in groups, rare actions under More, menus instead of form controls, colour only for a state
+   or a highlight. Later rules win.
+   =================================================================================================================== */
+:root { --hl-you: 255, 204, 0; --hl-claim: 52, 199, 89; --hl-method: 64, 156, 255; --hl-result: 175, 82, 222; --hl-limit: 255, 99, 71; }
+
+/* the viewer's header: reading mode, what is open, the tools of its kind, its actions, More */
+.viewer { container: viewer / inline-size; }
+.vhead { gap: 10px; padding: 8px 12px 8px 10px; min-height: 48px; }
+.vhead #vfocus { flex: none; font-weight: 500; color: var(--ink-2); }
+.vtitle { flex: 1; min-width: 72px; display: flex; flex-direction: column; line-height: 1.3; }
+.vtitle .t { font-weight: 600; font-size: 13.5px; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vtitle .s { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; display: flex; gap: 6px; }
+.vtitle .s > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.vtitle .s > span:empty { display: none; }
+.vtitle .s > span:not(:empty) + #vsize:not(:empty)::before { content: "·"; margin-right: 6px; }
+.vslot { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.vslot:empty { display: none; }
+@container viewer (max-width: 980px) { .vhead .lbl.opt { display: none; } }   /* the title keeps its room: labels go first */
+@container viewer (max-width: 760px) {             /* a narrow viewer: icons for the labelled buttons, one line of title */
+  .vhead .lbl, .vtitle .s { display: none; }
+  .vhead { gap: 6px; }
+}
+/* a segmented control: the zoom, Paper | Note */
+.segc { display: inline-flex; align-items: stretch; height: 26px; border-radius: 7px; box-shadow: inset 0 0 0 1px var(--line-2); background: var(--panel); overflow: hidden; flex: none; }
+.segc button { border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 12px; font-weight: 500; padding: 0 10px; cursor: pointer; transition: background-color .12s var(--ease), color .12s var(--ease); }
+.segc button + button { box-shadow: inset 1px 0 0 var(--line); }
+.segc button:hover { background: var(--hover); color: var(--ink); }
+.segc button.on { background: var(--active); color: var(--ink); font-weight: 600; cursor: default; }
+.segc.zoom #pz-val { min-width: 50px; font-variant-numeric: tabular-nums; }
+.segc.zoom #pz-out, .segc.zoom #pz-in { width: 26px; padding: 0; font-size: 15px; line-height: 1; }
+.pdfctl { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pgn { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 46px; text-align: center; }
+.pdfctl #pmarks.off .ico { opacity: .4; }
+
+/* the PDF: it fills the viewer under the header; pdf.js lays its pages out in .pdfscroll */
+.viewer.pdfmode { display: flex; flex-direction: column; overflow: hidden; }
+.pdfbox { flex: 1; min-height: 0; position: relative; background: var(--sunken); isolation: isolate; }   /* pdf.js numbers its links' z-index up past the app's menus */
+.pdfbox > .spin { position: absolute; top: 24px; left: 50%; }
+.pdfscroll { position: absolute; inset: 0; overflow: auto; }
+.pdfbox .pdfViewer .page { padding: 0; max-width: none; box-sizing: content-box; box-shadow: 0 0 0 1px var(--line), 0 2px 12px rgba(0, 0, 0, .07); }   /* the app's own .page is a screen */
+.pdfbox.boxing .page { cursor: crosshair; }
+.pdfbox.boxing .textLayer, .pdfbox.boxing .annotationLayer { pointer-events: none; }
+
+/* marks over a page: yours are yellow, an agent's are coloured by kind; a group can be hidden (the legend) */
+.rdmarks { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.rdmark { position: absolute; background: rgba(var(--hl-you), .40); mix-blend-mode: multiply; border-radius: 2px; }
+.rdmark.box { background: color-mix(in srgb, var(--accent) 10%, transparent); mix-blend-mode: normal; outline: 1.5px solid var(--accent); }
+.rdmark.k-claim { background: rgba(var(--hl-claim), .30); }
+.rdmark.k-method { background: rgba(var(--hl-method), .28); }
+.rdmark.k-result { background: rgba(var(--hl-result), .24); }
+.rdmark.k-limit { background: rgba(var(--hl-limit), .28); }
+.rdmark.saved.box { background: rgba(var(--hl-you), .14); outline: 1.5px solid rgba(214, 160, 0, .9); }
+.pdfbox.hide-you .rdmark.k-you, .pdfbox.hide-claim .rdmark.k-claim, .pdfbox.hide-method .rdmark.k-method,
+.pdfbox.hide-result .rdmark.k-result, .pdfbox.hide-limit .rdmark.k-limit { display: none; }
+.hue { width: 9px; height: 9px; border-radius: 3px; flex: none; background: rgb(var(--hl-you)); }
+.hue.k-claim { background: rgb(var(--hl-claim)); } .hue.k-method { background: rgb(var(--hl-method)); }
+.hue.k-result { background: rgb(var(--hl-result)); } .hue.k-limit { background: rgb(var(--hl-limit)); }
+
+/* over a selection: a small dark bar (Ask, Highlight), then the question; a kept mark's note; the legend */
+.asktip, .askpop { position: fixed; z-index: 40; animation: pop-in .13s var(--ease); }
+@keyframes pop-in { from { opacity: 0; transform: translateY(3px); } }
+@media (prefers-reduced-motion: reduce) { .asktip, .askpop { animation: none; } }
+.asktip { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--primary); box-shadow: var(--elev-lift); }
+.asktip button { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: var(--primary-ink); font: inherit; font-size: 12.5px; font-weight: 550; cursor: pointer; }
+.asktip button:hover { background: color-mix(in srgb, var(--primary-ink) 16%, transparent); }
+.asktip button .ico { width: 13px; height: 13px; }
+.askpop { width: min(440px, calc(100vw - 16px)); background: var(--raised); border-radius: var(--r-card); box-shadow: var(--elev-lift); padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 9px; }
+.askpop .ah { display: flex; align-items: center; gap: 4px; min-height: 24px; font-size: 12.5px; }
+.askpop .grow { flex: 1; }
+.kchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 550; color: var(--ink-2); background: var(--hover); border-radius: 6px; padding: 2px 8px; }
+.askpop .q { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); border-left: 2px solid var(--line-2); padding-left: 10px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.askpop img.crop { align-self: flex-start; max-width: 100%; max-height: 140px; object-fit: contain; background: #fff; border-radius: 6px; box-shadow: 0 0 0 1px var(--line); }
+.askpop textarea { width: 100%; resize: none; min-height: 58px; font-size: 13.5px; line-height: 1.45; }
+.askpop .af { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.askpop .af select { width: auto; max-width: 230px; font-size: 12px; padding-top: 4px; padding-bottom: 4px; }
+.askpop kbd { margin-left: 6px; font: inherit; font-size: 11px; opacity: .65; }
+.askpop.markpop { width: min(480px, calc(100vw - 16px)); }
+.askpop .mn { max-height: min(46vh, 420px); overflow: auto; font-size: 13.5px; line-height: 1.55; }
+.askpop .mn:empty { display: none; }
+.askpop .mn > :first-child { margin-top: 0; } .askpop .mn > :last-child { margin-bottom: 0; }
+.askpop .mw { font-size: 12px; line-height: 1.45; }
+.askpop.hues { width: 304px; gap: 1px; padding: 8px; }
+.askpop.hues .ah { padding: 0 2px 4px 8px; font-size: 13px; }
+.lg { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12.5px; transition: background-color .12s var(--ease), opacity .12s var(--ease); }
+.lg:hover { background: var(--hover); }
+.lg .ln { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.lg .ln .muted { font-size: 11.5px; }
+.lg.off { opacity: .45; }
+.lg.off .ln b { text-decoration: line-through; }
+
+/* a question sent from the reader, in the chat: the passage it is about, folded, above the question */
+.msg.user .bubble .bq { font-size: 12px; color: var(--ink-2); border-left: 2px solid var(--line-2); padding-left: 8px; margin-bottom: 6px; cursor: pointer;
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.msg.user .bubble .bq:hover { color: var(--ink); }
+.msg.user .bubble .bq .ico { width: 12px; height: 12px; vertical-align: -2px; margin-right: 4px; }
+.msg.user .bubble .bq b { font-weight: 600; margin-right: 4px; }
+
+/* a library (library.js): a collection's items on the left, the document on the right */
+.plist { width: clamp(264px, 30%, 360px); flex: none; border-right: 1px solid var(--line); background: var(--bg); display: flex; flex-direction: column; min-height: 0; }
+.phead { padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 8px; }
+.phead .pline { display: flex; align-items: center; gap: 2px; min-height: 28px; }
+.phead .grow { flex: 1; }
+.pcol { display: inline-flex; align-items: center; gap: 6px; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; padding: 3px 6px; border-radius: 7px; cursor: pointer; transition: background-color .12s var(--ease); }
+.pcol:hover { background: var(--hover); }
+.pcol:focus-visible { outline: 0; box-shadow: var(--ring); }
+.pcol #pp-coln { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcol .n { font-size: 12px; font-weight: 500; color: var(--muted); }
+.pcol .ico { width: 14px; height: 14px; color: var(--muted); flex: none; }
+.phead #pp-add { margin-left: 6px; }
+.phead .btn.on { color: var(--accent); background: var(--accent-soft); }
+.psearch { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 10px; border-radius: var(--r-ctl); background: var(--hover); color: var(--muted); cursor: text; transition: background-color .12s var(--ease), box-shadow .12s var(--ease); }
+.psearch:focus-within { background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2), var(--ring); }
+.psearch input, .psearch input:focus { flex: 1; min-width: 0; border: 0; box-shadow: none; background: transparent; padding: 0; font-size: 13px; }
+.psearch .ico { width: 14px; height: 14px; flex: none; }
+.pchips:empty { display: none; }
+.pchip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 500; color: var(--accent); background: var(--accent-soft); border-radius: 7px; padding: 2px 4px 2px 8px; }
+.pchip button { display: inline-flex; border: 0; background: transparent; color: inherit; padding: 2px; border-radius: 5px; cursor: pointer; }
+.pchip button:hover { background: var(--accent-soft); }
+.pchip .ico { width: 11px; height: 11px; }
+.prows { flex: 1; overflow: auto; padding: 2px 6px 30px; }
+.prow { padding: 8px 10px; margin-bottom: 1px; border-radius: 9px; cursor: pointer; outline: none; transition: background-color .12s var(--ease), box-shadow .12s var(--ease); }
+.prow:hover { background: var(--hover); }
+.prow:focus-visible { box-shadow: var(--ring); }
+.prow.on { background: var(--active); }
+.prow .pt { font-weight: 550; font-size: 13px; line-height: 1.38; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.prow .pm { color: var(--muted); font-size: 11.5px; margin-top: 3px; display: flex; align-items: center; gap: 8px; }
+.prow .pm .grow { flex: 1; }
+.prow .pm .pv { font-size: 10.5px; font-weight: 600; padding: 0 6px; border-radius: 5px; background: var(--hover); color: var(--ink-2); text-transform: capitalize; }
+.prow .pm .pv.v-study { color: var(--accent); background: var(--accent-soft); }
+.prow .pm .pk { display: inline-flex; align-items: center; gap: 3px; }
+.prow .pm .pk .ico { width: 11px; height: 11px; }
+.prow .pc { margin-top: 5px; display: flex; gap: 4px; overflow: hidden; }
+.prow .pc span { font-size: 11px; color: var(--ink-2); background: var(--hover); border-radius: 5px; padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+.prow .pc span:last-child:not(:first-child) { flex: none; }
+.prow.on .pc span { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.prow .pd { margin: 7px 0 0 2px; padding-left: 8px; border-left: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 1px; }   /* the open item's documents */
+.prow .pd a { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); padding: 3px 6px; border-radius: 6px; cursor: pointer; }
+.prow .pd a:hover { background: var(--hover); color: var(--ink); }
+.prow .pd a.on { color: var(--ink); font-weight: 600; }
+.prow .pd a .ico { width: 12px; height: 12px; flex: none; }
+
+/* an empty place: what it is for, then how to fill it */
+.empty.big > b { display: block; font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 6px; }
+.empty.big > b + span { display: block; max-width: 340px; margin: 0 auto; font-size: 12.5px; line-height: 1.5; }
+
+/* reading mode (the viewer's first button, files.js): the sidebar and the list beside the viewer step aside,
+   only while a file is open: an empty viewer says "pick one on the left" */
+body.reading:has(#viewer > .vhead) #sidebar, body.reading:has(#viewer > .vhead) #sidebar-resize,
+body.reading .files:has(#viewer > .vhead) > .trees, body.reading .files:has(#viewer > .vhead) > .plist { display: none; }
+html.app body.reading:has(#viewer > .vhead) #titlebar { padding-left: 86px; }       /* clear of the window's buttons */
+
+/* menus: a destructive choice, the current choice, counts to the right */
+.menu .mi.danger, .menu .mi.danger .ico { color: var(--c-alert); }
+.menu .mi.checked .a { font-weight: 650; }
+.menu .mi.checked::after { content: "✓"; margin-left: auto; padding-left: 10px; font-size: 12px; color: var(--ink-2); }
+.menu .mi.checked .b { flex: 1; }
+.menu.nums .mi .b { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* tooltips (tips.js): the app's own, for every title */
+.tip { position: fixed; z-index: 200; max-width: 300px; padding: 4px 8px; border-radius: 7px; background: var(--primary); color: var(--primary-ink);
+  font-size: 12px; font-weight: 500; line-height: 1.4; pointer-events: none; box-shadow: 0 4px 14px -4px rgba(0, 0, 0, .35); overflow-wrap: anywhere; animation: pop-in .1s var(--ease); }
+@media (prefers-reduced-motion: reduce) { .tip { animation: none; } }
+
+/* dropdowns: the app's chevron in place of the system's arrows */
+select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 26px; background-repeat: no-repeat; background-position: right 8px center; background-size: 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2.5 4.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E"); }

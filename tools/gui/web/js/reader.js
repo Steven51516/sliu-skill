@@ -38,9 +38,9 @@ function load() {
   })().catch((e) => { lib = null; throw e; }));
 }
 
-// Draws the PDF at `url` into el's .pdfbox and adds zoom, page and Box & ask to its .vhead. Returns a function that
-// frees the document. `open(path)` shows another file of the project (the note beside the PDF).
-export async function showPdf(el, { side, path, url, open }) {
+// Draws the PDF at `url` into el's .pdfbox and adds zoom, page, Highlights and Box & ask to its header. Returns a function that
+// frees the document.
+export async function showPdf(el, { side, path, url }) {
   const req = el._req, alive = () => el._req === req && el.isConnected;
   const box = $(".pdfbox", el), scroll = $(".pdfscroll", el);
   let L, task, doc;
@@ -68,27 +68,34 @@ export async function showPdf(el, { side, path, url, open }) {
   let saved = [], boxing = false;                              // saved: the marks kept beside the PDF
 
   const fit = () => { pv.currentScaleValue = "auto"; };
-  if ($(".vhead #vsize", el)) {
-    $(".vhead #vsize", el).insertAdjacentHTML("afterend", `<span class="pdfctl">
-      <button class="btn ghost sm icon" id="pz-out" title="Zoom out">−</button><button class="btn ghost sm" id="pz-val" title="Fit the width">100%</button><button class="btn ghost sm icon" id="pz-in" title="Zoom in">+</button>
-      <span class="muted" id="pg-n"></span>
-      ${keep ? `<button class="btn ghost sm icon" id="pmarks" title="Show or hide the highlights">${icon("eye")}</button>` : ""}
-      <button class="btn sm" id="pbox" title="Drag a box around an equation or a figure and ask about it. For text, select it and press Ask.">${icon("mark")} Box &amp; ask</button></span>`);
+  // Highlights come in groups, each with a colour: yours (what you highlighted or asked), and what an agent marked.
+  const HUES = [["you", "Yours", "what you highlighted or asked"], ["claim", "Claim", "what the paper says it contributes"],
+    ["method", "Method", "the mechanism, or a design choice"], ["result", "Result", "a headline number"], ["limit", "Limitation", "a limit or an assumption it admits"]];
+  const group = (m) => (HUES.some(([k]) => k === m.kind) ? m.kind : "you");
+  const hidden = new Set(store("pdf.hide") || []);
+  const showGroups = () => { HUES.forEach(([k]) => box.classList.toggle("hide-" + k, hidden.has(k))); $("#pmarks", el)?.classList.toggle("off", hidden.size === HUES.length); };
+  if ($("#vtools", el)) {
+    $("#vtools", el).insertAdjacentHTML("afterbegin", `<span class="pdfctl">
+      <span class="segc zoom"><button id="pz-out" title="Zoom out">−</button><button id="pz-val" title="Fit the width">100%</button><button id="pz-in" title="Zoom in">+</button></span>
+      <span class="pgn" id="pg-n"></span>
+      ${keep ? `<button class="btn ghost sm" id="pmarks" title="Highlights: what the colours mean, and which to show">${icon("eye")}<span class="lbl opt">Highlights</span></button>` : ""}
+      <button class="btn sm" id="pbox" title="Drag a box around an equation or a figure and ask about it. For text, select it and press Ask.">${icon("mark")}<span class="lbl">Box &amp; ask</span></button></span>`);
     $("#pz-out", el).onclick = () => pv.decreaseScale();
     $("#pz-in", el).onclick = () => pv.increaseScale();
     $("#pz-val", el).onclick = fit;
     $("#pbox", el).onclick = () => setBoxing(!boxing);
-    const hide = (on) => { box.classList.toggle("nomarks", on); $("#pmarks", el)?.classList.toggle("off", on); };
-    hide(!!store("pdf.nomarks"));
-    if ($("#pmarks", el)) $("#pmarks", el).onclick = () => { const on = !box.classList.contains("nomarks"); store("pdf.nomarks", on); hide(on); closeTip(); };
+    showGroups();
+    if ($("#pmarks", el)) $("#pmarks", el).onclick = (e) => (tip?.classList.contains("hues") ? closeTip() : legend(e.currentTarget));
   }
-  // A PDF with a note.md beside it (a paper and its note): the note is one click away.
-  const dir = path.split("/").slice(0, -1).join("/");
-  if (open && side === "local" && dir && $(".vhead #vvs", el)) get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
-    if (!alive() || !j.entries.some((e) => e.name === "note.md")) return;
-    $(".vhead #pbox", el).closest(".pdfctl").insertAdjacentHTML("afterend", `<button class="btn sm" id="pnote" title="Open the note beside this PDF">${icon("doc")} Note</button>`);
-    $("#pnote", el).onclick = () => open(`${dir}/note.md`);
-  }).catch(() => {});
+  function legend(anchor) {                                    // what each colour means, how many there are, which are shown
+    const n = (k) => saved.filter((m) => group(m) === k).length;
+    const p = pop(`<div class="ah"><b>Highlights</b><span class="grow"></span><button class="btn ghost sm" id="lg-all">${hidden.size ? "Show all" : "Hide all"}</button></div>
+      ${HUES.map(([k, name, what]) => `<div class="lg ${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${hidden.has(k) ? "Show" : "Hide"} these"><span class="hue k-${k}"></span><span class="ln"><b>${name}</b><span class="muted">${what}</span></span><span class="muted">${n(k) || ""}</span></div>`).join("")}`,
+      anchor.getBoundingClientRect(), "askpop hues");
+    const set = (fn) => { fn(); store("pdf.hide", [...hidden]); showGroups(); legend(anchor); };
+    $("#lg-all", p).onclick = () => set(() => { const all = hidden.size > 0; hidden.clear(); if (!all) HUES.forEach(([k]) => hidden.add(k)); });
+    p.querySelectorAll(".lg").forEach((r) => r.onclick = () => set(() => (hidden.has(r.dataset.k) ? hidden.delete(r.dataset.k) : hidden.add(r.dataset.k))));
+  }
 
   bus.on("pagesinit", () => { fit(); const p = store(key); if (p > 1 && p <= pv.pagesCount) pv.currentPageNumber = p; pageLabel(); });
   bus.on("scalechanging", (e) => { const v = $("#pz-val", el); if (v) v.textContent = Math.round(e.scale * 100) + "%"; });
@@ -118,7 +125,7 @@ export async function showPdf(el, { side, path, url, open }) {
     if (!pg) return;
     pg.querySelector(".rdmarks")?.remove();
     const div = (r, cls) => `<div class="rdmark ${cls}" style="left:${r.l * 100}%;top:${r.t * 100}%;width:${r.w * 100}%;height:${r.h * 100}%"></div>`;
-    const html = saved.filter((m) => m.page === n).flatMap((m) => m.rects.map((r) => div(R(r), `saved k-${KINDS[m.kind] ? m.kind : "note"}${m.box ? " box" : ""}`)))
+    const html = saved.filter((m) => m.page === n).flatMap((m) => m.rects.map((r) => div(R(r), `saved k-${group(m)}${m.box ? " box" : ""}`)))
       .concat(marks.filter((m) => m.page === n).flatMap((m) => m.rects.map((r) => div(r, m.box ? "box" : "")))).join("");
     if (!html) return;
     const layer = document.createElement("div");
@@ -198,7 +205,7 @@ export async function showPdf(el, { side, path, url, open }) {
     if (boxing || !alive() || mine) return;
     const s = selection();
     if (!s) { if (tip?.className === "asktip") closeTip(); return; }
-    const go = pop(`<button class="btn sm primary" id="ask-go">${icon("chat")} Ask</button>${keep ? `<button class="btn sm" id="hl-go" title="Keep this passage highlighted">Highlight</button>` : ""}`, s.at, "asktip");
+    const go = pop(`<button id="ask-go" title="Ask a session about this passage">${icon("chat")}Ask</button>${keep ? `<button id="hl-go" title="Keep this passage highlighted">${icon("mark")}Highlight</button>` : ""}`, s.at, "asktip");
     $("#ask-go", go).onclick = () => { setMarks(s.marks); document.getSelection().removeAllRanges(); askBox(s.at, { pages: s.pages, quote: s.quote, mark: s.marks[0] }); };
     if ($("#hl-go", go)) $("#hl-go", go).onclick = () => { document.getSelection().removeAllRanges(); closeTip(); change({ put: kept(s.marks[0], { kind: "note", quote: s.quote }) }); };
     }, 0);
@@ -252,11 +259,11 @@ export async function showPdf(el, { side, path, url, open }) {
   function askBox(at, ctx) {
     const { live, pick } = sessions();
     const where = ctx.pages.length > 1 ? `pp. ${ctx.pages[0]}–${ctx.pages[ctx.pages.length - 1]}` : `p. ${ctx.pages[0]}`;
-    const p = pop(`<div class="ah"><span class="muted">${where}</span>${ctx.image ? `<img src="${ctx.image}" alt="the boxed region">` : `<span class="q">${esc(ctx.quote)}</span>`}
-        <button class="btn ghost sm icon" id="ask-x" title="Close (Esc)">${icon("x")}</button></div>
+    const p = pop(`<div class="ah"><span class="kchip">${where}</span><span class="grow"></span><button class="btn ghost sm icon" id="ask-x" title="Close (Esc)">${icon("x")}</button></div>
+      ${ctx.image ? `<img class="crop" src="${ctx.image}" alt="the boxed region">` : `<div class="q">${esc(ctx.quote)}</div>`}
       <textarea id="ask-q" rows="2" placeholder="${ctx.image ? "Ask about this region… (empty: explain it)" : "Ask about this passage… (empty: explain it)"}"></textarea>
       <div class="af">${live.length ? `<label class="muted" for="ask-to">Ask</label><select id="ask-to">${live.map((a) => `<option value="${esc(a.pane)}" ${a === pick ? "selected" : ""}>${esc(agentLabel(a))}${a.machine ? ` · ${esc(a.machine)}` : ""}</option>`).join("")}
-        <option value="" ${pick ? "" : "selected"}>A new session for this paper</option></select>` : `<span class="muted">Starts a Claude session</span>`}<span class="grow"></span><button class="btn sm primary" id="ask-send" title="Send (⏎) · new line: ⇧⏎">Send</button></div>`, at, "askpop");
+        <option value="" ${pick ? "" : "selected"}>A new session for this paper</option></select>` : `<span class="muted">Starts a Claude session</span>`}<span class="grow"></span><button class="btn sm primary" id="ask-send" title="Send (⏎) · new line: ⇧⏎">Send<kbd>↵</kbd></button></div>`, at, "askpop");
     const q = $("#ask-q", p), send = $("#ask-send", p);
     $("#ask-x", p).onclick = closeTip;
     q.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send.click(); } };
@@ -292,17 +299,17 @@ export async function showPdf(el, { side, path, url, open }) {
   // ----- a kept mark: its note (the pinned reply, the agent's gloss, or your own words), ask again, delete -----
   scroll.addEventListener("click", (e) => {
     const pg = e.target.closest?.(".page");
-    if (!pg || boxing || !document.getSelection().isCollapsed || box.classList.contains("nomarks")) return;
+    if (!pg || boxing || !document.getSelection().isCollapsed) return;
     const f = frame(pg), x = (e.clientX - f.x) / f.w, y = (e.clientY - f.y) / f.h, n = +pg.dataset.pageNumber;
-    for (const m of saved.filter((k) => k.page === n)) {
+    for (const m of saved.filter((k) => k.page === n && !hidden.has(group(k)))) {
       const r = m.rects.map(R).find((k) => x >= k.l && x <= k.l + k.w && y >= k.t - 0.002 && y <= k.t + k.h + 0.002);
       if (r) return viewMark(m, { left: f.x + r.l * f.w, top: f.y + r.t * f.h, bottom: f.y + (r.t + r.h) * f.h });
     }
   });
   function viewMark(m, at) {
     const own = m.by !== "agent" && m.kind === "note";
-    const p = pop(`<div class="ah"><span class="muted">${KINDS[m.kind] || "Highlight"} · p. ${m.page}</span><span class="grow"></span>
-        <button class="btn ghost sm" id="mk-ask" title="Ask about this passage">${icon("chat")} Ask</button>
+    const p = pop(`<div class="ah"><span class="kchip"><span class="hue k-${group(m)}"></span>${KINDS[m.kind] || "Highlight"} · p. ${m.page}</span><span class="grow"></span>
+        <button class="btn ghost sm" id="mk-ask" title="Ask about this passage">${icon("chat")}Ask</button>
         <button class="btn ghost sm icon" id="mk-del" title="Remove this highlight (Delete)">${icon("trash")}</button>
         <button class="btn ghost sm icon" id="ask-x" title="Close (Esc)">${icon("x")}</button></div>
       ${m.quote ? `<div class="q">${esc(m.quote)}</div>` : ""}
@@ -356,7 +363,7 @@ export async function showPdf(el, { side, path, url, open }) {
     tip = null;
     if (keepMarks !== true && marks.length) setMarks([]);
   }
-  const outside = (e) => { if (tip && !tip.contains(e.target)) closeTip(); };
+  const outside = (e) => { if (tip && !tip.contains(e.target) && !e.target.closest?.("#pmarks")) closeTip(); };
   const esc2 = (e) => {
     if (e.key === "Escape" && (tip || boxing)) { closeTip(); setBoxing(false); }
     if ((e.key === "Delete" || e.key === "Backspace") && tip?._mark && !/^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName || "")) {

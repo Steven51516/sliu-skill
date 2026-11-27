@@ -206,7 +206,7 @@ function render() {
       <span class="grow"></span>
       ${a?.role === "btw" ? `<button class="btn sm" id="ch-btw-close" title="Close this side chat and delete its conversation">${icon("trash")} Close &amp; delete</button>`
         : canBtw(a) ? `<button class="btn ghost sm icon" id="ch-btw" title="btw: fork a side chat with this session (read-only, deleted when you close it)">${icon("plus")}</button>` : ""}
-      ${a && !a.role && !a.remote ? `<button class="btn sm" id="ch-end" title="End this session and close its tab. What it wrote stays: replies pinned to a paper, lessons, and the conversation (Search conversations).">End</button>` : ""}
+      ${a && !a.role && !a.remote ? `<button class="btn ghost sm" id="ch-end" title="End this session and close its tab. What it wrote stays: replies pinned to a paper, lessons, and the conversation (Search conversations).">End</button>` : ""}
       <button class="btn ghost sm icon" id="ch-verbose" title="${S.prefs.verbose ? "Fold tool calls" : "Show every tool call"}">${icon(S.prefs.verbose ? "eye" : "code")}</button>
       <button class="btn ghost sm icon" id="ch-term" title="Open its terminal here">${icon("term")}</button>
       <button class="btn ghost sm icon" id="ch-more" title="More">${icon("more")}</button>
