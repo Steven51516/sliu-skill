@@ -29,11 +29,14 @@ import time
 MODEL, EFFORT, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "medium", "sonnet", "high"   # the driver already planned the ticket
 LATER = 3                              # --close exit code: not closed yet, the same call will work later
 CLOSING = os.path.join("scratch", "agents", "team-worker.closing.json")   # {pane: the worker asked to stop its background commands}
+# Asked by its driver only "what runs?", a worker checked `jobs`, found nothing and kept its poll loop (2026-11-26): the
+# prompt names where the tasks are listed.
 STOP = ("closing {tid}: this session is being ended and its tab closed, but Claude Code does not exit while a background "
-        "command of the session runs. Stop every background command you started in this session (a waiter, a monitor, "
-        "a poll loop) and start nothing else. A job that must outlive you is a detached one on the server, recorded in "
-        "the ticket's `jobs:`; if a command of yours is the job itself, leave it running and name it. Reply with one "
-        "line: what you stopped, what you left.")
+        "task of the session runs (the `1 shell` in your status line). Stop every one you started (a waiter, a monitor, "
+        "a poll loop) with your tool that stops a background task. `jobs` does not show them; `pgrep -lf -P $PPID` in "
+        "a shell command does: they are the shells among this session's child processes. Start nothing else. A job "
+        "that must outlive you is a detached one on the server, recorded in the ticket's `jobs:`; if a task of yours is "
+        "the job itself, leave it running and name it. Reply with one line: what you stopped, what you left.")
 DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)|"
                   r"sign in with chatgpt|run codex login", re.I)
 
@@ -180,11 +183,11 @@ def close(tid):
         if was and was.get("left") and was.get("seq") == a.get("state_change_seq"):
             fail(f"{kept}; nothing has changed in it since, so no exit was typed. Its last line says what it keeps")
         if not leave(pane):
-            seq = (agent_in(pane) or {}).get("state_change_seq")
+            now = settled(pane)
             if was:
-                closing({**book, pane: {**was, "left": True, "seq": seq}})
+                closing({**book, pane: {**was, "left": True, "seq": (now or {}).get("state_change_seq")}})
                 fail(f"{kept}. Its last line says what it keeps")
-            if a.get("agent") == "claude" and ask_to_stop(pane, tid):
+            if a.get("agent") == "claude" and now and ask_to_stop(pane, tid):
                 closing({**book, pane: {"ticket": tid, "session": session, "asked": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())}})
                 fail(f"{tid} has background work running, which closing would stop: asked it in {pane} to stop its "
                      f"background commands. Run this again once it has answered", LATER)
@@ -218,9 +221,19 @@ def agent_in(pane):
     return next((a for a in agents if a.get("pane_id") == pane), None)
 
 
+def settled(pane):
+    """The agent once herdr no longer reports the exit dialog (it does for some seconds after Esc closed it, refuses a
+    prompt meanwhile, and counts the change as one more state change); None if it still does after 40 s."""
+    for _ in range(20):
+        time.sleep(2)
+        a = agent_in(pane)
+        if (a or {}).get("agent_status") != "blocked":
+            return a
+    return None
+
+
 def ask_to_stop(pane, tid):
     """Tell a worker that backed out of its exit to stop its background commands. True when it took the prompt."""
-    time.sleep(2)                                         # the exit dialog has just been dismissed
     r = herdr("agent", "prompt", pane, STOP.format(tid=tid), "--wait", "--until", "working", "--timeout", "60000")
     if r.returncode != 0 and "stalled" in (r.stdout + r.stderr):
         herdr("pane", "send-keys", pane, "Enter")

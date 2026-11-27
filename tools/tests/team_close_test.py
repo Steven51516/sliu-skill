@@ -39,11 +39,15 @@ class Herdr:
 
     def __init__(self, holds=1, obeys=True, status="done"):
         self.holds, self.obeys, self.status, self.seq = holds, obeys, status, 10
-        self.alive, self.tab, self.typed, self.dialog = True, True, [], False
+        self.alive, self.tab, self.typed, self.dialog, self.lag = True, True, [], False, 0
 
     def agents(self):
+        blocked = self.dialog or self.lag > 0               # herdr reports the dialog for a while after Esc closed it
+        if self.lag > 0:
+            self.lag -= 1
+            self.seq += self.lag == 0                       # and counts its end as one more state change
         a = {"pane_id": "w1:p1", "tab_id": "w1:t1", "agent": "claude", "name": "m1-01-120000", "workspace_id": "w1",
-             "agent_status": "blocked" if self.dialog else self.status, "state_change_seq": self.seq,
+             "agent_status": "blocked" if blocked else self.status, "state_change_seq": self.seq,
              "agent_session": {"value": "s-1"}}
         return [a] if self.alive else []
 
@@ -54,6 +58,8 @@ class Herdr:
         elif args[:2] == ("agent", "list"):
             out = {"result": {"agents": self.agents()}}
         elif args[:2] == ("agent", "prompt"):
+            if self.dialog or self.lag > 0:                 # herdr sends nothing to a blocked agent
+                return types.SimpleNamespace(returncode=1, stdout="", stderr="agent_blocked")
             self.typed.append(args[3])
             self.seq += 1
             if args[3] == "/exit":
@@ -62,7 +68,7 @@ class Herdr:
                 self.holds = 0
         elif args[:2] == ("pane", "send-keys"):
             self.typed.append(f"<{args[3]}>")
-            self.dialog = False
+            self.dialog, self.lag = False, 4
             self.seq += 1
         elif args[:2] == ("tab", "close"):
             self.tab = False
