@@ -16,9 +16,9 @@ export function renderPapers(full = true) {
   if (P.project !== project) Object.assign(P, { project, list: null, q: "", concept: "" });
   $("#view").innerHTML = `<div class="page full"><div class="tabbody"><div class="files papers">
       <div class="plist" id="plist"><div class="phead">
-          <div class="pline"><input id="pp-q" type="search" placeholder="Search papers…" value="${esc(P.q)}"><button class="btn sm primary" id="pp-add" title="Read a new paper into the library">${icon("plus")} Add</button></div>
-          <div class="pline"><select id="pp-c" title="Concept"></select><select id="pp-s" title="Order">
-            <option value="added">Recently added</option><option value="date">Newest first</option><option value="title">By title</option></select></div></div>
+          <div class="pline"><input id="pp-q" type="search" placeholder="Search ${P.list ? P.list.length + " " : ""}papers…" value="${esc(P.q)}"><button class="btn sm primary" id="pp-add" title="Read a new paper into the library">${icon("plus")} Add</button></div>
+          <div class="pline"><select id="pp-c" title="Show one concept's papers"></select><select id="pp-s" title="Order: recently added, newest paper first, or by title">
+            <option value="added">Recent</option><option value="date">Newest</option><option value="title">Title</option></select></div></div>
         <div class="prows" id="prows"><div class="empty"><span class="spin"></span></div></div></div>
       <div class="viewer" id="viewer" data-empty="Pick a paper on the left.<br><span style='font-size:12px'>Select text in it to ask about it, or box an equation or a figure. What you ask stays on the page as a highlight.</span>"></div></div></div></div>`;
   $("#pp-s").value = P.sort;
@@ -43,6 +43,7 @@ async function load() {
   catch (e) { if ($("#prows")) $("#prows").innerHTML = `<div class="empty err">${esc(e.message)}</div>`; return; }
   if (P.project !== project) return;
   P.list = r.papers;
+  if ($("#pp-q")) $("#pp-q").placeholder = `Search ${P.list.length} papers…`;
   rows();
 }
 document.addEventListener("rd:turn", () => { if ($("#plist") && S.route.project === P.project) load(); });   // a session may have added a paper
@@ -52,7 +53,7 @@ function rows() {
   if (!host || !P.list) return;
   const counts = new Map();
   P.list.forEach((p) => p.concepts.forEach((c) => counts.set(c, (counts.get(c) || 0) + 1)));
-  sel.innerHTML = `<option value="">All concepts (${P.list.length})</option>` + [...counts].sort((a, b) => a[0].localeCompare(b[0])).map(([c, n]) => `<option value="${esc(c)}">${esc(c.replace(/-/g, " "))} (${n})</option>`).join("");
+  sel.innerHTML = `<option value="">All concepts</option>` + [...counts].sort((a, b) => a[0].localeCompare(b[0])).map(([c, n]) => `<option value="${esc(c)}">${esc(c.replace(/-/g, " "))} (${n})</option>`).join("");
   sel.value = counts.has(P.concept) ? P.concept : (P.concept = "");
   const words = P.q.toLowerCase().split(/\s+/).filter(Boolean);
   const shown = P.list.filter((p) => (!P.concept || p.concepts.includes(P.concept))

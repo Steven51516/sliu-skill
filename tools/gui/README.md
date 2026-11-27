@@ -31,7 +31,7 @@ figure: the passage (or a crop of the box, drawn again at 3x), its page and your
 with no session in the project, a Claude session starts with the question. **Marks** are the highlights kept beside the
 PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
 session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
-result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note; the eye in
+result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it); the eye in
 the header hides them. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
 the pictures a note links beside it.
 

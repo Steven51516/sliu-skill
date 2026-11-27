@@ -12,6 +12,17 @@ const flat = (r) => [r.l, r.t, r.w, r.h].map((x) => +x.toFixed(5));
 const norm = (t) => String(t || "").replace(/\s+/g, " ").trim();
 let lib = null;
 
+// A question about a passage, as the message a session gets, and read back from a conversation (the chat draws it as
+// the passage, folded, and the question). Claude Code wraps a pasted message in <pasted_content> tags.
+const LEAD = "Read the pages around this in the PDF before you answer, cite the page or equation, and write math as LaTeX ($…$).";
+const askText = (file, where, quote, question) => `From ${file}, ${where}:\n\n> ${quote}\n\n${question}`;
+const boxText = (file, where, crop, question) => `A region of ${file}, ${where}, cropped here: ${crop}\n\n${question}`;
+export function readAsk(text) {
+  const t = text.replace(/<\\?\/?pasted_content[^>]*>/g, "").trim().replace(LEAD, "").trim();
+  const m = t.match(/^From (.+), (pp?\. [\d–]+):\n\n> (.+)\n\n([\s\S]+)$/), b = !m && t.match(/^A region of (.+), (p\. \d+), cropped here: (\S+)\n\n([\s\S]+)$/);
+  return m ? { file: m[1], where: m[2], quote: m[3], question: m[4] } : b ? { file: b[1], where: b[2], crop: b[3], question: b[4] } : null;
+}
+
 // pdf.js and its viewer, loaded on first use. The viewer's stylesheet is scoped to .pdfbox: it styles .dialog, .page and
 // other class names the app uses too.
 function load() {
@@ -273,12 +284,12 @@ export async function showPdf(el, { side, path, url, gone, open }) {
           const up = await post("/api/paste", { pane, b64: ctx.image.split(",")[1], name: "region.png", type: "image/png" });
           asked = q.value.trim() || "Explain what this shows.";
           crop = up.path;
-          text = `A region of ${file}, ${where}, cropped here: ${up.path}\n\n${asked}`;
+          text = boxText(file, where, up.path, asked);
         } else {
           asked = q.value.trim() || "Explain this passage.";
-          text = `From ${file}, ${where}:\n\n> ${ctx.quote.length > 6000 ? ctx.quote.slice(0, 6000) + "…" : ctx.quote}\n\n${asked}`;
+          text = askText(file, where, ctx.quote.length > 6000 ? ctx.quote.slice(0, 6000) + "…" : ctx.quote, asked);
         }
-        if (!pane) await startSession(`Read the pages around this in the PDF before you answer, cite the page or equation, and write math as LaTeX ($…$).\n\n${text}`);
+        if (!pane) await startSession(`${LEAD}\n\n${text}`);
         else {
           await post("/api/chat/send", { pane, text });
           markSent(pane);
@@ -323,12 +334,13 @@ export async function showPdf(el, { side, path, url, gone, open }) {
     const own = m.by !== "agent" && m.kind === "note";
     const p = pop(`<div class="ah"><span class="muted">${KINDS[m.kind] || "Highlight"} · p. ${m.page}</span><span class="grow"></span>
         <button class="btn ghost sm" id="mk-ask" title="Ask about this passage">${icon("chat")} Ask</button>
-        <button class="btn ghost sm icon" id="mk-del" title="Remove this highlight">${icon("trash")}</button>
+        <button class="btn ghost sm icon" id="mk-del" title="Remove this highlight (Delete)">${icon("trash")}</button>
         <button class="btn ghost sm icon" id="ask-x" title="Close (Esc)">${icon("x")}</button></div>
       ${m.quote ? `<div class="q">${esc(m.quote)}</div>` : ""}
       ${own ? `<textarea id="mk-note" rows="2" placeholder="Your note…">${esc(m.note || "")}</textarea><div class="af"><span class="grow"></span><button class="btn sm primary" id="mk-save">Save</button></div>` : `<div class="mn"></div>`}
       ${m.question ? `<div class="muted mw">No reply pinned yet to “${esc(m.question)}”. It is pinned when the session has replied and its chat is open here.</div>` : ""}`, at, "askpop markpop");
     if (!own && m.note) md($(".mn", p), m.note);
+    p._mark = m;                                               // Delete removes it (esc2)
     $("#ask-x", p).onclick = closeTip;
     $("#mk-del", p).onclick = () => { closeTip(); change({ delete: m.id }); };
     if (own) $("#mk-save", p).onclick = async () => { if (await change({ put: { ...m, note: $("#mk-note", p).value.trim() } })) closeTip(); };
@@ -344,8 +356,9 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   // wrote in a turn are fetched when it ends.
   let again = 0;
   function pin(t) {
-    const asked = norm(t.asked.replace(/<\/?pasted_content[^>]*>/g, " "));   // Claude Code wraps a pasted message in these
-    saved.filter((m) => m.question && (m.crop ? asked.includes(m.crop) : asked.includes(norm(m.quote).slice(0, 120)) && asked.endsWith(norm(m.question))))
+    const a = readAsk(t.asked);
+    if (!a) return;
+    saved.filter((m) => m.question && norm(m.question) === norm(a.question) && (m.crop ? m.crop === a.crop : !!a.quote && norm(a.quote).startsWith(norm(m.quote).slice(0, 120))))
       .forEach((m) => { m.note = (m.note ? m.note + "\n\n---\n\n" : "") + `**${m.question}**\n\n${t.said}`; m.question = ""; change({ put: m }); });
   }
   const ended = ({ detail: t }) => {
@@ -375,7 +388,15 @@ export async function showPdf(el, { side, path, url, gone, open }) {
     if (keepMarks !== true && marks.length) setMarks([]);
   }
   const outside = (e) => { if (tip && !tip.contains(e.target)) closeTip(); };
-  const esc2 = (e) => { if (e.key === "Escape" && (tip || boxing)) { closeTip(); setBoxing(false); } };
+  const esc2 = (e) => {
+    if (e.key === "Escape" && (tip || boxing)) { closeTip(); setBoxing(false); }
+    if ((e.key === "Delete" || e.key === "Backspace") && tip?._mark && !/^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName || "")) {
+      e.preventDefault();                                      // with a highlight's note open: remove the highlight
+      const id = tip._mark.id;
+      closeTip();
+      change({ delete: id });
+    }
+  };
   const onScroll = () => { if (tip?.className === "asktip") closeTip(); };
   document.addEventListener("mousedown", outside, true);
   document.addEventListener("keydown", esc2);

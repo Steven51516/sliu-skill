@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a question sent from the reader is drawn in the chat as its passage, folded to three lines, then
+  the question (the bubble showed the file path, the whole passage and Claude Code's `<pasted_content>` tags); the
+  paper list's two menus fit their words (they were cut at the box's edge); Delete or Backspace removes the highlight
+  whose note is open.
 - **Research Desk**: a reply is pinned to its passage again. Claude Code wraps a pasted (multi-line) message in
   `<pasted_content>` tags in its transcript, so a question sent from the reader no longer ended with the question and
   two real replies stayed unpinned; the tags are ignored when matching and taken out of chat bubbles. A question

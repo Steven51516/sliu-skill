@@ -299,11 +299,20 @@ details.fmd .fm { margin-top: 6px; }
 .vbody { padding: 14px 18px 50px; }
 .vbody pre.code { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow: auto; margin: 0; border: 1px solid var(--line); line-height: 1.5; }
 .vbody pre.code .ln { display: inline-block; width: 3.2em; color: var(--muted); opacity: .6; text-align: right; margin-right: 1.2em; user-select: none; }
+/* a question sent from the paper reader, in the chat: the passage it is about, folded, above the question */
+.msg.user .bubble .bq { font-size: 12px; color: var(--ink-2); border-left: 2px solid var(--line-2); padding-left: 8px; margin-bottom: 6px; cursor: pointer;
+  white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.msg.user .bubble .bq:hover { color: var(--ink); }
+.msg.user .bubble .bq .ico { width: 12px; height: 12px; vertical-align: -2px; margin-right: 4px; }
+.msg.user .bubble .bq b { font-weight: 600; margin-right: 4px; }
+
 /* the paper library (papers.js): the papers on the left, the paper or its note on the right */
 .plist { width: clamp(260px, 32%, 380px); flex: none; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
 .phead { padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
-.phead .pline { display: flex; gap: 6px; }
-.phead input, .phead select { flex: 1; min-width: 0; padding: 4px 8px; font-size: 12.5px; }
+.phead .pline { display: flex; flex-wrap: wrap; gap: 6px; }
+.phead input { flex: 1; min-width: 0; padding: 4px 8px; font-size: 12.5px; }
+.phead select { flex: 1 1 auto; min-width: 0; max-width: 100%; padding: 4px 8px; font-size: 12.5px; text-overflow: ellipsis; }   /* each as wide as its words; they stack when the column is narrow */
+.phead #pp-s { flex: 0 1 auto; }
 .prows { flex: 1; overflow: auto; padding: 4px 0 30px; }
 .prow { padding: 8px 12px; cursor: pointer; border-left: 2px solid transparent; outline: none; }
 .prow:hover, .prow:focus-visible { background: var(--hover); }

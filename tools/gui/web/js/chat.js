@@ -1,5 +1,6 @@
 // Chat with any live agent: its Claude Code transcript rendered, prompts answered from the exact screen, messages sent
 // through herdr. Polls fast while the agent works or waits, slowly while it is idle.
+import { readAsk } from "./reader.js";
 import { S, $, esc, get, post, toast, icon, md, hooks, agentByPane, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, store, savePrefs, codexNote, markSent, modelTag, canBtw, machineTag } from "./core.js";
 
 const C = S.chat;
@@ -258,7 +259,13 @@ function appendItems(items, initial = false) {
     const d = document.createElement("div");
     d.className = "msg " + it.k;
     if (it.id) d.dataset.uid = String(it.id);
-    if (it.k === "user") d.innerHTML = `<div class="bubble">${esc(it.text)}</div>`;
+    if (it.k === "user") {
+      const a = readAsk(it.text);                          // a question from the paper reader: its passage folded, then the question
+      d.innerHTML = a ? `<div class="bubble"><div class="bq" title="Open the paper">${icon("doc")}<b>${esc(a.where)}</b> ${esc(a.quote || "a boxed region of the page")}</div>${esc(a.question)}</div>`
+        : `<div class="bubble">${esc(it.text.replace(/<\\?\/?pasted_content[^>]*>/g, "").trim())}</div>`;
+      const proj = a && chatProject(), q = d.querySelector(".bq");
+      if (q) q.onclick = () => (proj && a.file.startsWith(proj.path + "/") ? hooks.openPath(proj.name, a.file.slice(proj.path.length + 1)) : toast(a.file));
+    }
     else if (it.k === "cmd") d.innerHTML = `<code>${esc(it.text)}</code>`;
     else if (it.k === "note") d.textContent = it.text;
     else if (it.k === "compact") {                       // Claude Code's summary at a compaction: folded, rendered on open
