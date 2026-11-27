@@ -49,6 +49,7 @@ export function renderLibrary(full = true) {
     if (marks && got) store("library.mark", got.checked);
     const list = [...new Set((what || "").split("\n").map((x) => x.trim()).filter(Boolean))].map((x) => ({
       text: c.add ? `${c.add} ${x}${bare ? " --no-highlights" : ""}` : `Add this to the ${c.name} folder of ${S.data.path}, following how the items there are kept: ${x}`, label: `add ${x.split("/").pop()}` }));
+    list.forEach((x) => hooks.oneOffBegun?.(project, x.label));
     if (list.length === 1) hooks.startWith(project, list[0].text, list[0].label);
     else if (list.length && (list.length <= 5 || window.confirm(`Start ${list.length} sessions, one for each line?`))) hooks.startEach(project, list);
   };

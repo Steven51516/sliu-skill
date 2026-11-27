@@ -8,7 +8,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 - **Research Desk**: highlighting a paper is a choice. A collection's new `highlight` setting names the command that
   marks up an item's PDF; with it, Add has a tick box (unticked, `--no-highlights` is added to what Add sends), and an
   unmarked paper offers Highlight this paper over its corner and under More. A Highlight session ends itself once its
-  marks are on the paper. Needs a backend restart.
+  marks are on the paper: found by its tab's name when its record comes cut to its end, and counted from the moment
+  the Desk started it (one of three finished sessions stayed open, its record cut past the tool that named its paper).
+  Needs a backend restart.
 - **Research Desk**: a new session's first message is seen to start. One of three sessions started in a row sat with
   its command typed and unsent; the backend now waits for the turn and presses Enter on a prompt herdr calls stalled.
 - **Research Desk**: the line under a one-off session says "Still open" and when it will close; "ends itself when its

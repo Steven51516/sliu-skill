@@ -148,6 +148,7 @@ const marking = (it) => hooks.sessionNamed(S.route.project, marker(it));
 function highlight(it) {
   const on = marking(it);
   if (on) { toast("A session is already highlighting it"); return hooks.openChat(on.pane, { focus: false }); }
+  hooks.oneOffBegun?.(S.route.project, marker(it));
   hooks.startWith(S.route.project, `${it.cfg.highlight} ${S.data.path}/${it.item}`, marker(it));
 }
 // Teach me asks a session to teach the item (the collection's `teach` command, or plain words; your request, to edit first).

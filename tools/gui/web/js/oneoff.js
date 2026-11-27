@@ -16,6 +16,15 @@ import { turnsOf } from "./chat.js";
 const ADD_REST = 1;                        // minutes an Add session rests after its last turn before it is judged
 const kept = store("oneoff.kept") || {};   // session id -> { why, at }: never ended here
 const judged = new Map();                  // session id -> the turn it was judged at: one look per turn
+// When this Desk started an Add or a Highlight session, by project and tab label: what it wrote since then is its
+// work. A long session's conversation comes cut to its end, where its first line in view can be later than its work.
+const begun = store("oneoff.begun") || {};
+hooks.oneOffBegun = (project, label) => {
+  const week = Date.now() - 7 * 86400000;
+  Object.keys(begun).forEach((k) => { if (begun[k] < week) delete begun[k]; });
+  begun[`${project}/${label.slice(0, 28)}`] = Date.now();
+  store("oneoff.begun", begun);
+};
 let busy = false, last = 0, off = 0;
 
 const limitOf = (p) => p.close_after ?? 30;
@@ -61,9 +70,11 @@ async function added(p, a) {
   if (chat.items.filter((i) => i.k === "turn").length > 1) return keep(a, "conversation");     // you went on talking to it
   const did = chat.items.filter((i) => i.k === "tool").map((i) => `${i.summary}\n${i.input}`).join("\n");
   const said = chat.items.filter((i) => i.k === "assistant").map((i) => i.text || "").join("\n");
-  const from = Date.parse(chat.items.find((i) => i.ts)?.ts || a.turn_end) / 1000 - 5;
-  if (isMark(a)) {                                             // its item: the one its tools name; its work: marks of its own, since it started
-    const it = lib.collections.flatMap((c) => c.items).filter((i) => /\.pdf$/i.test(i.main) && did.includes(`${p.path}/${i.path}`)).sort((x, y) => y.folder - x.folder)[0];
+  const from = (begun[`${p.name}/${a.tab_label}`] || Date.parse(chat.items.find((i) => i.ts)?.ts || a.turn_end)) / 1000 - 5;
+  if (isMark(a)) {                 // its item: the one its tools name, else the one its tab is named after; its work: marks of its own, since it started
+    const pdfs = lib.collections.flatMap((c) => c.items).filter((i) => /\.pdf$/i.test(i.main)), stem = a.tab_label.slice(10);
+    const named = pdfs.filter((i) => i.path.split("/").pop().startsWith(stem));
+    const it = pdfs.filter((i) => did.includes(`${p.path}/${i.path}`)).sort((x, y) => y.folder - x.folder)[0] || (named.length === 1 ? named[0] : null);
     const marks = it ? (await get("/api/marks", { project: p.name, path: it.main })).marks || [] : [];
     const n = marks.filter((m) => m.by === "agent" && Date.parse(m.at) / 1000 >= from).length;
     if (!n) return keep(a, chat.cut ? "unsure" : "nothing highlighted", chat.cut ? "" : `“${a.tab_label}” ended without highlighting anything. Its session is still open: read what it says.`);
