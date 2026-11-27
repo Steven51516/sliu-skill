@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a paper in a library has **Teach me** in the reader's header: it asks a session, in plain words,
+  to teach the paper one step at a time (a study skill, if one is installed, picks that up), starting a session when
+  there is none. There was no way to start that from the app.
 - **Research Desk**: a question sent from the reader is drawn in the chat as its passage, folded to three lines, then
   the question (the bubble showed the file path, the whole passage and Claude Code's `<pasted_content>` tags); the
   paper list's two menus fit their words (they were cut at the box's edge); Delete or Backspace removes the highlight

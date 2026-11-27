@@ -87,6 +87,16 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   const dir = path.split("/").slice(0, -1).join("/");
   if (side === "local" && dir && $(".vhead #vvs", el)) get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
     if (!alive() || !j.entries.some((e) => e.name === "note.md")) return;
+    if (S.data.library) {                                      // in a paper library: a session teaches the paper, in plain words (a skill for it picks them up)
+      $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pteach" title="Have a session teach you this paper, one step at a time, in the chat">${icon("spark")} Teach me</button>`);
+      $("#pteach", el).onclick = async () => {
+        const text = `Teach me this paper, one step at a time: ${S.data.path}/${dir}`, { pick } = sessions();
+        try {
+          if (!pick) await startSession(text);
+          else { await post("/api/chat/send", { pane: pick.pane, text }); markSent(pick.pane); hooks.openChat(pick.pane, { focus: false }); }
+        } catch (e) { toast(e.message, "err", 6000); }
+      };
+    }
     if (open) {
       $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pnote" title="Open this paper's note">${icon("doc")} Note</button>`);
       $("#pnote", el).onclick = () => open(`${dir}/note.md`);
@@ -306,7 +316,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   // No session to ask: a new Claude session in the project, its first message the question; the chat opens on it.
   async function startSession(text) {
     const { job } = await post("/api/session", { project: S.route.project, kind: "claude", prompt: text, label: (path.split("/").slice(-2, -1)[0] || "reader").slice(0, 28) });
-    toast("Starting a Claude session with your question…", "", 5000);
+    toast("Starting a Claude session…", "", 5000);
     (async () => {
       for (;;) {
         const j = await get("/api/job", { id: job });
