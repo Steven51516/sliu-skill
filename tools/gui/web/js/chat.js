@@ -355,7 +355,7 @@ function updateTool(t) {
 }
 
 // End a session: its tab closes and the agent in it ends; its conversation and what it wrote stay. Asked first when it
-// is still working, or when its project is not a paper library (where a session is often for one question).
+// is still working, or when its project is not a library (where a session is often for one question).
 export async function endSession(pane) {
   const a = agentByPane(pane), working = a?.status === "working";
   const library = S.summary?.projects.find((p) => p.name === a?.project)?.library;

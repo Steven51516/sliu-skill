@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a library holds any documents, not only papers. Its page listed the folders under `Papers/` and
+  nothing else of the library (courses, notes kept as single files). Its top-level folders are now collections to
+  switch between; an item is a folder with its documents, or a single file; Teach me and the trash work on any item;
+  `add` and `teach` commands are set per collection. `/api/papers` is `/api/library`.
 - **Research Desk**: **End** in the chat header closes a plain session's tab (`/api/session-end`). A paper's session
   is often for one question, and there was no way to close it from the app; what it wrote stays (replies pinned to the
   paper, lessons, the conversation). It asks first when the session is working or its project is not a paper library.

@@ -4,7 +4,6 @@
 // Marks are the highlights kept beside the PDF in <name>.marks.json (/api/marks): what you highlighted or asked about,
 // with the session's reply pinned to it, and what an agent marked (a claim, the method, a result, a limitation).
 import { S, $, esc, get, post, toast, icon, md, hooks, store, allAgents, agentLabel, markSent } from "./core.js";
-import { ask } from "./dialogs.js";
 
 const V = "/vendor/pdfjs/";
 const KINDS = { claim: "Claim", method: "Method", result: "Result", limit: "Limitation", ask: "Asked", note: "Highlight" };
@@ -40,9 +39,8 @@ function load() {
 }
 
 // Draws the PDF at `url` into el's .pdfbox and adds zoom, page and Box & ask to its .vhead. Returns a function that
-// frees the document. `gone(folder)` is called after Delete paper moved the PDF's folder to the trash; `open(path)`
-// shows another file of the project (the paper's note).
-export async function showPdf(el, { side, path, url, gone, open }) {
+// frees the document. `open(path)` shows another file of the project (the note beside the PDF).
+export async function showPdf(el, { side, path, url, open }) {
   const req = el._req, alive = () => el._req === req && el.isConnected;
   const box = $(".pdfbox", el), scroll = $(".pdfscroll", el);
   let L, task, doc;
@@ -84,33 +82,12 @@ export async function showPdf(el, { side, path, url, gone, open }) {
     hide(!!store("pdf.nomarks"));
     if ($("#pmarks", el)) $("#pmarks", el).onclick = () => { const on = !box.classList.contains("nomarks"); store("pdf.nomarks", on); hide(on); closeTip(); };
   }
-  // A paper's folder holds the PDF beside its note.md. Delete paper moves that folder to the trash (undone with
-  // `trash --restore`).
+  // A PDF with a note.md beside it (a paper and its note): the note is one click away.
   const dir = path.split("/").slice(0, -1).join("/");
-  if (side === "local" && dir && $(".vhead #vvs", el)) get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
+  if (open && side === "local" && dir && $(".vhead #vvs", el)) get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
     if (!alive() || !j.entries.some((e) => e.name === "note.md")) return;
-    if (S.data.library) {                                      // in a paper library: a session teaches the paper (`teach` in the project's config: the command of a skill for it)
-      $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pteach" title="Have a session teach you this paper, one step at a time, in the chat">${icon("spark")} Teach me</button>`);
-      $("#pteach", el).onclick = async () => {               // your request, to edit before it goes: your level, what to focus on
-        const words = await ask({ title: "Teach me this paper", label: "Your request. Edit it if you like: your level, what to focus on, the language.",
-          value: "Teach me this paper step by step.", ok: "Start", hint: "⌘↩ starts it." });
-        const paper = `${S.data.path}/${dir}`;
-        if (words) hooks.tellProject(S.route.project, S.data.teach ? `${S.data.teach} ${paper} ${words.replace(/\s+/g, " ")}` : `${words}\n\nThe paper: ${paper}`, label);
-      };
-    }
-    if (open) {
-      $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pnote" title="Open this paper's note">${icon("doc")} Note</button>`);
-      $("#pnote", el).onclick = () => open(`${dir}/note.md`);
-    }
-    $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm danger icon" id="pdel" title="Delete paper: move its folder (note, PDF, figures) to the trash">${icon("trash")}</button>`);
-    $("#pdel", el).onclick = async () => {
-      if (!window.confirm(`Delete this paper?\n\n${dir}/ (its note, PDF and figures) moves to the trash.\nUndo: trash --restore "${S.data.path}/${dir}"`)) return;
-      try {
-        const r = await post("/api/trash", { project: S.route.project, path: dir });
-        toast(r.dry_run ? `Dry run: ${r.path} would move to the trash` : "Paper moved to the trash", "", 6000);
-        if (!r.dry_run) gone?.(dir);
-      } catch (e) { toast(e.message, "err", 7000); }
-    };
+    $(".vhead #pbox", el).closest(".pdfctl").insertAdjacentHTML("afterend", `<button class="btn sm" id="pnote" title="Open the note beside this PDF">${icon("doc")} Note</button>`);
+    $("#pnote", el).onclick = () => open(`${dir}/note.md`);
   }).catch(() => {});
 
   bus.on("pagesinit", () => { fit(); const p = store(key); if (p > 1 && p <= pv.pagesCount) pv.currentPageNumber = p; pageLabel(); });

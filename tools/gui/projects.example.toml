@@ -22,9 +22,11 @@ shared = ["common"]                    # server folders pinned beside every map'
 # claude_args = ["--model", "opus"]    # per project, overrides defaults.claude_args
 # [projects.example.role_env.desk]     # per project, overrides a role's defaults
 
-# A folder of papers, one folder each (paper.pdf, note.md) under its Papers/: shown as its own page, not among the projects
-# [projects.papers]
-# path = "~/papers"
+# A library of documents: its top-level folders are collections (papers, courses, anything), shown as its own page,
+# not among the projects. A collection may name the commands its Add and Teach me buttons send (default: plain words).
+# [projects.documents]
+# path = "~/documents"
 # library = true
-# add = "/your-reading-skill"      # what Add sends, followed by the paper you name (default: plain words)
-# teach = "/your-teaching-skill"   # what Teach me sends, followed by the paper's folder (default: plain words)
+# [projects.documents.collections.Papers]
+# add = "/your-reading-skill"      # followed by what you name: a link, an ID, a file
+# teach = "/your-teaching-skill"   # followed by the item's folder and your request

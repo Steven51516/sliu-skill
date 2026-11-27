@@ -2,7 +2,7 @@
 import { S, $, esc, get, post, toast, icon, pill, ago, go, goMap, href, hooks, agentLabel, avatar, allAgents, AGENT_WORD, popMenu, savePrefs, codexNote, fmtDur, loopNote, loopDead, store, modelTag, machineTag, placesOf } from "./core.js";
 import { renderFiles, vscode } from "./files.js";
 import { renderMap, curMap } from "./map.js";
-import { renderPapers } from "./papers.js";
+import { renderLibrary } from "./library.js";
 
 // ---------- title bar ----------
 
@@ -469,7 +469,7 @@ export function renderView(full = true) {
   if (r.view === "gpus") return full ? renderGpus() : null;
   if (r.view === "settings") return full ? renderSettings() : null;
   if (!S.data || S.data.name !== r.project) { $("#view").innerHTML = S.err ? `<div class="page"><div class="err">${esc(S.err)}</div></div>` : `<div class="empty big"><div class="spin"></div></div>`; return; }
-  if (r.view === "project") return S.data.library ? renderPapers(full) : renderOverview();
+  if (r.view === "project") return S.data.library ? renderLibrary(full) : renderOverview();
   if (r.view === "search") return full ? renderSearch() : null;
   if (r.view === "files") { if (full || !$("#trees")) { $("#view").innerHTML = `<div class="page full"><div class="tabbody" id="pfiles"></div></div>`; renderFiles($("#pfiles"), null); } return; }
   if (r.view === "map") return renderMap(full);

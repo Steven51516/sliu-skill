@@ -86,9 +86,10 @@ def load_config():
         p.setdefault("shared", [])
         p.setdefault("server_maps", "maps")
         p["muted"] = p.get("inbox") is False       # inbox = false: its tickets stay out of the Inbox and alerts
-        p["library"] = p.get("library") is True    # library = true: a folder of papers, shown as its own page (papers_list)
-        for k in ("add", "teach"):                 # what its Add and Teach me buttons send, before the paper (a /skill)
-            p[k] = str(p.get(k) or "").strip()[:200]
+        p["library"] = p.get("library") is True    # library = true: a folder of documents, shown as its own page (library_list)
+        # per collection (a top-level folder of the library): what Add and Teach me send before the item (a /skill)
+        p["collections"] = {str(n): {k: str(c.get(k) or "").strip()[:200] for k in ("add", "teach")}
+                            for n, c in (p.get("collections") or {}).items() if isinstance(c, dict)}
     return cfg
 
 
@@ -1030,7 +1031,7 @@ def project_state(p, with_agents=True):
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
             "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
             "keychain": keychain_has(), "dry_run": ARGS.dry_run, "remote": remote_info(p) if p.get("remote_host") else None,
-            "muted": p["muted"], "library": p["library"], "add": p["add"], "teach": p["teach"]}
+            "muted": p["muted"], "library": p["library"], "collections": p["collections"]}
 
 
 def projects_summary():
@@ -2046,7 +2047,7 @@ def figure_fix(b):
     r = chat_send({"pane": pane, "text": text})
     return dict(r, marked=up["path"])
 
-# ---------- move to the trash (the reader's Delete paper) ----------
+# ---------- move to the trash (a library item's trash button) ----------
 
 TRASH = os.path.join(os.path.dirname(os.path.dirname(HERE)), "extras", "trash.py")
 
@@ -2070,43 +2071,57 @@ def trash_path(b):
         raise ApiError(500, err.strip() or "the trash move failed")
     return {"trashed": out.decode(errors="replace").strip().split(" -> ")[-1]}
 
-# ---------- a paper library (a project with library = true): one folder per paper ----------
+# ---------- a library (a project with library = true): collections of documents ----------
+# A collection is a top-level folder of the library (Papers, Courses, ...). Its items are its folders, each with its
+# documents (the Markdown and PDF files in it), and the Markdown and PDF files directly in it.
 
-def papers_list(p):
-    """The papers of a library: each folder under its Papers/ (or under the library itself) that holds a note.md or a
-    PDF, with what the note's front matter says (title, authors, date, concepts, verdict)."""
-    root = os.path.realpath(p["path"])
-    base = os.path.join(root, "Papers") if os.path.isdir(os.path.join(root, "Papers")) else root
-    out = []
-    for e in sorted(os.scandir(base), key=lambda e: e.name.lower()):
-        if not e.is_dir() or e.name.startswith(".") or e.name in HIDE_DIRS:
-            continue
-        note, pdf = os.path.join(e.path, "note.md"), os.path.join(e.path, "paper.pdf")
-        if not os.path.isfile(pdf):
-            pdf = next(iter(sorted(glob.glob(os.path.join(glob.escape(e.path), "*.pdf")))), None)
-        if not os.path.isfile(note):
-            note = None
-        if not (note or pdf):
-            continue
+DOC_EXT = (".md", ".pdf", ".txt")
+MAIN_DOCS = ("paper.pdf", "index.md", "note.md", "README.md")     # the document an item opens on, in this order
+
+
+def library_item(root, path):
+    name, folder = os.path.basename(path), os.path.isdir(path)
+    if folder:
+        docs = sorted(f for f in os.listdir(path) if f.lower().endswith(DOC_EXT) and not f.startswith("."))
+        if not docs:
+            return None
+        main = next((m for m in MAIN_DOCS if m in docs), None) or next((d for d in docs if d.lower().endswith(".pdf")), docs[0])
+        about = next((m for m in ("note.md", "index.md", "README.md") if m in docs), None)
+        about, main = about and os.path.join(path, about), os.path.join(path, main)
+    elif name.lower().endswith(DOC_EXT):
+        docs, main, about = [], path, path if name.lower().endswith(".md") else None
+    else:
+        return None
+    try:
+        meta = tracker.parse_front_matter(about)[0] if about else {}
+    except (OSError, UnicodeDecodeError):
+        meta = {}
+    marks = 0
+    if main.lower().endswith(".pdf"):
         try:
-            meta = tracker.parse_front_matter(note)[0] if note else {}
-        except (OSError, UnicodeDecodeError):
-            meta = {}
-        marks = 0
-        if pdf:
-            try:
-                with open(os.path.splitext(pdf)[0] + ".marks.json", encoding="utf-8") as f:
-                    marks = len(json.load(f).get("marks") or [])
-            except (OSError, ValueError, AttributeError):
-                pass
-        concepts = meta.get("concepts") or []
-        text = lambda k: str(meta.get(k) or "")[:600]      # noqa: E731
-        out.append({"folder": os.path.relpath(e.path, root), "title": text("title") or e.name.replace("-", " "),
-                    "authors": text("authors"), "date": text("date"), "verdict": text("verdict"),
-                    "concepts": [str(c) for c in (concepts if isinstance(concepts, list) else [concepts])][:12],
-                    "pdf": os.path.relpath(pdf, root) if pdf else None, "note": os.path.relpath(note, root) if note else None,
-                    "marks": marks, "added": os.path.getmtime(note or pdf)})
-    return {"papers": out}
+            with open(os.path.splitext(main)[0] + ".marks.json", encoding="utf-8") as f:
+                marks = len(json.load(f).get("marks") or [])
+        except (OSError, ValueError, AttributeError):
+            pass
+    concepts = meta.get("concepts") or []
+    text = lambda *keys: next((str(meta[k])[:600] for k in keys if meta.get(k)), "")      # noqa: E731
+    rel = lambda x: os.path.relpath(x, root)                                               # noqa: E731
+    return {"path": rel(path), "folder": folder, "title": text("title") or os.path.splitext(name)[0].replace("-", " "),
+            "authors": text("authors", "instructor"), "date": text("date"), "verdict": text("verdict"),
+            "concepts": [str(c).strip("[]") for c in (concepts if isinstance(concepts, list) else [concepts])][:12],
+            "main": rel(main), "docs": [rel(os.path.join(path, d)) for d in docs][:40], "marks": marks,
+            "added": os.path.getmtime(about or main)}
+
+
+def library_list(p):
+    root, out = os.path.realpath(p["path"]), []
+    for c in sorted(os.scandir(root), key=lambda e: e.name.lower()):
+        if not c.is_dir() or c.name.startswith(".") or c.name in HIDE_DIRS:
+            continue
+        items = [i for i in (library_item(root, e.path) for e in sorted(os.scandir(c.path), key=lambda e: e.name.lower())
+                             if not e.name.startswith(".") and e.name not in HIDE_DIRS) if i]
+        out.append({"name": c.name, "items": items, **p["collections"].get(c.name, {"add": "", "teach": ""})})
+    return {"collections": out}
 
 
 # ---------- marks: the highlights and notes kept beside a PDF (web/js/reader.js; an agent may write the file too) ----------
@@ -3173,8 +3188,8 @@ class Handler(BaseHTTPRequestHandler):
             return server_read(p, rel, q.get("mode"), fresh)
         if path == "/api/marks":
             return marks_read(project(q.get("project")), clean_rel(q.get("path")))
-        if path == "/api/papers":
-            return papers_list(project(q.get("project")))
+        if path == "/api/library":
+            return library_list(project(q.get("project")))
         if path == "/api/plan":
             return team_plan(project(q.get("project")), q.get("map") or None, q.get("agent") or None)
         if path == "/api/job":

@@ -306,7 +306,7 @@ details.fmd .fm { margin-top: 6px; }
 .msg.user .bubble .bq .ico { width: 12px; height: 12px; vertical-align: -2px; margin-right: 4px; }
 .msg.user .bubble .bq b { font-weight: 600; margin-right: 4px; }
 
-/* the paper library (papers.js): the papers on the left, the paper or its note on the right */
+/* a library (library.js): a collection's items on the left, the document on the right */
 .plist { width: clamp(260px, 32%, 380px); flex: none; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
 .phead { padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
 .phead .pline { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -325,6 +325,11 @@ details.fmd .fm { margin-top: 6px; }
 .prow .pm .pk .ico { width: 11px; height: 11px; }
 .prow .pc { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
 .prow .pc span { font-size: 10.5px; color: var(--muted); background: var(--hover); border-radius: 5px; padding: 0 5px; }
+.prow .pd { margin-top: 6px; display: flex; flex-direction: column; gap: 1px; }       /* the open item's documents */
+.prow .pd a { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); padding: 2px 6px; border-radius: 6px; cursor: pointer; }
+.prow .pd a:hover { background: var(--hover); color: var(--ink); }
+.prow .pd a.on { color: var(--ink); font-weight: 550; }
+.prow .pd a .ico { width: 12px; height: 12px; flex: none; }
 
 /* reading mode (the viewer's first button, files.js): the sidebar and the list beside the viewer step aside */
 /* only while a file is open: an empty viewer says "pick one on the left" */

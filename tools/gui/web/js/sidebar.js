@@ -26,7 +26,7 @@ export function renderSidebar() {
     ${nav("#/gpus", "gpu", "GPUs", r.view === "gpus")}
     ${projects.filter((p) => p.library).map((p) => nav(href({ project: p.name }), "doc", p.name[0].toUpperCase() + p.name.slice(1), cur === p.name)).join("")}
     <div class="side-sec"><span class="grow">Projects</span><button class="btn ghost sm icon" id="sb-add" title="New project, or add an existing folder">${icon("plus")}</button></div>`;
-  for (const p of projects.filter((x) => !x.library)) {   // a paper library has its own entry above
+  for (const p of projects.filter((x) => !x.library)) {   // a library has its own entry above
     const working = (p.agents || []).filter((a) => a.status === "working").length;
     const blocked = (p.agents || []).filter((a) => a.status === "blocked").length;
     const waiting = (p.waiting || []).filter((w) => !p.muted || w.kind === "agent").length;   // muted: only agents at a prompt count

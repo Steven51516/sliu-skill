@@ -38,13 +38,16 @@ result, a limitation; the file's format is at `marks_file` in `server.py`). Clic
 the header hides them. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
 the pictures a note links beside it.
 
-Papers: a project with `library = true` is a paper library. It has its own entry in the sidebar and opens as a page
-(`web/js/papers.js`, `/api/papers`): the papers on the left (a folder each under its `Papers/`, holding `paper.pdf` and
-a `note.md` whose front matter gives title, authors, date, concepts and verdict), searched and filtered by concept,
-the paper or its note on the right. **Note** and **Paper** switch between the two. **Add** asks a session to read a new paper into
-the library and **Teach me** to teach the open paper (your request, which you can edit first): in plain words, or with the commands the
-project's `add` and `teach` settings name (a skill that is started only by its command). **Delete paper** moves the folder to the trash (`extras/trash.py`: undone with
-`trash --restore <path>`).
+Library: a project with `library = true` is a library of documents. It has its own entry in the sidebar and opens as a
+page (`web/js/library.js`, `/api/library`). Its top-level folders are its **collections** (papers, courses, anything);
+a collection's **items** are its folders, each with its documents (the Markdown and PDF files in it), and the Markdown,
+PDF and text files directly in it. The list shows one collection, searched and filtered by the concepts its items'
+front matter names; the document opens on the right, and an item's other documents are listed under it. **Add** asks a
+session to add something to the collection and **Teach me** to teach the open item (your request, which you can edit
+first): in plain words, or with the commands the collection's `add` and `teach` settings name (a skill started only
+by its command). The trash in the header moves the item to the trash (`extras/trash.py`: undone with
+`trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads
+the folder you point it at.
 
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).
 `research-gui` opens the app if installed; `--browser` uses a browser tab; `--serve` runs only the backend;
