@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a library's **Add** takes several lines, one thing to add on each, and starts a session for each
+  in turn (it took one; six or more ask first).
 - **Research Desk**: a library holds any documents, not only papers. Its page listed the folders under `Papers/` and
   nothing else of the library (courses, notes kept as single files). Its top-level folders are now collections to
   switch between; an item is a folder with its documents, or a single file; Teach me and the trash work on any item;

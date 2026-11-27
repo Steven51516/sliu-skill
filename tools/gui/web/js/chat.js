@@ -66,20 +66,31 @@ export async function tellProject(project, text, label = "") {
     else await startWith(project, text, label);
   } catch (e) { toast(e.message, "err", 6000); }
 }
+// A new Claude session in the project whose first message is `text`: asked for, then waited for.
+const begin = async (project, text, label) => (await post("/api/session", { project, kind: "claude", prompt: text, label: label.slice(0, 28) })).job;
+async function started(job) {                       // its pane once it runs (none in a dry run); throws when it did not start
+  for (;;) {
+    const j = await get("/api/job", { id: job });
+    if (!j.done) { await new Promise((r) => setTimeout(r, 800)); continue; }
+    hooks.refresh();
+    if (!j.ok) throw new Error(`The session did not start: ${j.log[j.log.length - 1] || ""}`);
+    return j.panes[0] || null;
+  }
+}
 export async function startWith(project, text, label = "") {
-  const { job } = await post("/api/session", { project, kind: "claude", prompt: text, label: label.slice(0, 28) });
+  const job = await begin(project, text, label);
   toast("Starting a Claude session…", "", 5000);
-  (async () => {
-    for (;;) {
-      const j = await get("/api/job", { id: job });
-      if (!j.done) { await new Promise((r) => setTimeout(r, 800)); continue; }
-      hooks.refresh();
-      if (!j.ok) toast(`The session did not start: ${j.log[j.log.length - 1] || ""}`, "err", 8000);
-      else if (j.panes[0]) setTimeout(() => openChat(j.panes[0], { focus: false }), 1500);
-      else toast("Dry run: no session was started", "", 5000);
-      return;
-    }
-  })().catch((e) => toast(e.message, "err", 6000));
+  started(job).then((pane) => (pane ? setTimeout(() => openChat(pane, { focus: false }), 1500) : toast("Dry run: no session was started", "", 5000)))
+    .catch((e) => toast(e.message, "err", 8000));
+}
+// Several at once (a list of things to add): a session each, started one after the other; the chat stays where it is.
+export async function startEach(project, list) {
+  let n = 0;
+  for (const it of list) {
+    try { n += (await started(await begin(project, it.text, it.label))) ? 1 : 0; toast(n ? `Started ${n} of ${list.length}` : "Dry run: no session was started", "", 3000); }
+    catch (e) { toast(`${it.label}: ${e.message}`, "err", 8000); }
+  }
+  if (n) toast(`${n} session${n > 1 ? "s" : ""} started: they are under Sessions in the sidebar`, "", 6000);
 }
 
 // a saved conversation around one message (a search hit), read-only

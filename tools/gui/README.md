@@ -43,7 +43,7 @@ page (`web/js/library.js`, `/api/library`). Its top-level folders are its **coll
 a collection's **items** are its folders, each with its documents (the Markdown and PDF files in it), and the Markdown,
 PDF and text files directly in it. The list shows one collection, searched and filtered by the concepts its items'
 front matter names; the document opens on the right, and an item's other documents are listed under it. **Add** asks a
-session to add something to the collection and **Teach me** to teach the open item (your request, which you can edit
+session to add something to the collection (several lines: a session each, started in turn) and **Teach me** to teach the open item (your request, which you can edit
 first): in plain words, or with the commands the collection's `add` and `teach` settings name (a skill started only
 by its command). The trash in the header moves the item to the trash (`extras/trash.py`: undone with
 `trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads

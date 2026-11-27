@@ -30,10 +30,14 @@ export function renderLibrary(full = true) {
   $("#pp-q").oninput = (e) => { L.q = e.target.value; rows(); };
   $("#pp-c").onchange = (e) => { L.concept = e.target.value; rows(); };
   $("#pp-s").onchange = (e) => { L.sort = e.target.value; store("library.sort", L.sort); rows(); };
-  $("#pp-add").onclick = async () => {                        // each new item in a session of its own
+  $("#pp-add").onclick = async () => {                        // one per line, each in a session of its own
     const c = col();
-    const what = c && await ask({ title: `Add to ${c.name}`, label: c.add ? "An ID, a link, a title, or the path of a file" : "What to add: a link, a title, the path of a file, or a description", multiline: false, ok: "Add" });
-    if (what) hooks.startWith(project, c.add ? `${c.add} ${what.trim()}` : `Add this to the ${c.name} folder of ${S.data.path}, following how the items there are kept: ${what.trim()}`, `add ${what.trim().split("/").pop()}`);
+    const what = c && await ask({ title: `Add to ${c.name}`, label: c.add ? "One per line: an ID, a link, a title, or the path of a file" : "One per line: a link, a title, the path of a file, or a description",
+      ok: "Add", hint: "⌘↩ adds. Each line gets a session of its own." });
+    const list = [...new Set((what || "").split("\n").map((x) => x.trim()).filter(Boolean))].map((x) => ({
+      text: c.add ? `${c.add} ${x}` : `Add this to the ${c.name} folder of ${S.data.path}, following how the items there are kept: ${x}`, label: `add ${x.split("/").pop()}` }));
+    if (list.length === 1) hooks.startWith(project, list[0].text, list[0].label);
+    else if (list.length && (list.length <= 5 || window.confirm(`Start ${list.length} sessions, one for each line?`))) hooks.startEach(project, list);
   };
   hooks.fileOpened = rows;
   hooks.libraryChanged = load;
