@@ -3154,6 +3154,7 @@ class Handler(BaseHTTPRequestHandler):
 class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
+    request_queue_size = 128      # the page opens a connection per file; the default of 5 refused some at start
 
 
 def already_running(port):

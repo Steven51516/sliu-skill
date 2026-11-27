@@ -10,6 +10,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   **Box & ask** an equation or a figure, and the passage (or a crop), its page and your question go to a session.
   **Delete paper** moves a paper's folder (`paper.pdf` beside `note.md`) to the trash. Markdown in the viewer and in
   chat draws math (KaTeX) and the pictures a note links beside it.
+- **Research Desk**: the file view keeps its pane's width (a long line pushed it under the chat panel); the backend
+  queues 128 connections instead of 5 (the page opens one per file, and at start some were refused: in a test of six
+  loads, most failed once and reloaded; none of eight after); every project in the sidebar has the same icon (a remote
+  one is marked by its host tag).
 - **`research-work`**: before reporting done, a worker stops the background commands it started. A leftover waiter
   blocked every close of a finished worker's tab (three exits typed into one pane, all backed out).
 - **`codex-run`**: a start-up failure counts only when no tool call succeeded (the words quoted from a file gave a
