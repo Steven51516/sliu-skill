@@ -27,6 +27,7 @@ shared = ["common"]                    # server folders pinned beside every map'
 # [projects.documents]
 # path = "~/documents"
 # library = true
+# close_after = 30                 # minutes an idle one-off session (an Add, a question from the reader) stays open; 0: never ended
 # [projects.documents.collections.Papers]
 # add = "/your-reading-skill"      # followed by what you name: a link, an ID, a file
 # teach = "/your-teaching-skill"   # followed by the item's folder and your request

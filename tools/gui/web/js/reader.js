@@ -10,6 +10,9 @@ const KINDS = { claim: "Claim", method: "Method", result: "Result", limit: "Limi
 const R = (a) => ({ l: a[0], t: a[1], w: a[2], h: a[3] });       // a kept rect, as fractions of its page
 const flat = (r) => [r.l, r.t, r.w, r.h].map((x) => +x.toFixed(5));
 const norm = (t) => String(t || "").replace(/\s+/g, " ").trim();
+// a mark waits for the reply to the question `a` (readAsk); the reply becomes its note
+const asks = (m, a) => !!m.question && norm(m.question) === norm(a.question) && (m.crop ? m.crop === a.crop : !!a.quote && norm(a.quote).startsWith(norm(m.quote).slice(0, 120)));
+const answered = (m, said) => ({ ...m, note: (m.note ? m.note + "\n\n---\n\n" : "") + `**${m.question}**\n\n${said}`, question: "" });
 let lib = null;
 
 // A question about a passage, as the message a session gets, and read back from a conversation (the chat draws it as
@@ -21,6 +24,21 @@ export function readAsk(text) {
   const t = text.replace(/<\\?\/?pasted_content[^>]*>/g, "").trim().replace(LEAD, "").trim();
   const m = t.match(/^From (.+), (pp?\. [\d–]+):\n\n> (.+)\n\n([\s\S]+)$/), b = !m && t.match(/^A region of (.+), (p\. \d+), cropped here: (\S+)\n\n([\s\S]+)$/);
   return m ? { file: m[1], where: m[2], quote: m[3], question: m[4] } : b ? { file: b[1], where: b[2], crop: b[3], question: b[4] } : null;
+}
+
+// Replies pinned with no paper open (oneoff.js, before a question's session ends): each turn's reply goes to the marks
+// that wait for it, in the PDF it was asked about under `root`, the project's folder. Answers how many it pinned.
+export async function pinTurns(project, root, turns) {
+  let n = 0;
+  for (const t of turns) {
+    const a = readAsk(t.asked);
+    if (!a || !a.file.startsWith(root + "/")) continue;
+    const path = a.file.slice(root.length + 1);
+    let marks = [];
+    try { marks = (await get("/api/marks", { project, path })).marks || []; } catch { /* the PDF is gone: nothing waits */ }
+    for (const m of marks.filter((m) => asks(m, a))) { await post("/api/marks", { project, path, put: answered(m, t.said) }); n++; }
+  }
+  return n;
 }
 
 // pdf.js and its viewer, loaded on first use. The viewer's stylesheet is scoped to .pdfbox: it styles .dialog, .page and
@@ -334,8 +352,7 @@ export async function showPdf(el, { side, path, url }) {
   function pin(t) {
     const a = readAsk(t.asked);
     if (!a) return;
-    saved.filter((m) => m.question && norm(m.question) === norm(a.question) && (m.crop ? m.crop === a.crop : !!a.quote && norm(a.quote).startsWith(norm(m.quote).slice(0, 120))))
-      .forEach((m) => { m.note = (m.note ? m.note + "\n\n---\n\n" : "") + `**${m.question}**\n\n${t.said}`; m.question = ""; change({ put: m }); });
+    saved.filter((m) => asks(m, a)).forEach((m) => change({ put: Object.assign(m, answered(m, t.said)) }));
   }
   const ended = ({ detail: t }) => {
     if (!alive() || !keep) return;

@@ -5,6 +5,12 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: one-off sessions of a library end themselves, keeping what they wrote. Each Add and each
+  question from the reader started a Claude session that stayed open for good. Now an Add session ends once its item
+  is in the library (one that added nothing stays, and says so), and a session holding only reader questions ends
+  after `close_after` minutes idle (a library setting: 30, 0 for never) once its document is closed, its replies
+  pinned first. A session you typed into, asked to teach, or kept is left alone. The ending never stops background
+  work: `/api/session-leave` lets the session exit by itself or leaves it open. Needs a backend restart.
 - **`team-worker --close`** asks a worker that still holds a background command to stop it, once, and says "try
   again later" (exit 3); the next call closes it. Before, it only backed out, and every pass of the driver and of
   `team-watch` typed an exit into the worker again: eight finished workers got 4 to 16 exits each and stayed open for

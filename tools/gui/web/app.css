@@ -1130,3 +1130,8 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 /* the map graph: the caption over the settled tickets laid out as a grid under it */
 .node.label { cursor: default; }
 .node .glabel { font-size: 12px; font-weight: 550; color: var(--muted); padding: 2px 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* under a one-off session's conversation: when it ends itself, and a way to keep it (oneoff.js) */
+#ch-body .oneoff { margin: 10px auto 4px; max-width: 420px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--muted); }
+#ch-body .oneoff a { color: var(--ink-2); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+#ch-body .oneoff a:hover { color: var(--ink); }

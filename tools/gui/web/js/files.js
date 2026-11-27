@@ -136,7 +136,7 @@ export async function vscode(side, path, dir) {
 }
 
 // In a library, a document belongs to an item: a folder of a collection (Papers/<name>/...) or a file in one.
-function libraryItem(side, path) {
+export function libraryItem(side, path) {
   const parts = path.split("/");
   if (!S.data?.library || side !== "local" || parts.length < 2 || parts.length > 3) return null;
   return { item: parts.slice(0, 2).join("/"), folder: parts.length === 3, name: parts[1], cfg: S.data.collections?.[parts[0]] || {}, col: parts[0] };

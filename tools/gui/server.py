@@ -87,6 +87,10 @@ def load_config():
         p.setdefault("server_maps", "maps")
         p["muted"] = p.get("inbox") is False       # inbox = false: its tickets stay out of the Inbox and alerts
         p["library"] = p.get("library") is True    # library = true: a folder of documents, shown as its own page (library_list)
+        try:                                       # close_after: minutes a one-off session of a library may sit idle (oneoff.js); 0: never ended
+            p["close_after"] = max(0, min(int(p.get("close_after", 30)), 7 * 24 * 60))
+        except (TypeError, ValueError):
+            p["close_after"] = 30
         # per collection (a top-level folder of the library): what Add and Teach me send before the item (a /skill)
         p["collections"] = {str(n): {k: str(c.get(k) or "").strip()[:200] for k in ("add", "teach")}
                             for n, c in (p.get("collections") or {}).items() if isinstance(c, dict)}
@@ -1046,7 +1050,7 @@ def projects_summary():
                         "open_maps": sum(m["status"] != "closed" for m in s["maps"]),
                         "running": sum(t["status"] in ("running", "claimed") for m in s["maps"] for t in m["tickets"]),
                         "changes": len(s["changes"]["items"]), "server": p.get("server"), "remote": s["remote"], "muted": p["muted"],
-                        "library": p["library"]})
+                        "library": p["library"], "close_after": p["close_after"]})
         except Exception as e:  # one broken project must not hide the others
             out.append({"name": name, "ok": False, "error": str(e), "waiting": [], "agents": [],
                         "remote": remote_info(p) if p.get("remote_host") else None, "library": p["library"]})
@@ -2412,6 +2416,43 @@ def session_end(b):
     return {"ok": True}
 
 
+def session_leave(b):
+    """End a session only if it leaves by itself: type /exit, and close its tab once the agent is gone. Claude Code
+    asks before exiting over a background task of the session; Esc answers Stay and nothing is stopped. Answers
+    {"left": true}, or {"left": false, "why": "busy" | "background"}. For the Desk's own ending of one-off sessions
+    (oneoff.js), which must never stop what a session started; a person's End is session_end."""
+    pane = b.get("pane") or ""
+    if pane.startswith("remote:"):
+        raise ApiError(400, "it runs on another host: end it there")
+    a, _ = live_agent(pane)
+    m, rp = split_pane(pane)
+    if a.get("agent") != "claude":
+        raise ApiError(400, "only a Claude session leaves this way")
+    if a.get("agent_status") in ("working", "blocked"):
+        return {"left": False, "why": "busy"}
+    if ARGS.dry_run:
+        return {"dry_run": True}
+    try:
+        herdr("agent", "prompt", rp, "/exit", timeout=30, machine=m)
+        gone = False
+        for _ in range(10):
+            time.sleep(2)
+            now = next((x for x in herdr("agent", "list", timeout=20, machine=m).get("agents", []) if x.get("pane_id") == rp), None)
+            if not now:
+                gone = True
+            if not now or now.get("agent_status") == "blocked":
+                break
+        if not gone:                                # at Claude Code's question, or it never took /exit
+            herdr("pane", "send-keys", rp, "esc", timeout=15, machine=m)
+            refreshed(m)
+            return {"left": False, "why": "background"}
+        herdr("tab", "close", a["tab_id"], timeout=20, machine=m)
+    except HerdrError as e:
+        raise ApiError(502, str(e))
+    refreshed(m)
+    return {"left": True}
+
+
 def chat_keys(b):
     keys = b.get("keys") or []
     if not keys or any(k not in KEYS for k in keys):
@@ -3249,6 +3290,8 @@ class Handler(BaseHTTPRequestHandler):
             return chat_send(b)
         if path == "/api/chat/keys":
             return chat_keys(b)
+        if path == "/api/session-leave":
+            return session_leave(b)
         if path == "/api/session-end":
             return session_end(b)
         if path == "/api/chat/text":

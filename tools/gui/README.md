@@ -51,6 +51,14 @@ by its command). **Delete**, under More in the header, moves the item to the tra
 (`extras/trash.py`: undone with `trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads
 the folder you point it at.
 
+One-off sessions of a library end themselves (`web/js/oneoff.js`), keeping what they wrote. An **Add** session ends
+when it has finished and an item it wrote is in the library; one that added nothing stays open and says so, and one
+you went on talking to is a conversation. A session that holds nothing but questions asked from the reader ends after `close_after` minutes idle (a setting
+of the library in `projects.toml`: 30 by default, 0 for never), once its document is no longer the one open; its
+replies are pinned to their highlights first. A session you typed into, asked to teach, or kept (the line under its
+conversation) is never ended this way. The ending is gentle (`/api/session-leave`): the session exits by itself, and
+one that still runs something in the background is left open. **End** in the chat's header closes any session at once.
+
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).
 `research-gui` opens the app if installed; `--browser` uses a browser tab; `--serve` runs only the backend;
 `--dry-run` makes Start buttons print their herdr commands instead.

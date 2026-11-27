@@ -9,6 +9,7 @@ import { startTeam, newSession, addProject, newProject, shortcuts, closeDialog, 
 import { palette } from "./palette.js";
 import { resetFiles, openPathLater, openFile } from "./files.js";
 import { resetMap } from "./map.js";
+import { sweep } from "./oneoff.js";
 
 const POLL_MS = 4000;
 let lastSig = "", polling = false, lastAttention = "";
@@ -87,6 +88,7 @@ async function poll(force = false) {
     renderTitlebar();
     if (changed && S.route.view !== "gpus" && S.route.view !== "settings") renderView(false);
     else if (S.route.view === "inbox") renderInbox();
+    sweep();                                                  // one-off sessions of a library end themselves
   } catch (e) {
     S.summary = S.summary || null;
     $("#titlebar .crumbs") && toastOnce("The backend is not answering: " + e.message);

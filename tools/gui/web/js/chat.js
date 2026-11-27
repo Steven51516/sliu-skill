@@ -182,16 +182,18 @@ function ingest(items) {
 
 // The turns of the conversation shown that have ended: what was asked and the last thing said in reply (the reader
 // pins a reply to its passage from these when a paper is opened after the reply came).
-hooks.chatTurns = () => {
+export function turnsOf(items, pane) {
   const out = [];
   let asked = "", said = "";
-  for (const it of C.items) {
+  for (const it of items) {
     if (it.k === "user") { asked = it.text; said = ""; }
     else if (it.k === "assistant") said = it.text;
-    else if (it.k === "turn" && asked && said) { out.push({ pane: C.pane, asked, said }); asked = ""; }
+    else if (it.k === "turn" && asked && said) { out.push({ pane, asked, said }); asked = ""; }
   }
   return out;
-};
+}
+hooks.chatTurns = () => turnsOf(C.items, C.pane);
+hooks.chatPane = () => (C.open ? C.pane : null);              // the session the chat shows
 
 // ---------- rendering ----------
 
@@ -420,8 +422,14 @@ function renderLive() {
   const codex = codexNote(agentByPane(C.pane));
   if (sub) sub.innerHTML = C.err ? `<span class="err">${esc(C.err)}</span>` : `${modelTag(agentByPane(C.pane))}${esc(AGENT_WORD[C.status] || C.status || "…")}${codex ? " · " + esc(codex) : C.title ? " · " + esc(C.title) : ""}`;
   // queued messages + working indicator live at the bottom of the conversation
-  body.querySelectorAll(".msg.queued, .working, .fallback").forEach((e) => e.remove());
+  body.querySelectorAll(".msg.queued, .working, .fallback, .oneoff").forEach((e) => e.remove());
   const stick = nearBottom(body);
+  const one = C.status !== "working" && hooks.oneOff?.(agentByPane(C.pane), C.items);   // a one-off session of a library (oneoff.js)
+  if (one) {
+    body.insertAdjacentHTML("beforeend", one.kept ? `<div class="oneoff">You kept this session open. <a>Let it end itself</a></div>`
+      : `<div class="oneoff">${esc(one.text)} <a>Keep it open</a></div>`);
+    body.querySelector(".oneoff a").onclick = () => { hooks.keepSession(agentByPane(C.pane), !one.kept); renderLive(); };
+  }
   if (C.fallback && !C.items.length) body.insertAdjacentHTML("beforeend", `<div class="fallback"><div class="msg note">No transcript for this agent: its screen</div><pre class="mono" style="white-space:pre-wrap;font-size:11.5px">${esc(C.fallback)}</pre></div>`);
   C.queued.forEach((q) => body.insertAdjacentHTML("beforeend", `<div class="msg user queued" title="Queued: the agent reads it when its turn ends"><div class="bubble">${esc(q)}</div></div>`));
   if (C.status === "working") body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>${esc(C.title || "Working")}</div>`);
