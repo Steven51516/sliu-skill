@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a big map opens readable. An 83-ticket map opened at 60% (ticket text about 7 px), most of it
+  one column of the resolved tickets that link to nothing. The first view now opens at 85% or more, on what is live
+  (the open ticket, else one that needs you, is running or is ready), and settled tickets with no link to another are
+  laid out as a grid under the graph instead of sharing one rank. Fit still shows everything.
 - **Research Desk**: a project's page says where it lives in words ("On this Mac · code on <server>", "On <host>")
   instead of printing its folder paths under the title; the paths are in the tooltip, and More has Copy its path
   beside Reveal in Finder. The file tree's header for a whole project drops the path the same way.

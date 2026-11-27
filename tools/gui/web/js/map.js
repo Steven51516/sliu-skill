@@ -94,8 +94,12 @@ async function addTicket(m) {
 
 // ---------- DAG ----------
 
-const NODE_W = 236, NODE_H = 60;
-function model(m) {
+const READABLE = 0.85;       // the smallest scale a first view opens at: a ticket's text stays about 10 px
+
+const NODE_W = 236, NODE_H = 60, GAP = 14, SETTLED = ["resolved", "parked", "superseded"];
+// The graph is laid out by dagre, except the settled tickets with no link to another: they would all share one rank, a
+// column dozens of tickets tall. They go under the graph as a grid `cols` wide, with no edges.
+function model(m, cols = 4) {
   const g = new dagre.graphlib.Graph({ multigraph: true });
   g.setGraph({ rankdir: "LR", nodesep: 14, ranksep: 54, marginx: 40, marginy: 40 });
   g.setDefaultEdgeLabel(() => ({}));
@@ -116,16 +120,29 @@ function model(m) {
   if (M.showClosed) shown.forEach((t) => {
     if (t.status === "superseded" && t.superseded_by && ids.has(t.superseded_by)) { g.setEdge(t.id, t.superseded_by, { cls: "dashed" }); hasOut.add(t.id); }
   });
+  const loose = shown.filter((t) => SETTLED.includes(t.status) && !hasOut.has(t.id) && !(g.inEdges(t.id) || []).length);
+  loose.forEach((t) => g.removeNode(t.id));
+  const apart = new Set(loose.map((t) => t.id));
   g.setNode("__dest", { width: 260, height: 74, kind: "dest" });
-  shown.filter((t) => !hasOut.has(t.id) && !["parked", "superseded"].includes(t.status)).forEach((t) => g.setEdge(t.id, "__dest", { cls: "dashed" }));
+  shown.filter((t) => !apart.has(t.id) && !hasOut.has(t.id) && !["parked", "superseded"].includes(t.status)).forEach((t) => g.setEdge(t.id, "__dest", { cls: "dashed" }));
   m.fog.forEach((f, i) => { g.setNode("__fog" + i, { width: 210, height: 44, kind: "fog", text: f }); g.setEdge("__fog" + i, "__dest", { cls: "dashed" }); });
   dagre.layout(g);
+  if (loose.length) {
+    const n = Math.max(2, Math.min(cols, loose.length)), top = (g.graph().height || 0) + 30, wide = n * (NODE_W + GAP) - GAP;
+    g.setNode("__loose", { width: wide, height: 22, kind: "label", x: 40 + wide / 2, y: top,
+      text: `${loose.length} settled on ${loose.length === 1 ? "its" : "their"} own: ${M.showClosed ? "resolved, parked or superseded" : "resolved"}, with no link to another ticket` });
+    loose.forEach((t, i) => g.setNode(t.id, { width: NODE_W, height: NODE_H, kind: "ticket", t,
+      x: 40 + (i % n) * (NODE_W + GAP) + NODE_W / 2, y: top + 24 + Math.floor(i / n) * (NODE_H + GAP) + NODE_H / 2 }));
+    g.graph().width = Math.max(g.graph().width || 0, wide + 80);
+    g.graph().height = top + 24 + Math.ceil(loose.length / n) * (NODE_H + GAP) + 30;
+  }
   return g;
 }
 
 const STRIPE = { open: "--c-open", claimed: "--c-work", running: "--c-work", held: "--c-held", resolved: "--c-ok" };
 function nodeHtml(n, m) {
   if (n.kind === "dest") return `<div class="box"><div class="nid" style="font-family:var(--font)">◎ Destination</div><div class="ttl" title="${esc(m.destination)}">${esc(m.destination)}</div></div>`;
+  if (n.kind === "label") return `<div class="glabel">${esc(n.text)}</div>`;
   if (n.kind === "fog") return `<div class="box" title="Not yet specified: ${esc(n.text)}"><div class="ttl">${esc(n.text)}</div></div>`;
   if (n.kind === "ext") return `<div class="box"><div class="nid">${esc(n.ref)} <span class="t">${n.other ? "in " + esc(n.other.map.id) : "unknown ticket"}</span></div>
     <div class="ttl">${esc(n.other ? n.other.t.title : "")}</div></div>`;
@@ -141,7 +158,7 @@ function nodeHtml(n, m) {
 function drawDag(m, keepView) {
   const wrap = $("#dag");
   if (!wrap) return;
-  const g = model(m);
+  const g = model(m, Math.max(2, Math.floor((wrap.clientWidth / READABLE - 80 + GAP) / (NODE_W + GAP))));
   const gw = g.graph().width || 400, gh = g.graph().height || 300;
   const selId0 = (m.tickets.find((t) => t.folder === S.route.ticket) || {}).id;
   const selId = selId0 && g.hasNode(selId0) ? selId0 : null;            // a hidden (parked) ticket has no node
@@ -177,10 +194,17 @@ function drawDag(m, keepView) {
   const svg = $("#dagsvg"), vp = $("#vp");
   const apply = () => vp.setAttribute("transform", `translate(${M.view.x},${M.view.y}) scale(${M.view.k})`);
   const fit = (whole = false) => {
-    // first view: the whole map if it stays readable, else readable from the top-left; Fit: the whole map, however small
+    // first view: the whole map if it stays readable, else readable and on what is live (the open ticket, else one
+    // that needs you, is running, or is ready; else the top left); Fit: the whole map, however small
     const W = wrap.clientWidth, H = wrap.clientHeight, all = Math.min(1.1, W / gw, (H - 90) / gh);
-    const k = whole ? Math.max(0.15, all) : Math.max(0.6, all);
+    const k = whole ? Math.max(0.15, all) : Math.max(READABLE, all);
     M.view = { k, x: Math.max(10, (W - gw * k) / 2), y: Math.max(48, (H - gh * k) / 2) };
+    if (!whole && all < READABLE) {
+      const live = (f) => g.nodes().map((id) => g.node(id)).find((n) => n.kind === "ticket" && f(n.t));
+      const at = (selId && g.node(selId)) || live((t) => t.waiting) || live((t) => ["running", "claimed"].includes(t.status)) || live((t) => t.frontier) || live((t) => t.status === "open");
+      const within = (v, lo) => Math.min(Math.max(v, Math.min(lo, 10)), Math.max(lo, 10));     // keep the graph's edge in the view
+      if (at) { M.view.x = within(W / 2 - at.x * k, W - gw * k - 10); M.view.y = Math.max(Math.min(H / 2 - at.y * k, 48), Math.min(H - gh * k - 40, 48)); }
+    }
     apply();
   };
   if (keepView && M.view) apply(); else fit();
@@ -210,6 +234,7 @@ function drawDag(m, keepView) {
   svg.onpointerup = () => { drag = null; svg.classList.remove("drag"); };
   svg.querySelectorAll(".node").forEach((el) => el.onclick = () => {
     const n = g.node(el.dataset.id);
+    if (n.kind === "label") return;
     if (n.kind === "ticket") goMap(S.route.project, m.folder, n.t.folder === S.route.ticket ? null : n.t.folder);
     else if (n.kind === "ext" && n.other) goMap(S.route.project, n.other.map.folder, n.other.t.folder);
     else go({ ...S.route, tab: "doc", ticket: null });

@@ -1126,3 +1126,7 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 .nav.sub.dim .label, .nav.sub.dim .mid { color: var(--muted); }
 .nav.sub[data-paused] { cursor: pointer; }
 .nav.sub[data-paused] .pcaret { margin: 0 2px 0 -2px; }
+
+/* the map graph: the caption over the settled tickets laid out as a grid under it */
+.node.label { cursor: default; }
+.node .glabel { font-size: 12px; font-weight: 550; color: var(--muted); padding: 2px 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
