@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`research-work`**: before reporting done, a worker stops the background commands it started. A leftover waiter
+  blocked every close of a finished worker's tab (three exits typed into one pane, all backed out).
 - **`codex-run`**: a start-up failure counts only when no tool call succeeded (the words quoted from a file gave a
   false failure); a relative run dir works, and running from inside the run dir no longer renames its own files.
 - **`team-watch`** switches a fallen-back session to Sonnet 5.5 where it is (`/model`, `/effort` typed into it) and
