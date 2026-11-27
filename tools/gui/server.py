@@ -91,8 +91,8 @@ def load_config():
             p["close_after"] = max(0, min(int(p.get("close_after", 30)), 7 * 24 * 60))
         except (TypeError, ValueError):
             p["close_after"] = 30
-        # per collection (a top-level folder of the library): what Add and Teach me send before the item (a /skill)
-        p["collections"] = {str(n): {k: str(c.get(k) or "").strip()[:200] for k in ("add", "teach")}
+        # per collection (a top-level folder of the library): what Add, Teach me and Highlight send before the item (a /skill)
+        p["collections"] = {str(n): {k: str(c.get(k) or "").strip()[:200] for k in ("add", "teach", "highlight")}
                             for n, c in (p.get("collections") or {}).items() if isinstance(c, dict)}
     return cfg
 
@@ -2125,7 +2125,7 @@ def library_list(p):
             continue
         items = [i for i in (library_item(root, e.path) for e in sorted(os.scandir(c.path), key=lambda e: e.name.lower())
                              if not e.name.startswith(".") and e.name not in HIDE_DIRS) if i]
-        out.append({"name": c.name, "items": items, **p["collections"].get(c.name, {"add": "", "teach": ""})})
+        out.append({"name": c.name, "items": items, **p["collections"].get(c.name, {"add": "", "teach": "", "highlight": ""})})
     return {"collections": out}
 
 
@@ -2675,11 +2675,25 @@ def start_job(p, plan):
     return {"job": jid}
 
 
+def first_prompt(name, prompt, say=None):
+    """Send a new agent its first prompt and see it submitted. Typed without a look, a prompt was once left sitting in
+    the input box (2026-11-27: one of three sessions started in a row, a command each), which looks like a started
+    session and does nothing. herdr says such a prompt stalled: Enter submits it. Any other complaint of the wait (a
+    turn it did not see start) is noted and left to the checks that follow."""
+    try:
+        herdr("agent", "prompt", name, prompt, "--wait", "--until", "working", "--timeout", "60000", timeout=90)
+    except HerdrError as e:
+        if "stalled" in f"{e} {e.code}".lower():
+            herdr("agent", "send-keys", name, "Enter", timeout=15)
+        elif say:
+            say(f"{name}: could not see its first prompt start ({e})")
+
+
 def prompt_when_ready(name, prompt, say):
     """An agent stopped at a startup prompt (folder trust, login): send its first prompt once the human answered."""
     try:
         herdr("agent", "wait", name, "--until", "idle", "--timeout", "1800000", timeout=1850)
-        herdr("agent", "prompt", name, prompt)
+        first_prompt(name, prompt)
         say(f"{name}: startup prompt answered; sent `{prompt}`")
     except Exception as e:
         say(f"{name}: never got past its startup prompt ({e}); send `{prompt}` yourself")
@@ -2756,14 +2770,14 @@ def run_plan(p, plan, job):
                     threading.Thread(target=prompt_when_ready, args=(name, st["prompt"], say), daemon=True).start()
                 continue
             if st.get("prompt"):
-                herdr("agent", "prompt", name, st["prompt"])
+                first_prompt(name, st["prompt"], say)
                 say(f"{st['label']}: sent `{st['prompt']}`")
             if not alive(pane):           # an agent can exit during startup (Codex: a daemon or login timeout)
                 say(f"{st['label']}: {st['kind']} exited during startup; starting it once more")
                 name = unique_name(st["name"])
                 start_agent(name, st, pane)
                 if st.get("prompt"):
-                    herdr("agent", "prompt", name, st["prompt"])
+                    first_prompt(name, st["prompt"], say)
                 say(f"{st['label']}: " + ("started" if alive(pane) else "did not start again: see its tab"))
         job["ok"] = True
     except Exception as e:

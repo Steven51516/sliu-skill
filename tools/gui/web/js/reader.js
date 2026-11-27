@@ -58,7 +58,7 @@ function load() {
 
 // Draws the PDF at `url` into el's .pdfbox and adds zoom, page, Highlights and Box & ask to its header. Returns a function that
 // frees the document.
-export async function showPdf(el, { side, path, url }) {
+export async function showPdf(el, { side, path, url, highlight = null }) {
   const req = el._req, alive = () => el._req === req && el.isConnected;
   const box = $(".pdfbox", el), scroll = $(".pdfscroll", el);
   let L, task, doc;
@@ -96,9 +96,21 @@ export async function showPdf(el, { side, path, url }) {
   // means (the tooltip), how many; a click hides or shows a kind. Your own yellow alone needs none.
   const keyEl = box.appendChild(document.createElement("div"));
   keyEl.className = "floatbar legend hkey";
+  // A paper no session has marked yet offers it there instead (`highlight`: { run, busy }, files.js), and looks for
+  // the new marks while that session works.
+  let looking = 0;
   function drawKey() {
     const n = (k) => saved.filter((m) => group(m) === k).length, here = HUES.filter(([k]) => n(k));
-    keyEl.style.display = here.some(([k]) => k !== "you") ? "" : "none";
+    const marked = here.some(([k]) => k !== "you"), busy = !marked && !!highlight?.busy();
+    keyEl.style.display = marked || (highlight && keep) ? "" : "none";
+    clearInterval(looking);
+    if (busy) looking = setInterval(() => (alive() ? loadMarks() : clearInterval(looking)), 15000);
+    if (!marked && highlight) {
+      keyEl.innerHTML = busy ? `<span class="hk-busy"><span class="spin"></span>A session is highlighting this paper</span>`
+        : `<button class="btn ghost sm" id="hk-go" title="A session reads the paper and marks its claims, methods, results and limits, each with a one-line note. It takes a few minutes.">${icon("spark")}Highlight this paper</button>`;
+      if (!busy) $("#hk-go", keyEl).onclick = () => { highlight.run(); setTimeout(drawKey, 2500); setTimeout(drawKey, 9000); };
+      return;
+    }
     keyEl.innerHTML = here.map(([k, name, what]) => `<span class="${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${name}: ${what}. Click to ${hidden.has(k) ? "show" : "hide"} these."><i class="hue k-${k}"></i>${name}<b>${n(k)}</b></span>`).join("");
     keyEl.querySelectorAll("[data-k]").forEach((s) => s.onclick = () => { hidden.has(s.dataset.k) ? hidden.delete(s.dataset.k) : hidden.add(s.dataset.k); store("pdf.hide", [...hidden]); showGroups(); });
   }
@@ -409,6 +421,7 @@ export async function showPdf(el, { side, path, url }) {
   const watch = setInterval(() => { if (!scroll.isConnected) free(); }, 3000);   // the view was closed
   function free() {
     clearInterval(watch);
+    clearInterval(looking);
     ro.disconnect();
     document.removeEventListener("mouseup", onUp);
     document.removeEventListener("mousedown", outside, true);

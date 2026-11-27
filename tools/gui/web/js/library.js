@@ -39,10 +39,16 @@ export function renderLibrary(full = true) {
   $("#pp-q").oninput = (e) => { L.q = e.target.value; rows(); };
   $("#pp-add").onclick = async () => {                        // one per line, each in a session of its own
     const c = col();
-    const what = c && await ask({ title: `Add to ${c.name}`, label: c.add ? "One per line: an ID, a link, a title, or the path of a file" : "One per line: a link, a title, the path of a file, or a description",
-      ok: "Add", hint: "⌘↩ adds. Each line gets a session of its own." });
+    // A collection whose PDFs a command can highlight (its `highlight` setting): Add asks whether to, and says
+    // `--no-highlights` to its command when not. The paper's own Highlight button does it later.
+    const marks = c && !!c.add && !!c.highlight;
+    const got = c && await ask({ title: `Add to ${c.name}`, label: c.add ? "One per line: an ID, a link, a title, or the path of a file" : "One per line: a link, a title, the path of a file, or a description",
+      ok: "Add", hint: `⌘↩ adds. Each line gets a session of its own.${marks ? " Unticked, a paper comes in unmarked: Highlight this paper, on the paper, marks it later." : ""}`,
+      check: marks ? { label: "Highlight the PDF: its claims, methods, results and limits", on: store("library.mark") !== false } : null });
+    const what = marks ? got?.text : got, bare = marks && got && !got.checked;
+    if (marks && got) store("library.mark", got.checked);
     const list = [...new Set((what || "").split("\n").map((x) => x.trim()).filter(Boolean))].map((x) => ({
-      text: c.add ? `${c.add} ${x}` : `Add this to the ${c.name} folder of ${S.data.path}, following how the items there are kept: ${x}`, label: `add ${x.split("/").pop()}` }));
+      text: c.add ? `${c.add} ${x}${bare ? " --no-highlights" : ""}` : `Add this to the ${c.name} folder of ${S.data.path}, following how the items there are kept: ${x}`, label: `add ${x.split("/").pop()}` }));
     if (list.length === 1) hooks.startWith(project, list[0].text, list[0].label);
     else if (list.length && (list.length <= 5 || window.confirm(`Start ${list.length} sessions, one for each line?`))) hooks.startEach(project, list);
   };

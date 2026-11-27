@@ -30,4 +30,7 @@ shared = ["common"]                    # server folders pinned beside every map'
 # close_after = 30                 # minutes an idle one-off session (an Add, a question from the reader) stays open; 0: never ended
 # [projects.documents.collections.Papers]
 # add = "/your-reading-skill"      # followed by what you name: a link, an ID, a file
+# highlight = "/your-reading-skill --highlights-only"   # followed by the item's folder: marks up its PDF. With it, Add
+#                                  # asks whether to highlight (unticked: `--no-highlights` is added to `add`), and an
+#                                  # unmarked paper offers Highlight this paper
 # teach = "/your-teaching-skill"   # followed by the item's folder and your request

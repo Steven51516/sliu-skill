@@ -146,14 +146,16 @@ export async function newSession(project, preset = null, fill = {}) {
 }
 const $$ = (sel, el) => [...el.querySelectorAll(sel)];
 
-export function ask({ title, label = "", placeholder = "", value = "", multiline = true, ok = "OK", hint = "" }) {
+// `check` ({ label, on }) adds a tick box under the field: the answer is then { text, checked }.
+export function ask({ title, label = "", placeholder = "", value = "", multiline = true, ok = "OK", hint = "", check = null }) {
   return new Promise((resolve) => {
     const d = dialog(`<div class="dh">${esc(title)}</div><div class="db">${label ? `<label class="f">${esc(label)}</label>` : ""}
       ${multiline ? `<textarea id="ask-in" rows="4" placeholder="${esc(placeholder)}">${esc(value)}</textarea>` : `<input id="ask-in" placeholder="${esc(placeholder)}" value="${esc(value)}">`}
+      ${check ? `<label class="askchk"><input type="checkbox" id="ask-chk" ${check.on ? "checked" : ""}><span>${esc(check.label)}</span></label>` : ""}
       ${hint ? `<div class="muted" style="font-size:12px;margin-top:6px">${esc(hint)}</div>` : ""}</div>
       <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${esc(ok)}</button></div>`, { width: 520 });
     const inp = $("#ask-in", d);
-    const done = (v) => { closeDialog(); resolve(v); };
+    const done = (v) => { const on = $("#ask-chk", d)?.checked; closeDialog(); resolve(check && v ? { text: v, checked: !!on } : v); };
     $("#dlg-cancel", d).onclick = () => done(null);
     $("#dlg-go", d).onclick = () => done(inp.value.trim() || null);
     inp.onkeydown = (e) => { if (e.key === "Enter" && (!multiline || e.metaKey)) { e.preventDefault(); done(inp.value.trim() || null); } };

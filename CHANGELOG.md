@@ -5,6 +5,16 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: highlighting a paper is a choice. A collection's new `highlight` setting names the command that
+  marks up an item's PDF; with it, Add has a tick box (unticked, `--no-highlights` is added to what Add sends), and an
+  unmarked paper offers Highlight this paper over its corner and under More. A Highlight session ends itself once its
+  marks are on the paper. Needs a backend restart.
+- **Research Desk**: a new session's first message is seen to start. One of three sessions started in a row sat with
+  its command typed and unsent; the backend now waits for the turn and presses Enter on a prompt herdr calls stalled.
+- **Research Desk**: the line under a one-off session says "Still open" and when it will close; "ends itself when its
+  item is in the list" read as "has ended". With a backend from before the feature it says a restart is needed.
+- **`scripts/check.py`** parses each module of the Desk's page as a module, when `node` is installed: a name declared
+  twice in one scope passed `node --check` on the `.js` file (taken for a script) and failed only in the browser.
 - **Research Desk**: the highlight colours explain themselves, and the library list no longer shows a note's
   `verdict`. A paper that carries a session's highlights shows a key over its corner: the colours that are there,
   their counts, a click to hide a kind. Whether a paper is worth studying is the reader's call: the list showed the

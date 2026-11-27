@@ -48,7 +48,11 @@ PDF and text files directly in it. The list shows one collection, searched and f
 front matter names; the document opens on the right, and an item's other documents are listed under it. **Add** asks a
 session to add something to the collection (several lines: a session each, started in turn) and **Teach me** to teach the open item (your request, which you can edit
 first): in plain words, or with the commands the collection's `add` and `teach` settings name (a skill started only
-by its command). **Delete**, under More in the header, moves the item to the trash
+by its command). A collection may also name a `highlight` command, one that marks up an item's PDF (it writes the
+marks file, below). Then Add has a tick box, Highlight the PDF: unticked, the Desk adds `--no-highlights` to what Add
+sends, and the paper comes in unmarked. An unmarked paper offers **Highlight this paper** over its corner (also under
+More, to redo a marked one): a session of its own, sent the `highlight` command and the item, which ends itself when
+its marks are there. **Delete**, under More in the header, moves the item to the trash
 (`extras/trash.py`: undone with `trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads
 the folder you point it at.
 

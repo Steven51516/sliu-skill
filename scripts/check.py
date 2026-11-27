@@ -12,13 +12,17 @@
 - the README names every skill and every preset
 - Research Desk never floods a remote host with ssh (tools/gui/tests/remote_calls_test.py, ~20 s)
 - closing a worker never types an exit over and over (tools/tests/team_close_test.py)
+- every module of Research Desk's page parses as a module, when `node` is installed (a name declared twice in one
+  scope is caught here, not in the browser)
 - every skill another file calls by name (`Skill tool with "x"`, "the `x` skill", `/x` in a code span or a prompt string)
   exists in git: a removed, renamed or local-only skill fails here instead of in a user's session
 """
 import json
 import pathlib
 import re
+import shutil
 import subprocess
+import tempfile
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -136,6 +140,16 @@ def main():
         if r.returncode:
             problems += [l for l in r.stdout.splitlines() if l.startswith("remote_calls_test:") and "FAILED" not in l] \
                 or [f"remote_calls_test: exit {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"]
+    node = shutil.which("node")
+    if node:                               # as .mjs: `node --check x.js` takes a file for a script and passes such an error
+        with tempfile.TemporaryDirectory() as tmp:
+            for f in files("tools/gui/web/js/*.js"):
+                copy = pathlib.Path(tmp) / (f.stem + ".mjs")
+                copy.write_text(f.read_text())
+                r = subprocess.run([node, "--check", str(copy)], capture_output=True, text=True, timeout=60)
+                if r.returncode:
+                    why = next((l for l in r.stderr.splitlines() if "Error" in l), r.stderr.strip()[-200:])
+                    problems.append(f"{f.relative_to(ROOT)}: does not parse as a module: {why}")
     test = ROOT / "tools/tests/team_close_test.py"
     if test.exists():
         r = subprocess.run([sys.executable, str(test)], capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)

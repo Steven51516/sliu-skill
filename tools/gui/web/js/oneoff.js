@@ -1,7 +1,8 @@
 // One-off sessions end themselves. In a library (library.js), Add and a question asked from the reader each start a
 // Claude session that is rarely used again; left alone they pile up, each one a live process. After every poll:
 // - an Add session (its tab is labelled "add ...") that has finished ends once an item its tools wrote into is in the
-//   library; one that finished without adding anything stays open and says so once;
+//   library; one that finished without adding anything stays open and says so once. A Highlight session ("highlight
+//   ...", files.js) ends the same way once its item's PDF carries marks it wrote;
 // - a session that holds nothing but questions asked from the reader ends when it has sat idle for the library's
 //   `close_after` minutes (projects.toml: 30, 0 for never), you are not looking at it, and its document is not the
 //   one open. Its replies are pinned to their highlights first;
@@ -18,7 +19,8 @@ const judged = new Map();                  // session id -> the turn it was judg
 let busy = false, last = 0, off = 0;
 
 const limitOf = (p) => p.close_after ?? 30;
-const isAdd = (a) => /^add \S/.test(a.tab_label || "");
+const isAdd = (a) => /^add \S/.test(a.tab_label || ""), isMark = (a) => /^highlight \S/.test(a.tab_label || "");
+const isTask = (a) => isAdd(a) || isMark(a);                  // started by a button for one job: over when the job shows
 const ours = (a, p) => !!a && !!p?.library && !p.remote && a.agent === "claude" && !a.machine && !a.role && !!a.session_id;
 // nothing but questions from the reader: every message of yours is one, and no command but an exit
 export const askOnly = (items) => {
@@ -60,6 +62,14 @@ async function added(p, a) {
   const did = chat.items.filter((i) => i.k === "tool").map((i) => `${i.summary}\n${i.input}`).join("\n");
   const said = chat.items.filter((i) => i.k === "assistant").map((i) => i.text || "").join("\n");
   const from = Date.parse(chat.items.find((i) => i.ts)?.ts || a.turn_end) / 1000 - 5;
+  if (isMark(a)) {                                             // its item: the one its tools name; its work: marks of its own, since it started
+    const it = lib.collections.flatMap((c) => c.items).filter((i) => /\.pdf$/i.test(i.main) && did.includes(`${p.path}/${i.path}`)).sort((x, y) => y.folder - x.folder)[0];
+    const marks = it ? (await get("/api/marks", { project: p.name, path: it.main })).marks || [] : [];
+    const n = marks.filter((m) => m.by === "agent" && Date.parse(m.at) / 1000 >= from).length;
+    if (!n) return keep(a, chat.cut ? "unsure" : "nothing highlighted", chat.cut ? "" : `“${a.tab_label}” ended without highlighting anything. Its session is still open: read what it says.`);
+    if (await leave(a, `Highlighted “${it.title}”: ${n} highlights. Its session has ended.`)) hooks.libraryChanged?.();
+    return;
+  }
   const item = lib.collections.flatMap((c) => c.items).filter((i) => i.added >= from && (did.includes(`${p.path}/${i.path}`) || said.includes(`${i.path}/`) || said.includes(`${p.path}/${i.path}`)))
     .sort((x, y) => (y.folder - x.folder) || (y.added - x.added))[0];      // a folder before a single file, the newest first
   if (!item) return keep(a, chat.cut ? "unsure" : "nothing added", chat.cut ? "" : `“${a.tab_label}” ended without adding anything. Its session is still open: read what it says.`);
@@ -83,7 +93,7 @@ export async function sweep(now = false) {
         const id = a.session_id;
         if (!ours(a, p) || kept[id] || !a.turn_end || !["done", "idle"].includes(a.status) || judged.get(id) === a.turn_end) continue;
         if (a.pane === hooks.chatPane?.()) continue;                        // you are looking at it
-        const add = isAdd(a), idle = (Date.now() - Date.parse(a.turn_end)) / 60000;
+        const add = isTask(a), idle = (Date.now() - Date.parse(a.turn_end)) / 60000;
         if (idle < (add ? ADD_REST : limitOf(p)) || (!add && a.tab_label === openLabel(p.name))) continue;
         judged.set(id, a.turn_end);
         try { await (add ? added(p, a) : asked(p, a)); } catch { judged.delete(id); }   // the backend did not answer: next time
@@ -93,15 +103,18 @@ export async function sweep(now = false) {
   } finally { busy = false; }
 }
 
-// What the chat says under the conversation of the session it shows: null for an ordinary one, else when it ends
-// itself, or that you kept it. `items` is its conversation as the chat holds it.
+// What the chat says under the conversation of the session it shows: null for an ordinary one, else that it is still
+// open and when it will close by itself (a line that read "ends itself when its item is in the list" was taken for
+// "has ended"), or that you kept it. `items` is its conversation as the chat holds it.
 hooks.oneOff = (a, items) => {
   const p = S.summary?.projects.find((x) => x.name === a?.project);
   if (!ours(a, p) || !limitOf(p)) return null;
   const k = kept[a.session_id];
   if (k) return k.why === "you" ? { kept: true } : null;
-  if (isAdd(a)) return { text: "This session ends itself when its item is in the list. What it wrote is kept." };
-  return askOnly(items) ? { text: `This session ends itself after ${limitOf(p)} min idle, once you are off its document. Its answers stay on the highlights.` } : null;
+  const what = isAdd(a) ? "The item it added stays." : isMark(a) ? "Its highlights stay on the paper." : askOnly(items) ? "Its answers stay on the highlights." : "";
+  if (!what) return null;
+  if (p.close_after === undefined) return { text: `Still open. It would close by itself, but the Desk's backend is older than that feature: restart the backend and it will. ${what}` };
+  return { text: `Still open. It will close by itself ${isTask(a) ? "once you leave this chat" : `after ${limitOf(p)} min without a question, once you have left this chat and its document`}. ${what}` };
 };
 hooks.keepSession = (a, on) => {
   if (!a?.session_id) return;

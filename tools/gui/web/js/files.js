@@ -141,6 +141,15 @@ export function libraryItem(side, path) {
   if (!S.data?.library || side !== "local" || parts.length < 2 || parts.length > 3) return null;
   return { item: parts.slice(0, 2).join("/"), folder: parts.length === 3, name: parts[1], cfg: S.data.collections?.[parts[0]] || {}, col: parts[0] };
 }
+// Highlight asks a session of its own to mark up the item's PDF (the collection's `highlight` command, then the item):
+// its claims, methods, results and limits. The session ends itself when the highlights are there (oneoff.js).
+const marker = (it) => `highlight ${it.name}`;
+const marking = (it) => hooks.sessionNamed(S.route.project, marker(it));
+function highlight(it) {
+  const on = marking(it);
+  if (on) { toast("A session is already highlighting it"); return hooks.openChat(on.pane, { focus: false }); }
+  hooks.startWith(S.route.project, `${it.cfg.highlight} ${S.data.path}/${it.item}`, marker(it));
+}
 // Teach me asks a session to teach the item (the collection's `teach` command, or plain words; your request, to edit first).
 async function teach(it) {
   const words = await ask({ title: "Teach me this", label: "Your request. Edit it if you like: your level, what to focus on, the language.",
@@ -201,6 +210,7 @@ export async function showDoc(el, side, path, opt = {}) {
     $("#vmore", el).onclick = (e) => popMenu(e.currentTarget, [
       { label: "Reload", icon: "refresh", run: () => showDoc(el, side, path, { ...opt, fresh: true }) },
       { label: "Open in VS Code", icon: "ext", run: () => vscode(side, path, false) },
+      ...(it?.cfg.highlight && /\.pdf$/i.test(path) ? ["-", { label: "Highlight this paper", icon: "mark", hint: "a session marks it up, in place of its last pass", run: () => highlight(it) }] : []),
       ...(it ? ["-", { label: `Delete “${called.length > 30 ? called.slice(0, 29) + "…" : called}”…`, icon: "trash", danger: true, run: () => trashItem(it, called) }] : []),
     ], { right: true });
     if (it) $("#vteach", el).onclick = () => teach(it);
@@ -224,7 +234,7 @@ export async function showDoc(el, side, path, opt = {}) {
     el.classList.add("pdfmode");
     el.innerHTML = head + `<div class="pdfbox"><div class="spin"></div><div class="pdfscroll"><div class="pdfViewer"></div></div></div>`;
     wire();
-    const free = await showPdf(el, { side, path, url: `/api/raw?${q}` });
+    const free = await showPdf(el, { side, path, url: `/api/raw?${q}`, highlight: it?.cfg.highlight ? { run: () => highlight(it), busy: () => !!marking(it) } : null });
     if (el._req === req) el._free = free; else free?.();
     return;
   }
