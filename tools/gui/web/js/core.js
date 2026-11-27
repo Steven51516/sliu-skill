@@ -180,9 +180,11 @@ export function md(el, text, opt = {}) {
     }
   }
   // GFM strikes through ~single~ tildes; notes use ~ for "about", so only ~~ strikes (code left alone)
-  text = text.split(/(```[\s\S]*?```|`[^`\n]*`)/).map((seg, i) => i % 2 ? seg : seg.replace(/(^|[^~\\])~(?=[^~]|$)/g, "$1\\~")).join("");
+  const math = [];
+  text = text.split(/(```[\s\S]*?```|`[^`\n]*`)/).map((seg, i) => i % 2 ? seg : mathOut(seg, math).replace(/(^|[^~\\])~(?=[^~]|$)/g, "$1\\~")).join("");
   el.classList.add("md");
   el.innerHTML = fm + DOMPurify.sanitize(marked.parse(text, { gfm: true, breaks: !!opt.breaks }), { SANITIZE_NAMED_PROPS: true });
+  mathIn(el, math);
   if (opt.dropTitle) el.querySelector(":scope > h1:first-of-type")?.remove();   // the panel header already shows it
   el.querySelectorAll("pre code").forEach((c) => { if (c.textContent.length < 150000) hljs.highlightElement(c); });
   const proj = opt.project || (S.data && { name: S.data.name, path: S.data.path });
@@ -210,6 +212,33 @@ export function md(el, text, opt = {}) {
   });
   return el;
 }
+// Math: $…$ and \(…\) inline, $$…$$ and \[…\] on their own line, drawn by KaTeX. It is taken out before markdown runs
+// (which would eat its _ and \) and put back after. A $ opens only before a non-space and closes only after one and
+// not before a digit, so "$5 and $10" stays money; plain words between the marks (an escaped bracket in prose) and
+// what KaTeX can't read are left as written.
+const MATH = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([^\n]+?)\\\)|(?<![\\$])\$(?=\S)((?:\\[^\n]|[^\n$\\])+?)(?<=\S)\$(?![\d$])/g;
+const PROSE = /(^|\s)[A-Za-z]{3,}\s+[A-Za-z]{3,}(\s|$)/;
+function mathOut(seg, math) {
+  if (!window.katex || !/[$\\]/.test(seg)) return seg;
+  return seg.replace(MATH, (all, d1, d2, i1, i2) => {
+    const block = d1 ?? d2, tex = (block ?? i1 ?? i2).trim();
+    if (!tex || (!tex.includes("\\") && PROSE.test(tex))) return all;
+    try { math.push(katex.renderToString(tex, { displayMode: block != null, throwOnError: true })); }
+    catch (_) { return all; }
+    return `${math.length - 1}`;
+  });
+}
+function mathIn(el, math) {
+  if (!math.length) return;
+  const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT), hits = [];
+  while (walk.nextNode()) if (walk.currentNode.nodeValue.includes("")) hits.push(walk.currentNode);
+  hits.forEach((n) => {
+    const t = document.createElement("template");
+    t.innerHTML = esc(n.nodeValue).replace(/(\d+)/g, (_, i) => math[+i] || "");
+    n.replaceWith(t.content);
+  });
+}
+
 export function resolvePath(dir, rel) {
   const out = dir ? dir.split("/") : [];
   rel.split("/").forEach((p) => { if (p === "..") out.pop(); else if (p && p !== ".") out.push(p); });

@@ -25,6 +25,13 @@ at that moment. Its sessions are those whose first prompt names the ticket's fol
 team-worker starts them), found here and on each herdr machine by `rg_trace.py`, which runs there over ssh so only the
 steps cross.
 
+PDFs: the file viewer opens a PDF in a reader (`web/js/reader.js`, PDF.js) whose text can be selected. Select a
+passage and press **Ask**, or use **Box & ask** to drag a box around an equation or a figure: the passage (or a crop of
+the box, drawn again at 3x), its page and your question go to the session you pick, or start a new one. A paper kept
+as a folder with `paper.pdf` beside a `note.md` gets **Delete paper**, which moves that folder to the trash
+(`extras/trash.py`: undone with `trash --restore <path>`). Markdown in the viewer and in chat draws math (`$…$`,
+`$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and the pictures a note links beside it.
+
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).
 `research-gui` opens the app if installed; `--browser` uses a browser tab; `--serve` runs only the backend;
 `--dry-run` makes Start buttons print their herdr commands instead.

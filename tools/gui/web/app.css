@@ -299,7 +299,33 @@ details.fmd .fm { margin-top: 6px; }
 .vbody { padding: 14px 18px 50px; }
 .vbody pre.code { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow: auto; margin: 0; border: 1px solid var(--line); line-height: 1.5; }
 .vbody pre.code .ln { display: inline-block; width: 3.2em; color: var(--muted); opacity: .6; text-align: right; margin-right: 1.2em; user-select: none; }
-iframe.pdf { width: 100%; height: calc(100% - 44px); border: 0; display: block; background: var(--sunken); }
+/* the paper reader (reader.js): the PDF fills the viewer under its header; pdf.js lays its pages out in .pdfscroll */
+.viewer.pdfmode { display: flex; flex-direction: column; overflow: hidden; }
+.pdfctl { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.pdfctl #pz-val { min-width: 46px; justify-content: center; font-variant-numeric: tabular-nums; }
+.pdfctl #pg-n { font-size: 12px; margin: 0 10px 0 6px; font-variant-numeric: tabular-nums; }
+.viewer.pdfmode .vhead { flex-wrap: wrap; row-gap: 6px; }
+.viewer.pdfmode .vhead .path { min-width: 110px; }
+.pdfbox { flex: 1; min-height: 0; position: relative; background: var(--sunken); isolation: isolate; }   /* pdf.js numbers its links' z-index up past the app's menus */
+.pdfbox > .spin { position: absolute; top: 24px; left: 50%; }
+.pdfscroll { position: absolute; inset: 0; overflow: auto; }
+.pdfbox .pdfViewer .page { padding: 0; max-width: none; box-sizing: content-box; box-shadow: 0 1px 4px rgba(0,0,0,.14); }   /* the app's own .page is a screen */
+.pdfbox.boxing .page { cursor: crosshair; }
+.pdfbox.boxing .textLayer, .pdfbox.boxing .annotationLayer { pointer-events: none; }
+.rdmarks { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.rdmark { position: absolute; background: rgba(255, 208, 0, .38); mix-blend-mode: multiply; border-radius: 2px; }
+.rdmark.box { background: rgba(79, 107, 237, .10); mix-blend-mode: normal; outline: 1.5px solid var(--accent); }
+.asktip, .askpop { position: fixed; z-index: 40; }
+.asktip .btn { box-shadow: var(--shadow-pop); }
+.askpop { width: min(420px, calc(100vw - 16px)); background: var(--raised); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.askpop .ah { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; }
+.askpop .ah > .muted { flex: none; padding-top: 1px; }
+.askpop .ah .q { flex: 1; min-width: 0; color: var(--ink-2); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.askpop .ah img { flex: 1; min-width: 0; max-height: 130px; object-fit: contain; object-position: left top; background: #fff; border-radius: 4px; border: 1px solid var(--line); }
+.askpop textarea { width: 100%; resize: vertical; }
+.askpop .af { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.askpop .af select { width: auto; max-width: 230px; padding: 3px 6px; font-size: 12px; }
+.askpop .af .grow { flex: 1; }
 .vbody img { max-width: 100%; background: #fff; border-radius: 6px; border: 1px solid var(--line); }
 .csv { font-size: 12px; border-collapse: collapse; }
 .csv th, .csv td { border-bottom: 1px solid var(--line); padding: 4px 10px; text-align: left; white-space: nowrap; }

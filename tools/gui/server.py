@@ -2042,6 +2042,30 @@ def figure_fix(b):
     r = chat_send({"pane": pane, "text": text})
     return dict(r, marked=up["path"])
 
+# ---------- move to the trash (the reader's Delete paper) ----------
+
+TRASH = os.path.join(os.path.dirname(os.path.dirname(HERE)), "extras", "trash.py")
+
+
+def trash_path(b):
+    """Move a folder or file of a project on this Mac into the trash (extras/trash.py: a `.trash/` beside it, undone
+    with `trash --restore <path>`)."""
+    p, rel = project(b.get("project")), clean_rel(b.get("path"))
+    if p.get("remote_host"):
+        raise ApiError(400, f"{p['name']} is on {p['remote_host']}: delete it there")
+    if not rel or any(x.startswith(".") for x in rel.split("/")):
+        raise ApiError(400, "the project itself and hidden paths are not deleted from here")
+    inside(p, os.path.dirname(rel))                              # the folder it sits in is in the project
+    full = os.path.join(os.path.realpath(p["path"]), rel)        # not resolved: a symlink moves, not its target
+    if not os.path.lexists(full):
+        raise ApiError(404, f"no {rel} on the Mac")
+    if ARGS.dry_run:
+        return {"dry_run": True, "path": full}
+    code, out, err = run([sys.executable, TRASH, full], timeout=30)
+    if code != 0:
+        raise ApiError(500, err.strip() or "the trash move failed")
+    return {"trashed": out.decode(errors="replace").strip().split(" -> ")[-1]}
+
 # ---------- raw file bytes (PDFs and images open in the viewer) ----------
 
 RAW_TYPES = {".pdf": "application/pdf", **IMAGE_EXT}
@@ -2879,8 +2903,9 @@ def term_env():
 
 # ---------- http ----------
 
-STATIC_TYPES = {".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml",
-                ".png": "image/png", ".woff2": "font/woff2", ".map": "application/json"}
+STATIC_TYPES = {".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
+                ".svg": "image/svg+xml", ".png": "image/png", ".gif": "image/gif", ".woff2": "font/woff2",
+                ".map": "application/json"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -3086,6 +3111,8 @@ class Handler(BaseHTTPRequestHandler):
             return paste_file(b)
         if path == "/api/figure-fix":
             return figure_fix(b)
+        if path == "/api/trash":
+            return trash_path(b)
         if path == "/api/gpu-pools":
             return write_pools(b)
         if path == "/api/shots":

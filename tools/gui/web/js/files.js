@@ -1,6 +1,7 @@
 // Read-only file trees (records on the Mac, code on the server) and the file viewer.
-import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token } from "./core.js";
+import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token, tokenNow } from "./core.js";
 import { markFigure } from "./annotate.js";
+import { showPdf } from "./reader.js";
 
 const F = { trees: {}, viewer: null, scope: "map", focus: null };
 export const filesState = F;
@@ -148,11 +149,23 @@ export async function showDoc(el, side, path, opt = {}) {
   };
   wire();
   const req = (el._req = (el._req || 0) + 1);
-  if (/\.pdf$/i.test(name)) {                       // PDFs open in the built-in viewer, from the raw bytes
+  if (el._free) { el._free(); el._free = null; }    // the PDF that was open here
+  el.classList.remove("pdfmode");
+  if (/\.pdf$/i.test(name)) {                       // PDFs open in the reader (reader.js), from the raw bytes
     const q = new URLSearchParams({ project: S.route.project, side, path, token: await token() });
     if (el._req !== req) return;
-    el.innerHTML = head + `<iframe class="pdf" src="/api/raw?${q}" title="${esc(name)}"></iframe>`;
+    el.classList.add("pdfmode");
+    el.innerHTML = head + `<div class="pdfbox"><div class="spin"></div><div class="pdfscroll"><div class="pdfViewer"></div></div></div>`;
     wire();
+    const free = await showPdf(el, { side, path, url: `/api/raw?${q}`, gone: (dir) => {      // its folder went to the trash
+      F.viewer = null;
+      Object.values(F.trees).filter((tr) => tr.side === "local").forEach((tr) => {
+        Object.keys(tr.nodes).forEach((k) => { if (k === dir || k.startsWith(dir + "/")) delete tr.nodes[k]; });
+        Object.keys(tr.nodes).filter((k) => tr.nodes[k].open || k === tr.root).forEach((k) => loadDir(tr, k, true));
+      });
+      renderViewer();
+    } });
+    if (el._req === req) el._free = free; else free?.();
     return;
   }
   let f;
@@ -167,6 +180,10 @@ export async function showDoc(el, side, path, opt = {}) {
   else if (f.kind === "markdown") {
     const dir = path.split("/").slice(0, -1).join("/");
     md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter, skipKeys: opt.skipKeys, dropTitle: opt.dropTitle, onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
+    body.querySelectorAll("img[src]").forEach((im) => {         // a picture beside the note: its bytes come from the project
+      const src = im.getAttribute("src");
+      if (!/^([a-z]+:|\/|#)/i.test(src)) im.src = "/api/raw?" + new URLSearchParams({ project: S.route.project, side, path: resolvePath(dir, decodeURIComponent(src)), token: tokenNow() });
+    });
   } else if (f.kind === "csv") renderCsv(body, f.text, name.endsWith(".tsv") ? "\t" : ",");
   else {
     let text = f.text;

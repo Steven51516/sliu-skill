@@ -5,6 +5,11 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk reads papers.** A PDF opened in the built-in viewer could not be asked about: its text sat in an
+  iframe the page cannot see into. The file viewer now draws PDFs with PDF.js: select a passage and press **Ask**, or
+  **Box & ask** an equation or a figure, and the passage (or a crop), its page and your question go to a session.
+  **Delete paper** moves a paper's folder (`paper.pdf` beside `note.md`) to the trash. Markdown in the viewer and in
+  chat draws math (KaTeX) and the pictures a note links beside it.
 - **`research-work`**: before reporting done, a worker stops the background commands it started. A leftover waiter
   blocked every close of a finished worker's tab (three exits typed into one pane, all backed out).
 - **`codex-run`**: a start-up failure counts only when no tool call succeeded (the words quoted from a file gave a
