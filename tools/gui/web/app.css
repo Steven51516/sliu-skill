@@ -1121,3 +1121,8 @@ html.app body.reading:has(#viewer > .vhead) #titlebar { padding-left: 86px; }   
 /* dropdowns: the app's chevron in place of the system's arrows */
 select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none; padding-right: 26px; background-repeat: no-repeat; background-position: right 8px center; background-size: 10px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='%23888' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m2.5 4.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E"); }
+
+/* the sidebar's maps: a paused one is quiet, and they fold into one line */
+.nav.sub.dim .label, .nav.sub.dim .mid { color: var(--muted); }
+.nav.sub[data-paused] { cursor: pointer; }
+.nav.sub[data-paused] .pcaret { margin: 0 2px 0 -2px; }

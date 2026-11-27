@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: the sidebar lists a project's maps with the ones being worked first, and folds the paused ones
+  into one line ("4 paused"), opened by a click or by being on one. With four paused maps among three driven ones, in
+  map order, the active ones were hard to find. The overview's map cards put paused ones last.
 - **Research Desk**: the library page and the reader, redesigned to the level of the rest of the app. The viewer's
   header showed a file path in mono and up to ten ungrouped buttons; the library list had three rows of system
   dropdowns; highlight colours were unexplained. Now: the item's title, grouped tools (zoom, page, Highlights, Box &

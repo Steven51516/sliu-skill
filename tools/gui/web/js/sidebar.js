@@ -11,6 +11,7 @@ export function inboxCount() {
 // projects folded in the sidebar (their maps, Files and Search hidden); remembered across reloads
 const folded = new Set(store("folded") || []);
 function setFold(name, fold) { fold ? folded.add(name) : folded.delete(name); store("folded", [...folded]); renderSidebar(); }
+const pausedOpen = new Set(store("pausedOpen") || []);        // projects whose paused maps are listed
 
 export function renderSidebar() {
   const sum = S.summary, r = S.route;
@@ -38,11 +39,19 @@ export function renderSidebar() {
       ${!waiting && !working && (p.agents || []).length ? `<span class="dot idle" title="${p.agents.length} agents idle"></span>` : ""}
       ${blocked && !waiting ? `<span class="dot blocked"></span>` : ""}</a>`;
     if (unfolded && S.data && S.data.name === p.name) {
-      const maps = S.data.maps.filter((m) => m.status !== "closed");
-      for (const m of maps) {
-        const st = m.driven ? "working" : m.status;
-        html += `<a class="nav sub ${r.view === "map" && r.map === m.folder ? "on" : ""}" href="${href({ project: p.name, map: m.folder, view: "map" })}" title="${esc(m.title)}">
+      // Its maps: the ones being worked first (driven, claimed, open, then the rest); paused ones fold into one line,
+      // opened by a click or by being on one of them; closed ones are a count.
+      const maps = S.data.maps.filter((m) => m.status !== "closed").map((m) => ({ m, st: m.driven ? "working" : m.status }));
+      const rank = { working: 0, claimed: 1, running: 1, open: 2 };
+      const active = maps.filter((x) => x.st !== "paused").sort((a, b) => (rank[a.st] ?? 3) - (rank[b.st] ?? 3));
+      const paused = maps.filter((x) => x.st === "paused");
+      const row = ({ m, st }) => `<a class="nav sub ${st === "paused" ? "dim" : ""} ${r.view === "map" && r.map === m.folder ? "on" : ""}" href="${href({ project: p.name, map: m.folder, view: "map" })}" title="${esc(m.title)}">
           <span class="dot ${safeCls(st)}"></span><span class="mid">${esc(m.id)}</span><span class="label">${esc(m.title)}</span></a>`;
+      html += active.map(row).join("");
+      if (paused.length) {
+        const shown = pausedOpen.has(p.name) || paused.some((x) => r.view === "map" && r.map === x.m.folder);
+        html += `<a class="nav sub" data-paused="${esc(p.name)}" title="${shown ? "Hide" : "Show"} the paused maps"><span class="pcaret">${shown ? "▾" : "▸"}</span><span class="label muted">${paused.length} paused</span></a>`
+          + (shown ? paused.map(row).join("") : "");
       }
       const closed = S.data.maps.length - maps.length;
       if (closed) html += `<a class="nav sub" data-milestones="${esc(p.name)}"><span class="label muted">${closed} closed map${closed > 1 ? "s" : ""}</span></a>`;
@@ -115,6 +124,12 @@ export function renderSidebar() {
   $("#sb-moshi").onclick = () => hooks.setMoshiMode(!S.summary?.moshi_mode);
   $("#sb-bell").onclick = () => { S.scrollToNotify = true; if (S.route.view === "settings") $("#notify")?.scrollIntoView({ block: "start", behavior: "smooth" }); else go({ view: "settings" }); };
   $("#sb-gear").onclick = () => (S.route.view === "settings" ? hooks.leaveSettings() : go({ view: "settings" }));
+  el.querySelectorAll("[data-paused]").forEach((a) => a.onclick = () => {
+    const name = a.dataset.paused;
+    pausedOpen.has(name) ? pausedOpen.delete(name) : pausedOpen.add(name);
+    store("pausedOpen", [...pausedOpen]);
+    renderSidebar();
+  });
   el.querySelectorAll("[data-milestones]").forEach((a) => a.onclick = () => {
     const show = () => document.getElementById("milestones")?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (S.route.view === "project" && S.route.project === a.dataset.milestones) return show();

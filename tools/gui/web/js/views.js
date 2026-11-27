@@ -31,7 +31,7 @@ export function renderTitlebar() {
 export function renderOverview() {
   const d = S.data, host = $("#view");
   if (!d) { host.innerHTML = `<div class="empty big"><div class="spin"></div></div>`; return; }
-  const open = d.maps.filter((m) => m.status !== "closed"), closed = d.maps.filter((m) => m.status === "closed").reverse();
+  const open = d.maps.filter((m) => m.status !== "closed").sort((a, b) => (a.status === "paused") - (b.status === "paused")), closed = d.maps.filter((m) => m.status === "closed").reverse();   // paused maps after the ones being worked
   const tickets = d.maps.flatMap((m) => m.tickets.map((t) => ({ ...t, map: m })));
   const running = tickets.filter((t) => ["running", "claimed"].includes(t.status)), ready = tickets.filter((t) => t.frontier);
   const desk = d.agents.find((a) => a.role === "desk");
