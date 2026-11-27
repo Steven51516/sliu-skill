@@ -28,6 +28,8 @@ export function renderTitlebar() {
 
 // ---------- project overview ----------
 
+const home = (p) => p.replace(/^\/Users\/[^/]+/, "~");
+
 export function renderOverview() {
   const d = S.data, host = $("#view");
   if (!d) { host.innerHTML = `<div class="empty big"><div class="spin"></div></div>`; return; }
@@ -38,9 +40,9 @@ export function renderOverview() {
   const working = d.agents.filter((a) => a.status === "working").length;
   const ch = d.changes;
   host.innerHTML = `<div class="page">
-    <div class="ph"><div class="grow"><h1>${esc(d.name)}</h1><div class="sub mono">${d.remote
-        ? `on ${esc(d.remote.host)}:${esc(d.remote.path)} · <span class="${d.remote.error ? "err" : ""}">${d.remote.error ? `${esc(d.remote.error)} · showing the copy from ${esc(ago(d.remote.synced_at))}` : `records mirrored ${esc(ago(d.remote.synced_at))}`}</span>`
-        : `${esc(d.path.replace(/^\/Users\/[^/]+/, "~"))}${d.server ? ` · ${esc(d.server)}:${esc(d.server_root)}` : ""}`}</div></div>
+    <div class="ph"><div class="grow"><h1>${esc(d.name)}</h1><div class="sub">${d.remote   /* where it lives, in words: the folders are in the tooltip and under More */
+        ? `<span title="${esc(d.remote.host)}:${esc(d.remote.path)}">On ${esc(d.remote.host)}</span> · <span class="${d.remote.error ? "err" : ""}">${d.remote.error ? `${esc(d.remote.error)} · showing the copy from ${esc(ago(d.remote.synced_at))}` : `records mirrored ${esc(ago(d.remote.synced_at))}`}</span>`
+        : `<span title="${esc(home(d.path))}">On this Mac</span>${d.server ? ` · <span title="${esc(d.server)}:${esc(d.server_root)}">code on ${esc(d.server)}</span>` : ""}`}</div></div>
       <div class="actions">
         ${d.remote ? `<button class="btn primary" id="ov-ssh">${icon("term")} Terminal on ${esc(d.remote.host)}</button><button class="btn" id="ov-sync">${icon("refresh")} Sync now</button>`
         : d.team ? (desk ? `<button class="btn primary" id="ov-desk">${icon("chat")} Talk to the desk</button>` : `<button class="btn primary" id="ov-team">${icon("users")} Start team</button>`)
@@ -99,6 +101,7 @@ export function renderOverview() {
     ...(d.remote ? [] : [{ label: "Open in VS Code (Mac)", icon: "ext", run: () => vscode("local", "", true) }]),
     ...(d.server ? [{ label: `Open in VS Code (${d.server})`, icon: "ext", run: () => vscode("server", "", true) }] : []),
     { label: "Reveal in Finder", icon: "folder", run: () => post("/api/reveal", { project: d.name, path: "" }) },
+    { label: "Copy its path", icon: "doc", hint: home(d.remote ? d.remote.path : d.path), run: () => navigator.clipboard.writeText(d.remote ? `${d.remote.host}:${d.remote.path}` : d.path).then(() => toast("Path copied")) },
     "-",
     { label: "Mark everything as seen", icon: "check", run: () => post("/api/seen", { project: d.name }).then(() => hooks.refresh()) },
     { label: d.muted ? "Unmute its Inbox items" : "Mute its Inbox items", icon: d.muted ? "bell" : "belloff",

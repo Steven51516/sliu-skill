@@ -22,8 +22,8 @@ function roots(m) {
       d.shared.forEach((s, i) => out.push({ key: "S" + i, side: "server", root: s, label: `Shared · ${d.server}`, sub: s }));
     }
   } else {
-    out.push({ key: "L", side: "local", root: "", label: "Project · Mac", sub: d.path.replace(/^\/Users\/[^/]+/, "~") });
-    if (d.server) out.push({ key: "R", side: "server", root: "", label: `Project · ${d.server}`, sub: d.server_root });
+    out.push({ key: "L", side: "local", root: "", label: "Project · Mac", sub: d.path.replace(/^\/Users\/[^/]+/, "~"), whole: true });   // a whole project: its folder is in the tooltip
+    if (d.server) out.push({ key: "R", side: "server", root: "", label: `Project · ${d.server}`, sub: d.server_root, whole: true });
   }
   return out;
 }
@@ -95,7 +95,7 @@ function drawTree(tr) {
     });
   };
   walk(tr.root, 0);
-  el.innerHTML = `<h3>${esc(tr.label)}<span class="path" title="${esc(tr.sub)}">${esc(tr.sub)}</span>
+  el.innerHTML = `<h3 ${tr.whole ? `title="${esc(tr.sub)}"` : ""}>${esc(tr.label)}<span class="path" title="${esc(tr.sub)}">${tr.whole ? "" : esc(tr.sub)}</span>
     <button class="btn ghost sm icon" data-refresh="1" title="${tr.side === "server" ? "Fetch again from the server" : "Reload"}">${icon("refresh")}</button>
     ${tr.side === "server" ? `
       <button class="btn ghost sm icon" data-ssh="1" title="Open a terminal here">${icon("term")}</button>` : ""}</h3>` + rows.join("");

@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a project's page says where it lives in words ("On this Mac · code on <server>", "On <host>")
+  instead of printing its folder paths under the title; the paths are in the tooltip, and More has Copy its path
+  beside Reveal in Finder. The file tree's header for a whole project drops the path the same way.
 - **Research Desk**: the sidebar lists a project's maps with the ones being worked first, and folds the paused ones
   into one line ("4 paused"), opened by a click or by being on one. With four paused maps among three driven ones, in
   map order, the active ones were hard to find. The overview's map cards put paused ones last.
