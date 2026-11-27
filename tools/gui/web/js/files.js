@@ -199,11 +199,12 @@ export async function showDoc(el, side, path, opt = {}) {
   const lists = S.data?.library ? "List" : "Files", dir = path.split("/").slice(0, -1).join("/");
   const about = hooks.docTitle?.(side, path), it = libraryItem(side, path);   // in a library: the item's title (library.js)
   const called = about?.title || it?.name || name;         // what the open thing is called: its title, else its folder or file
+  const mine = it ? hooks.itemStar?.(path) : null;         // its star, in a library whose list knows the item
   const focusTip = () => (reading() ? `Show the sidebar and the ${lists.toLowerCase()} again` : "Reading mode: hide the sidebar and the list, for more room");
   // the header: reading mode, what is open, the tools of its kind (#vtools: zoom, follow), its actions (#vacts), More
   const head = opt.bare ? "" : `<div class="vhead"><button class="btn ghost sm ${reading() ? "" : "icon"}" id="vfocus" title="${focusTip()}">${reading() ? `‹ ${lists}` : icon("side")}</button>
     <div class="vtitle" title="${esc(path)}"><span class="t">${esc(about?.title || name)}</span><span class="s"><span>${esc(about ? about.sub : (side === "local" ? "" : S.data.server + ":") + dir)}</span><span id="vsize"></span></span></div>
-    <span class="vslot" id="vtools"></span><span class="vslot" id="vacts">${it ? `<button class="btn sm" id="vteach" title="Have a session teach you this, one step at a time, in the chat">${icon("spark")}<span class="lbl">Teach me</span></button>` : ""}</span>
+    <span class="vslot" id="vtools"></span><span class="vslot" id="vacts">${it && mine ? `<button class="btn ghost sm icon vstar ${mine.on ? "on" : ""}" id="vstar" title="Star it: your own pick. The list can show only the starred">${icon("star")}</button>` : ""}${it ? `<button class="btn sm" id="vteach" title="Have a session teach you this, one step at a time, in the chat">${icon("spark")}<span class="lbl">Teach me</span></button>` : ""}</span>
     <button class="btn ghost sm icon" id="vmore" title="More">${icon("more")}</button></div>`;
   if (!opt.quiet || !el.querySelector(".vbody")) el.innerHTML = head + `<div class="vbody"><div class="spin"></div></div>`;
   const wire = () => {
@@ -215,6 +216,7 @@ export async function showDoc(el, side, path, opt = {}) {
       ...(it ? ["-", { label: `Delete “${called.length > 30 ? called.slice(0, 29) + "…" : called}”…`, icon: "trash", danger: true, run: () => trashItem(it, called) }] : []),
     ], { right: true });
     if (it) $("#vteach", el).onclick = () => teach(it);
+    if ($("#vstar", el)) $("#vstar", el).onclick = () => { const s = hooks.itemStar?.(path); if (s) s.set(!s.on); };
     pairSwitch(el, side, path, () => el.isConnected && $("#vmore", el) && F.viewer?.path === path);
     $("#vfocus", el).onclick = () => {                 // the label says how to get back; the open file stays as it is
       const on = !reading(), b = $("#vfocus", el);

@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: star the items of a library you like: a star on each row and on the open document, and a filter
+  that shows only the starred. Stars are kept in the library itself (`.starred.json`), so they travel with it. Needs
+  a backend restart.
 - **Research Desk**: highlighting a paper is a choice. A collection's new `highlight` setting names the command that
   marks up an item's PDF; with it, Add has a tick box (unticked, `--no-highlights` is added to what Add sends), and an
   unmarked paper offers Highlight this paper over its corner and under More. A Highlight session ends itself once its

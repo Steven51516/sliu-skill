@@ -1146,3 +1146,14 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 /* a tick box under a dialog's field (dialogs.js ask) */
 .askchk { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; cursor: pointer; }
 .askchk input { width: auto; margin: 0; }
+
+/* a star: your own pick of an item (library.js), on its row and on the open document */
+:root { --star: #d99a06; }
+.prow { position: relative; padding-right: 32px; }
+.pstar { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .12s var(--ease), background-color .12s var(--ease), color .12s var(--ease); }
+.pstar .ico { width: 14px; height: 14px; }
+.prow:hover .pstar, .prow:focus-visible .pstar, .pstar.on { opacity: 1; }
+.pstar:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.pstar.on, .vstar.on, .pstarf.on { color: var(--star); }
+.pstar.on .ico, .vstar.on .ico, .pstarf.on .ico { fill: currentColor; }
+.phead .btn.pstarf.on { color: var(--star); background: color-mix(in srgb, var(--star) 14%, transparent); }

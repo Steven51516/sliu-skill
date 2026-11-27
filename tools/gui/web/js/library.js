@@ -2,11 +2,11 @@
 // Its collections are its top-level folders (Papers, Courses, ...; /api/library). The list on the left shows one
 // collection's items (a folder with its documents, or a single file); the document opens on the right, in the file
 // viewer (files.js, reader.js).
-import { S, $, esc, get, icon, hooks, store, toast, popMenu } from "./core.js";
+import { S, $, esc, get, post, icon, hooks, store, toast, popMenu } from "./core.js";
 import { filesState, openFile, renderViewer } from "./files.js";
 import { ask } from "./dialogs.js";
 
-const L = { project: null, cols: null, col: "", q: "", concept: "", sort: store("library.sort") || "added" };
+const L = { project: null, cols: null, col: "", q: "", concept: "", starred: false, sort: store("library.sort") || "added" };
 const year = (i) => (i.date.match(/\d{4}/) || [""])[0];
 const who = (i) => { const a = i.authors.split(/,| and | & /).map((x) => x.trim()).filter((x) => x && x !== "..." && x !== "…"); return !a.length ? "" : a[0].split(" ").pop() + (a.length > 1 ? " et al." : ""); };
 const SORTS = { added: ["Recently added", (a, b) => b.added - a.added], date: ["Newest first", (a, b) => b.date.localeCompare(a.date)], title: ["Title", (a, b) => a.title.localeCompare(b.title)] };
@@ -24,6 +24,7 @@ export function renderLibrary(full = true) {
   $("#view").innerHTML = `<div class="page full"><div class="tabbody"><div class="files papers">
       <div class="plist" id="plist"><div class="phead">
           <div class="pline"><button class="pcol" id="pp-col" title="Switch collection: a folder of the library"><span id="pp-coln"></span><span class="n" id="pp-colc"></span>${icon("chev")}</button><span class="grow"></span>
+            <button class="btn ghost sm icon pstarf" id="pp-f" title="Show only the ones you starred">${icon("star")}</button>
             <button class="btn ghost sm icon" id="pp-c" title="Show one concept's items">${icon("filter")}</button>
             <button class="btn ghost sm icon" id="pp-s" title="Order">${icon("sort")}</button>
             <button class="btn sm primary" id="pp-add" title="Add to this collection">${icon("plus")}Add</button></div>
@@ -37,6 +38,7 @@ export function renderLibrary(full = true) {
   $("#pp-c").onclick = (e) => popMenu(e.currentTarget, [{ label: "All concepts", on: !L.concept, run: () => { L.concept = ""; rows(); } }, "-",
     ...concepts().map(([k, n]) => ({ label: words(k), hint: String(n), on: k === L.concept, run: () => { L.concept = k; rows(); } }))], { right: true, cls: "nums" });
   $("#pp-q").oninput = (e) => { L.q = e.target.value; rows(); };
+  $("#pp-f").onclick = () => { L.starred = !L.starred; rows(); };
   $("#pp-add").onclick = async () => {                        // one per line, each in a session of its own
     const c = col();
     // A collection whose PDFs a command can highlight (its `highlight` setting): Add asks whether to, and says
@@ -59,6 +61,7 @@ export function renderLibrary(full = true) {
   };
   hooks.fileOpened = rows;
   hooks.libraryChanged = load;
+  hooks.itemStar = (path) => { const i = itemOf(path); return i ? { on: !!i.starred, set: (on) => star(i, on) } : null; };   // the open document's star (files.js)
   hooks.docTitle = (side, path) => {                           // what the viewer's header calls an open document
     const i = side === "local" && S.route.project === L.project && itemOf(path);
     return i ? { title: i.title, sub: [path.split("/")[0], i.folder ? docName(path) : ""].filter(Boolean).join(" · ") } : null;
@@ -81,6 +84,15 @@ async function load() {
 }
 document.addEventListener("rd:turn", () => { if ($("#plist") && S.route.project === L.project) load(); });   // a session may have added an item
 
+// Your own pick: a star on an item, kept in the library (/api/library/star). Shown at once, taken back if it fails.
+async function star(i, on) {
+  const show = () => { rows(); const b = $("#vstar"); if (b && itemOf(filesState.viewer?.path || "") === i) b.classList.toggle("on", !!i.starred); };
+  i.starred = on;
+  show();
+  try { await post("/api/library/star", { project: L.project, path: i.path, on }); }
+  catch (e) { i.starred = !on; show(); toast(/unknown endpoint/.test(e.message) ? "Starring needs the Desk's backend restarted" : e.message, "err", 6000); }
+}
+
 function concepts() {
   const n = new Map();
   (col()?.items || []).forEach((i) => i.concepts.forEach((k) => n.set(k, (n.get(k) || 0) + 1)));
@@ -96,6 +108,7 @@ function rows() {
   $("#pp-coln").textContent = L.col || "Library";
   $("#pp-colc").textContent = items.length || "";
   $("#pp-q").placeholder = `Search ${L.col}`;
+  $("#pp-f").classList.toggle("on", L.starred);
   const has = concepts().length > 0;
   $("#pp-c").style.display = has ? "" : "none";               // a collection whose items name no concepts has no such filter
   $("#pp-c").classList.toggle("on", !!L.concept);
@@ -103,21 +116,28 @@ function rows() {
   $("#pp-on").innerHTML = L.concept ? `<span class="pchip">${esc(words(L.concept))}<button title="Show all concepts">${icon("x")}</button></span>` : "";
   if (L.concept) $("#pp-on").querySelector("button").onclick = () => { L.concept = ""; rows(); };
   const terms = L.q.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = items.filter((i) => (!L.concept || i.concepts.includes(L.concept))
+  const shown = items.filter((i) => (!L.starred || i.starred) && (!L.concept || i.concepts.includes(L.concept))
     && terms.every((w) => `${i.title} ${i.authors} ${i.concepts.join(" ")} ${i.path}`.toLowerCase().includes(w))).sort((SORTS[L.sort] || SORTS.added)[1]);
   const on = (i) => (i.folder ? open.startsWith(i.path + "/") : open === i.path);
   host.innerHTML = shown.length ? shown.map((i) => {
     const meta = [year(i), who(i)].filter(Boolean).join(" · "), more = i.concepts.length - 2;
     return `<div class="prow ${on(i) ? "on" : ""}" tabindex="0" data-p="${esc(i.path)}">
+      <button class="pstar ${i.starred ? "on" : ""}" data-star tabindex="-1" title="${i.starred ? "Starred. Click to take the star away" : "Star it"}">${icon("star")}</button>
       <div class="pt">${esc(i.title)}</div>
       ${meta || i.marks ? `<div class="pm"><span>${esc(meta)}</span><span class="grow"></span>${i.marks ? `<span class="pk" title="${i.marks} highlight${i.marks > 1 ? "s" : ""}">${icon("mark")}${i.marks}</span>` : ""}</div>` : ""}
       ${i.concepts.length ? `<div class="pc">${i.concepts.slice(0, 2).map((k) => `<span>${esc(words(k))}</span>`).join("")}${more > 0 ? `<span title="${esc(i.concepts.slice(2).map(words).join(", "))}">+${more}</span>` : ""}</div>` : ""}
       ${on(i) && i.docs.length > 1 ? `<div class="pd">${i.docs.map((d) => `<a class="${d === open ? "on" : ""}" data-d="${esc(d)}">${icon(d.endsWith(".pdf") ? "doc" : "file")}${esc(docName(d))}</a>`).join("")}</div>` : ""}</div>`;
-  }).join("") : `<div class="empty big"><b>${items.length ? "Nothing matches" : "Nothing here yet"}</b><span>${items.length ? "Try other words, or clear the filter." : "Add to this collection with the button above."}</span></div>`;
+  }).join("") : L.starred && !items.some((i) => i.starred) ? `<div class="empty big"><b>Nothing starred yet</b><span>Star what you like with the star on its row, or on the open document.</span></div>`
+    : `<div class="empty big"><b>${items.length ? "Nothing matches" : "Nothing here yet"}</b><span>${items.length ? "Try other words, or clear the filter." : "Add to this collection with the button above."}</span></div>`;
   if (open !== rows.last) { rows.last = open; host.querySelector(".prow.on")?.scrollIntoView({ block: "nearest" }); }   // the open item, in view
   host.querySelectorAll(".prow").forEach((el) => {
     const go = () => { const i = items.find((x) => x.path === el.dataset.p); i ? openFile("local", i.main) : toast("It is no longer there", "err"); };
-    el.onclick = (e) => { const d = e.target.closest("[data-d]"); d ? openFile("local", d.dataset.d) : go(); };
+    el.onclick = (e) => {
+      const i = items.find((x) => x.path === el.dataset.p);
+      if (e.target.closest("[data-star]")) return i && star(i, !i.starred);
+      const d = e.target.closest("[data-d]");
+      d ? openFile("local", d.dataset.d) : go();
+    };
     el.onkeydown = (e) => { if (e.key === "Enter") go(); };
   });
 }

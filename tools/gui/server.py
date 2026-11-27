@@ -2118,13 +2118,49 @@ def library_item(root, path):
             "added": os.path.getmtime(about or main)}
 
 
+# The reader's own picks, kept in the library as .starred.json: {"version": 1, "starred": ["<collection>/<item>", ...]}
+STARS = ".starred.json"
+_stars_lock = threading.Lock()
+
+
+def stars_read(root):
+    try:
+        with open(os.path.join(root, STARS), encoding="utf-8") as f:
+            got = json.load(f).get("starred")
+    except (OSError, ValueError, AttributeError):
+        got = None
+    return [s for s in got if isinstance(s, str)] if isinstance(got, list) else []
+
+
+def library_star(b):
+    """Star an item of a library, or take its star away. The stars of items that are gone go with the write."""
+    p, rel = project(b.get("project")), clean_rel(b.get("path"))
+    if not p["library"] or p.get("remote_host"):
+        raise ApiError(400, f"{p['name']} is not a library on this Mac")
+    root, parts = os.path.realpath(p["path"]), rel.split("/")
+    if len(parts) != 2 or any(x.startswith(".") for x in parts) or not os.path.exists(inside(p, rel)):
+        raise ApiError(404, f"no item {rel} in this library")
+    with _stars_lock:
+        stars = [s for s in stars_read(root) if s != rel and os.path.exists(os.path.join(root, s))]
+        if b.get("on"):
+            stars.append(rel)
+        tmp = os.path.join(root, STARS + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"version": 1, "starred": stars}, f, indent=1, ensure_ascii=False)
+        os.replace(tmp, os.path.join(root, STARS))
+    return {"starred": stars}
+
+
 def library_list(p):
     root, out = os.path.realpath(p["path"]), []
+    stars = set(stars_read(root))
     for c in sorted(os.scandir(root), key=lambda e: e.name.lower()):
         if not c.is_dir() or c.name.startswith(".") or c.name in HIDE_DIRS:
             continue
         items = [i for i in (library_item(root, e.path) for e in sorted(os.scandir(c.path), key=lambda e: e.name.lower())
                              if not e.name.startswith(".") and e.name not in HIDE_DIRS) if i]
+        for i in items:
+            i["starred"] = i["path"] in stars
         out.append({"name": c.name, "items": items, **p["collections"].get(c.name, {"add": "", "teach": "", "highlight": ""})})
     return {"collections": out}
 
@@ -3323,6 +3359,8 @@ class Handler(BaseHTTPRequestHandler):
             return paste_file(b)
         if path == "/api/figure-fix":
             return figure_fix(b)
+        if path == "/api/library/star":
+            return library_star(b)
         if path == "/api/trash":
             return trash_path(b)
         if path == "/api/marks":

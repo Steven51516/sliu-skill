@@ -45,7 +45,9 @@ Library: a project with `library = true` is a library of documents. It has its o
 page (`web/js/library.js`, `/api/library`). Its top-level folders are its **collections** (papers, courses, anything);
 a collection's **items** are its folders, each with its documents (the Markdown and PDF files in it), and the Markdown,
 PDF and text files directly in it. The list shows one collection, searched and filtered by the concepts its items'
-front matter names; the document opens on the right, and an item's other documents are listed under it. **Add** asks a
+front matter names; the document opens on the right, and an item's other documents are listed under it. A **star**
+on an item's row, or on its open document, marks your own pick; the star in the list's header shows only those. Stars
+are kept in the library as `.starred.json` (`/api/library/star`). **Add** asks a
 session to add something to the collection (several lines: a session each, started in turn) and **Teach me** to teach the open item (your request, which you can edit
 first): in plain words, or with the commands the collection's `add` and `teach` settings name (a skill started only
 by its command). A collection may also name a `highlight` command, one that marks up an item's PDF (it writes the
