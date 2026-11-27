@@ -268,11 +268,9 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   }
 
   // ----- the question: what to ask, whom to ask -----
-  function sessions() {
+  function sessions() {                                        // a paper has its own session, named after its folder: it is the one asked
     const live = allAgents().filter((a) => a.project === S.route.project && a.status !== "ended" && (!a.remote || a.live));
-    const pick = live.find((a) => a.pane === S.chat.pane) || live.find((a) => a.role === "desk")
-      || [...live].sort((a, b) => (Date.parse(b.turn_end || 0) || 0) - (Date.parse(a.turn_end || 0) || 0))[0];
-    return { live, pick };
+    return { live, pick: hooks.sessionNamed(S.route.project, label) };
   }
   function askBox(at, ctx) {
     const { live, pick } = sessions();
@@ -281,7 +279,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
         <button class="btn ghost sm icon" id="ask-x" title="Close (Esc)">${icon("x")}</button></div>
       <textarea id="ask-q" rows="2" placeholder="${ctx.image ? "Ask about this region… (empty: explain it)" : "Ask about this passage… (empty: explain it)"}"></textarea>
       <div class="af">${live.length ? `<label class="muted" for="ask-to">Ask</label><select id="ask-to">${live.map((a) => `<option value="${esc(a.pane)}" ${a === pick ? "selected" : ""}>${esc(agentLabel(a))}${a.machine ? ` · ${esc(a.machine)}` : ""}</option>`).join("")}
-        <option value="">A new Claude session</option></select>` : `<span class="muted">Starts a Claude session</span>`}<span class="grow"></span><button class="btn sm primary" id="ask-send" title="Send (⏎) · new line: ⇧⏎">Send</button></div>`, at, "askpop");
+        <option value="" ${pick ? "" : "selected"}>A new session for this paper</option></select>` : `<span class="muted">Starts a Claude session</span>`}<span class="grow"></span><button class="btn sm primary" id="ask-send" title="Send (⏎) · new line: ⇧⏎">Send</button></div>`, at, "askpop");
     const q = $("#ask-q", p), send = $("#ask-send", p);
     $("#ask-x", p).onclick = closeTip;
     q.onkeydown = (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send.click(); } };

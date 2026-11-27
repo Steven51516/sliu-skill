@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: each paper has its own session. Ask and Teach me went to whichever session the chat showed, so a
+  second paper's questions landed in the first paper's conversation. They now go to the session named after the
+  paper's folder, or start one; Add starts a session of its own for each paper.
 - **Research Desk**: **Teach me** opens a box with the request ("Teach me this paper step by step."), to edit before
   it goes: your level, what to focus on. It went off at once, and the session then asked why the paper was being
   studied.

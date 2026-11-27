@@ -2,7 +2,7 @@
 import { S, $, get, post, hooks, parseRoute, go, store, isApp, agentLabel, allAgents, closeMenus, toast, saveAttention } from "./core.js";
 import { renderSidebar, initSidebarResize, inboxCount } from "./sidebar.js";
 import { renderView, renderTitlebar, renderInbox } from "./views.js";
-import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive, startBtw, tellProject, startWith } from "./chat.js";
+import { openChat, closeChat, toggleChat, initChatResize, refreshChatHead, deskPane, askProject, askLabel, openArchive, startBtw, tellProject, startWith, sessionNamed } from "./chat.js";
 import { initDock, toggleDock, typeIntoTerminal } from "./term.js";
 import { startTeam, newSession, addProject, newProject, shortcuts, closeDialog, peekJob } from "./dialogs.js";
 import { palette } from "./palette.js";
@@ -21,7 +21,7 @@ const localOnly = (fn) => (project, ...rest) => {
 
 Object.assign(hooks, {
   openChat, toggleChat, toggleDock, startTeam: localOnly(startTeam), newSession: localOnly(newSession), addProject, newProject, shortcuts, palette, deskPane, peekJob,
-  askProject: localOnly(askProject), askLabel, openArchive, tellProject: localOnly(tellProject), startWith: localOnly(startWith),
+  askProject: localOnly(askProject), askLabel, openArchive, tellProject: localOnly(tellProject), startWith: localOnly(startWith), sessionNamed,
   sidebar: () => renderSidebar(), refresh: () => poll(true), badge,
   nextAttention, btw: startBtw,
   setMoshiMode: async (on) => {

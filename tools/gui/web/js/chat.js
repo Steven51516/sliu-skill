@@ -55,12 +55,12 @@ export function askProject(project, text = "") {
 }
 export const askLabel = (project) => (deskPane(project) ? "Ask the desk" : "Ask Claude");
 
-// Send it now, with no box to fill: to the session the chat shows if it is the project's, else its desk, else its most
-// recently active session; with none, a new Claude session whose first message it is. The chat opens on the reply.
+// Send it now, with no box to fill, to the project's session named `label` (a paper has its own session, named after
+// its folder); with none, a new Claude session of that name whose first message it is. The chat opens on the reply.
+export const sessionNamed = (project, label) => allAgents().find((a) => a.project === project && a.status !== "ended" && (!a.remote || a.live)
+  && !!label && a.tab_label === label.slice(0, 28));
 export async function tellProject(project, text, label = "") {
-  const mine = allAgents().filter((a) => a.project === project && a.status !== "ended" && (!a.remote || a.live));
-  const to = mine.find((a) => a.pane === C.pane) || mine.find((a) => a.role === "desk")
-    || [...mine].sort((a, b) => (Date.parse(b.turn_end || 0) || 0) - (Date.parse(a.turn_end || 0) || 0))[0];
+  const to = sessionNamed(project, label);
   try {
     if (to) { await post("/api/chat/send", { pane: to.pane, text }); markSent(to.pane); openChat(to.pane, { focus: false }); }
     else await startWith(project, text, label);

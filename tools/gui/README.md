@@ -31,7 +31,7 @@ brings them back.
 PDFs: the file viewer opens a PDF in a reader (`web/js/reader.js`, PDF.js) whose text can be selected; pinch, or the
 wheel with ⌘, zooms it. Select a passage and press **Ask**, or use **Box & ask** to drag a box around an equation or a
 figure: the passage (or a crop of the box, drawn again at 3x), its page and your question go to the session you pick;
-with no session in the project, a Claude session starts with the question. **Marks** are the highlights kept beside the
+a paper has its own session, named after its folder, and one is started with the question when it has none. **Marks** are the highlights kept beside the
 PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
 session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
 result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it); the eye in

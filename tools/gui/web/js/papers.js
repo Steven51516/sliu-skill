@@ -27,7 +27,7 @@ export function renderPapers(full = true) {
   $("#pp-s").onchange = (e) => { P.sort = e.target.value; store("papers.sort", P.sort); rows(); };
   $("#pp-add").onclick = async () => {
     const what = await ask({ title: "Add a paper", label: "An arXiv ID, a DOI, a link, a title, or the path of a PDF", multiline: false, ok: "Read it" });
-    if (what) hooks.tellProject(project, `${S.data.add || "Read this paper into the library:"} ${what.trim()}`, "papers");   // `add` in the project's config: the command of a paper-reading skill
+    if (what) hooks.startWith(project, `${S.data.add || "Read this paper into the library:"} ${what.trim()}`, `add ${what.trim().split("/").pop()}`);   // each paper in a session of its own   // `add` in the project's config: the command of a paper-reading skill
   };
   hooks.fileOpened = rows;
   hooks.papersChanged = load;
