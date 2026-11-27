@@ -101,7 +101,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
       $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pnote" title="Open this paper's note">${icon("doc")} Note</button>`);
       $("#pnote", el).onclick = () => open(`${dir}/note.md`);
     }
-    $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm danger" id="pdel" title="Move this paper's folder (note, PDF, figures) to the trash">${icon("trash")} Delete paper</button>`);
+    $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm danger icon" id="pdel" title="Delete paper: move its folder (note, PDF, figures) to the trash">${icon("trash")}</button>`);
     $("#pdel", el).onclick = async () => {
       if (!window.confirm(`Delete this paper?\n\n${dir}/ (its note, PDF and figures) moves to the trash.\nUndo: trash --restore "${S.data.path}/${dir}"`)) return;
       try {

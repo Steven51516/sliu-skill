@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: reading mode. In a 1050-pixel window the sidebar and the paper list left the paper 538 pixels
+  (60% zoom). The file viewer's first button hides both while a file is open (the paper gets 1049 pixels, 123%) and
+  becomes "‹ Papers" (or "‹ Files") to bring them back; the choice is kept. In a library the header drops VS Code and
+  Delete paper is the trash icon, so it fits one row.
 - **Research Desk**: a paper in a library has **Teach me** in the reader's header: it asks a session, in plain words,
   to teach the paper one step at a time (a study skill, if one is installed, picks that up), starting a session when
   there is none. There was no way to start that from the app.

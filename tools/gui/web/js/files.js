@@ -1,5 +1,5 @@
 // Read-only file trees (records on the Mac, code on the server) and the file viewer.
-import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token, tokenNow } from "./core.js";
+import { S, $, esc, get, post, toast, icon, fmtSize, md, resolvePath, hooks, token, tokenNow, store } from "./core.js";
 import { markFigure } from "./annotate.js";
 import { showPdf } from "./reader.js";
 
@@ -134,20 +134,32 @@ export async function vscode(side, path, dir) {
   catch (e) { toast(e.message, "err", 6000); }
 }
 
+// Reading mode: the app's sidebar and the list beside the viewer step aside (app.css), so the file has the width.
+const reading = () => !!store("reading");
+document.body.classList.toggle("reading", reading());
+
 const LANG = { py: "python", sh: "bash", bash: "bash", zsh: "bash", js: "javascript", mjs: "javascript", ts: "typescript", json: "json", jsonl: "json",
   yaml: "yaml", yml: "yaml", toml: "ini", cfg: "ini", ini: "ini", md: "markdown", c: "c", h: "c", cpp: "cpp", cu: "cpp", rs: "rust", go: "go",
   r: "r", sql: "sql", txt: "plaintext", html: "xml", xml: "xml", css: "css", slurm: "bash", sbatch: "bash", ipynb: "json" };
 
 export async function showDoc(el, side, path, opt = {}) {
   const name = path.split("/").pop();
-  const head = opt.bare ? "" : `<div class="vhead">${icon(side === "local" ? "file" : "server")}<span class="path mono" title="${esc(path)}">${esc(side === "local" ? "" : S.data.server + ":")}${esc(path)}</span>
+  const lists = S.data?.library ? "Papers" : "Files";
+  const head = opt.bare ? "" : `<div class="vhead"><button class="btn ghost sm" id="vfocus" title="${reading() ? `Show the sidebar and the ${lists.toLowerCase()} list again` : "Reading mode: hide the sidebar and the list, for more room"}">${reading() ? `‹ ${lists}` : icon("side")}</button>${icon(side === "local" ? "file" : "server")}<span class="path mono" title="${esc(path)}">${esc(side === "local" ? "" : S.data.server + ":")}${esc(path)}</span>
     <span class="muted" id="vsize"></span><button class="btn ghost sm icon" id="vref" title="Reload">${icon("refresh")}</button>
-    <button class="btn sm" id="vvs">${icon("ext")} VS Code</button></div>`;
+    <button class="btn sm" id="vvs" ${S.data?.library ? `style="display:none"` : ""}>${icon("ext")} VS Code</button></div>`;
   if (!opt.quiet || !el.querySelector(".vbody")) el.innerHTML = head + `<div class="vbody"><div class="spin"></div></div>`;
   const wire = () => {
     if (opt.bare) return;
     $("#vref", el).onclick = () => showDoc(el, side, path, { ...opt, fresh: true });
     $("#vvs", el).onclick = () => vscode(side, path, false);
+    $("#vfocus", el).onclick = () => {                 // the label says how to get back; the open file stays as it is
+      const on = !reading(), b = $("#vfocus", el);
+      store("reading", on);
+      document.body.classList.toggle("reading", on);
+      b.innerHTML = on ? `‹ ${lists}` : icon("side");
+      b.title = on ? `Show the sidebar and the ${lists.toLowerCase()} list again` : "Reading mode: hide the sidebar and the list, for more room";
+    };
   };
   wire();
   const req = (el._req = (el._req || 0) + 1);

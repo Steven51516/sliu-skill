@@ -25,6 +25,9 @@ at that moment. Its sessions are those whose first prompt names the ticket's fol
 team-worker starts them), found here and on each herdr machine by `rg_trace.py`, which runs there over ssh so only the
 steps cross.
 
+Reading mode: the file viewer's first button hides the sidebar and the list beside the viewer while a file is open, and
+brings them back.
+
 PDFs: the file viewer opens a PDF in a reader (`web/js/reader.js`, PDF.js) whose text can be selected; pinch, or the
 wheel with ⌘, zooms it. Select a passage and press **Ask**, or use **Box & ask** to drag a box around an equation or a
 figure: the passage (or a crop of the box, drawn again at 3x), its page and your question go to the session you pick;

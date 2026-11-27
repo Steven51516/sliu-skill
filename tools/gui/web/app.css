@@ -326,6 +326,13 @@ details.fmd .fm { margin-top: 6px; }
 .prow .pc { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
 .prow .pc span { font-size: 10.5px; color: var(--muted); background: var(--hover); border-radius: 5px; padding: 0 5px; }
 
+/* reading mode (the viewer's first button, files.js): the sidebar and the list beside the viewer step aside */
+/* only while a file is open: an empty viewer says "pick one on the left" */
+body.reading:has(#viewer > .vhead) #sidebar, body.reading:has(#viewer > .vhead) #sidebar-resize,
+body.reading .files:has(#viewer > .vhead) > .trees, body.reading .files:has(#viewer > .vhead) > .plist { display: none; }
+html.app body.reading:has(#viewer > .vhead) #titlebar { padding-left: 86px; }       /* clear of the window's buttons */
+.vhead #vfocus { flex: none; font-weight: 500; }
+
 /* the paper reader (reader.js): the PDF fills the viewer under its header; pdf.js lays its pages out in .pdfscroll */
 .viewer.pdfmode { display: flex; flex-direction: column; overflow: hidden; }
 .pdfctl { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
