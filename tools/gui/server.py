@@ -2903,9 +2903,8 @@ def term_env():
 
 # ---------- http ----------
 
-STATIC_TYPES = {".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css",
-                ".svg": "image/svg+xml", ".png": "image/png", ".gif": "image/gif", ".woff2": "font/woff2",
-                ".map": "application/json"}
+STATIC_TYPES = {".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml",
+                ".png": "image/png", ".gif": "image/gif", ".woff2": "font/woff2", ".map": "application/json"}
 
 
 class Handler(BaseHTTPRequestHandler):

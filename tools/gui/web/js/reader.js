@@ -14,10 +14,10 @@ function load() {
     const st = document.createElement("style");
     st.textContent = `@scope (.pdfbox) {\n${css}\n}`;
     document.head.appendChild(st);
-    const pdfjs = await import(V + "pdf.min.mjs");
-    globalThis.pdfjsLib = pdfjs;                   // pdf_viewer.mjs reads the library from this global
-    pdfjs.GlobalWorkerOptions.workerSrc = V + "pdf.worker.min.mjs";
-    return { pdfjs, view: await import(V + "pdf_viewer.mjs") };
+    const pdfjs = await import(V + "pdf.min.js");
+    globalThis.pdfjsLib = pdfjs;                   // pdf_viewer.js reads the library from this global
+    pdfjs.GlobalWorkerOptions.workerSrc = V + "pdf.worker.min.js";
+    return { pdfjs, view: await import(V + "pdf_viewer.js") };
   })().catch((e) => { lib = null; throw e; }));
 }
 
