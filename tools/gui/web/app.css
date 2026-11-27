@@ -1082,8 +1082,6 @@ input[type=checkbox], input[type=radio] { box-shadow: none; padding: 0; border-r
 .prow .pt { font-weight: 550; font-size: 13px; line-height: 1.38; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .prow .pm { color: var(--muted); font-size: 11.5px; margin-top: 3px; display: flex; align-items: center; gap: 8px; }
 .prow .pm .grow { flex: 1; }
-.prow .pm .pv { font-size: 10.5px; font-weight: 600; padding: 0 6px; border-radius: 5px; background: var(--hover); color: var(--ink-2); text-transform: capitalize; }
-.prow .pm .pv.v-study { color: var(--accent); background: var(--accent-soft); }
 .prow .pm .pk { display: inline-flex; align-items: center; gap: 3px; }
 .prow .pm .pk .ico { width: 11px; height: 11px; }
 .prow .pc { margin-top: 5px; display: flex; gap: 4px; overflow: hidden; }
@@ -1142,5 +1140,3 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 .hkey span:hover { background: var(--hover); }
 .hkey span.off { opacity: .45; text-decoration: line-through; }
 .hkey b { margin-left: 5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
-.prow .pm .pv { text-transform: none; white-space: nowrap; }
-.prow .pm .pv.v-skip { color: var(--muted); }

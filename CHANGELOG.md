@@ -5,10 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
-- **Research Desk**: a note's verdict and the highlight colours explain themselves. The list showed the bare words
-  `study` and `enough`; it now says Worth studying, Note is enough or Skip, with the note's own reason in the tooltip
-  (`verdict_why`, read from the note's `**Verdict**:` line; needs a backend restart). A paper that carries a
-  session's highlights shows a key over its corner: the colours that are there, their counts, a click to hide a kind.
+- **Research Desk**: the highlight colours explain themselves, and the library list no longer shows a note's
+  `verdict`. A paper that carries a session's highlights shows a key over its corner: the colours that are there,
+  their counts, a click to hide a kind. Whether a paper is worth studying is the reader's call: the list showed the
+  reading session's `study` or `enough` as a tag, and it is gone (the backend no longer reads the field).
 - **Research Desk**: one-off sessions of a library end themselves, keeping what they wrote. Each Add and each
   question from the reader started a Claude session that stayed open for good. Now an Add session ends once its item
   is in the library (one that added nothing stays, and says so), and a session holding only reader questions ends
