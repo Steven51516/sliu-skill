@@ -86,6 +86,7 @@ def load_config():
         p.setdefault("shared", [])
         p.setdefault("server_maps", "maps")
         p["muted"] = p.get("inbox") is False       # inbox = false: its tickets stay out of the Inbox and alerts
+        p["library"] = p.get("library") is True    # library = true: a folder of papers, shown as its own page (papers_list)
     return cfg
 
 
@@ -1027,7 +1028,7 @@ def project_state(p, with_agents=True):
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
             "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
             "keychain": keychain_has(), "dry_run": ARGS.dry_run, "remote": remote_info(p) if p.get("remote_host") else None,
-            "muted": p["muted"]}
+            "muted": p["muted"], "library": p["library"]}
 
 
 def projects_summary():
@@ -1041,10 +1042,11 @@ def projects_summary():
             out.append({"name": name, "ok": True, "path": p["path"], "waiting": s["waiting"], "agents": s["agents"], "states": states,
                         "open_maps": sum(m["status"] != "closed" for m in s["maps"]),
                         "running": sum(t["status"] in ("running", "claimed") for m in s["maps"] for t in m["tickets"]),
-                        "changes": len(s["changes"]["items"]), "server": p.get("server"), "remote": s["remote"], "muted": p["muted"]})
+                        "changes": len(s["changes"]["items"]), "server": p.get("server"), "remote": s["remote"], "muted": p["muted"],
+                        "library": p["library"]})
         except Exception as e:  # one broken project must not hide the others
             out.append({"name": name, "ok": False, "error": str(e), "waiting": [], "agents": [],
-                        "remote": remote_info(p) if p.get("remote_host") else None})
+                        "remote": remote_info(p) if p.get("remote_host") else None, "library": p["library"]})
     registered = {os.path.realpath(p["path"]) for p in cfg["projects"].values()}
     found = []
     for root in cfg.get("roots", []):
@@ -2066,6 +2068,110 @@ def trash_path(b):
         raise ApiError(500, err.strip() or "the trash move failed")
     return {"trashed": out.decode(errors="replace").strip().split(" -> ")[-1]}
 
+# ---------- a paper library (a project with library = true): one folder per paper ----------
+
+def papers_list(p):
+    """The papers of a library: each folder under its Papers/ (or under the library itself) that holds a note.md or a
+    PDF, with what the note's front matter says (title, authors, date, concepts, verdict)."""
+    root = os.path.realpath(p["path"])
+    base = os.path.join(root, "Papers") if os.path.isdir(os.path.join(root, "Papers")) else root
+    out = []
+    for e in sorted(os.scandir(base), key=lambda e: e.name.lower()):
+        if not e.is_dir() or e.name.startswith(".") or e.name in HIDE_DIRS:
+            continue
+        note, pdf = os.path.join(e.path, "note.md"), os.path.join(e.path, "paper.pdf")
+        if not os.path.isfile(pdf):
+            pdf = next(iter(sorted(glob.glob(os.path.join(glob.escape(e.path), "*.pdf")))), None)
+        if not os.path.isfile(note):
+            note = None
+        if not (note or pdf):
+            continue
+        try:
+            meta = tracker.parse_front_matter(note)[0] if note else {}
+        except (OSError, UnicodeDecodeError):
+            meta = {}
+        marks = 0
+        if pdf:
+            try:
+                with open(os.path.splitext(pdf)[0] + ".marks.json", encoding="utf-8") as f:
+                    marks = len(json.load(f).get("marks") or [])
+            except (OSError, ValueError, AttributeError):
+                pass
+        concepts = meta.get("concepts") or []
+        text = lambda k: str(meta.get(k) or "")[:600]      # noqa: E731
+        out.append({"folder": os.path.relpath(e.path, root), "title": text("title") or e.name.replace("-", " "),
+                    "authors": text("authors"), "date": text("date"), "verdict": text("verdict"),
+                    "concepts": [str(c) for c in (concepts if isinstance(concepts, list) else [concepts])][:12],
+                    "pdf": os.path.relpath(pdf, root) if pdf else None, "note": os.path.relpath(note, root) if note else None,
+                    "marks": marks, "added": os.path.getmtime(note or pdf)})
+    return {"papers": out}
+
+
+# ---------- marks: the highlights and notes kept beside a PDF (web/js/reader.js; an agent may write the file too) ----------
+# <name>.marks.json beside <name>.pdf: {"version": 1, "marks": [{id, page, rects: [[left, top, width, height], ...] as
+# fractions of the page, quote, kind, note (markdown), by: "you" | "agent", at, question (an ask waiting for its
+# reply), box (a region, no quote), crop (the region's picture as it was sent)}]}
+
+MARK_KINDS = {"claim", "method", "result", "limit", "ask", "note"}
+
+
+def marks_file(p, rel):
+    if p.get("remote_host"):
+        raise ApiError(400, f"{p['name']} is on {p['remote_host']}: marks are kept for PDFs on this Mac")
+    if not rel.lower().endswith(".pdf") or not os.path.isfile(inside(p, rel)):
+        raise ApiError(404, f"no PDF {rel} on the Mac")
+    return os.path.splitext(inside(p, rel))[0] + ".marks.json"
+
+
+def marks_read(p, rel):
+    try:
+        with open(marks_file(p, rel), encoding="utf-8") as f:
+            marks = json.load(f).get("marks")
+    except (OSError, ValueError, AttributeError):
+        marks = None
+    return {"marks": [m for m in marks if isinstance(m, dict) and m.get("id") and m.get("rects")] if isinstance(marks, list) else []}
+
+
+def clean_mark(m):
+    try:
+        page, rects = int(m.get("page")), [[min(1.0, max(0.0, float(x))) for x in r] for r in m.get("rects") or []]
+    except (TypeError, ValueError):
+        raise ApiError(400, "a mark needs a page and rects")
+    if page < 1 or not rects or len(rects) > 400 or any(len(r) != 4 for r in rects):
+        raise ApiError(400, "a mark needs a page and rects of four numbers")
+    out = {"id": re.sub(r"[^\w-]", "", str(m.get("id") or ""))[:24] or uuid.uuid4().hex[:8], "page": page, "rects": rects,
+           "quote": str(m.get("quote") or "")[:8000], "kind": m.get("kind") if m.get("kind") in MARK_KINDS else "note",
+           "note": str(m.get("note") or "")[:40000], "by": "agent" if m.get("by") == "agent" else "you",
+           "at": str(m.get("at") or "")[:40] or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+    if m.get("question"):
+        out["question"] = str(m["question"])[:4000]
+    if m.get("box"):
+        out["box"] = True
+    if m.get("crop"):
+        out["crop"] = str(m["crop"])[:1000]
+    return out
+
+
+def marks_change(b):
+    """Put one mark (in place of the one with its id) or delete one by id; answers with all of them."""
+    p, rel = project(b.get("project")), clean_rel(b.get("path"))
+    path, marks = marks_file(p, rel), marks_read(p, rel)["marks"]
+    if b.get("delete"):
+        marks = [m for m in marks if m.get("id") != b["delete"]]
+    elif isinstance(b.get("put"), dict):
+        new = clean_mark(b["put"])
+        at = next((i for i, m in enumerate(marks) if m.get("id") == new["id"]), len(marks))
+        marks[at:at + 1] = [new]
+    else:
+        raise ApiError(400, "put a mark or delete one")
+    if len(marks) > 2000:
+        raise ApiError(413, "a PDF keeps at most 2000 marks")
+    with open(path + ".tmp", "w", encoding="utf-8") as f:
+        json.dump({"version": 1, "marks": marks}, f, ensure_ascii=False, indent=1)
+    os.replace(path + ".tmp", path)
+    return {"marks": marks}
+
+
 # ---------- raw file bytes (PDFs and images open in the viewer) ----------
 
 RAW_TYPES = {".pdf": "application/pdf", **IMAGE_EXT}
@@ -3037,6 +3143,10 @@ class Handler(BaseHTTPRequestHandler):
             if q.get("side") == "local":
                 return local_read(p, rel, q.get("mode"))
             return server_read(p, rel, q.get("mode"), fresh)
+        if path == "/api/marks":
+            return marks_read(project(q.get("project")), clean_rel(q.get("path")))
+        if path == "/api/papers":
+            return papers_list(project(q.get("project")))
         if path == "/api/plan":
             return team_plan(project(q.get("project")), q.get("map") or None, q.get("agent") or None)
         if path == "/api/job":
@@ -3112,6 +3222,8 @@ class Handler(BaseHTTPRequestHandler):
             return figure_fix(b)
         if path == "/api/trash":
             return trash_path(b)
+        if path == "/api/marks":
+            return marks_change(b)
         if path == "/api/gpu-pools":
             return write_pools(b)
         if path == "/api/shots":

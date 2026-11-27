@@ -299,6 +299,24 @@ details.fmd .fm { margin-top: 6px; }
 .vbody { padding: 14px 18px 50px; }
 .vbody pre.code { background: var(--code-bg); padding: 12px 14px; border-radius: 8px; overflow: auto; margin: 0; border: 1px solid var(--line); line-height: 1.5; }
 .vbody pre.code .ln { display: inline-block; width: 3.2em; color: var(--muted); opacity: .6; text-align: right; margin-right: 1.2em; user-select: none; }
+/* the paper library (papers.js): the papers on the left, the paper or its note on the right */
+.plist { width: clamp(260px, 32%, 380px); flex: none; border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.phead { padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--line); }
+.phead .pline { display: flex; gap: 6px; }
+.phead input, .phead select { flex: 1; min-width: 0; padding: 4px 8px; font-size: 12.5px; }
+.prows { flex: 1; overflow: auto; padding: 4px 0 30px; }
+.prow { padding: 8px 12px; cursor: pointer; border-left: 2px solid transparent; outline: none; }
+.prow:hover, .prow:focus-visible { background: var(--hover); }
+.prow.on { background: var(--accent-soft); border-left-color: var(--accent); }
+.prow .pt { font-weight: 550; font-size: 13px; line-height: 1.35; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.prow .pm { color: var(--muted); font-size: 11.5px; margin-top: 2px; display: flex; align-items: center; gap: 8px; }
+.prow .pm .pv { text-transform: uppercase; letter-spacing: .4px; font-size: 10px; font-weight: 600; }
+.prow .pm .pv.v-study { color: var(--accent); }
+.prow .pm .pk { display: inline-flex; align-items: center; gap: 2px; }
+.prow .pm .pk .ico { width: 11px; height: 11px; }
+.prow .pc { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.prow .pc span { font-size: 10.5px; color: var(--muted); background: var(--hover); border-radius: 5px; padding: 0 5px; }
+
 /* the paper reader (reader.js): the PDF fills the viewer under its header; pdf.js lays its pages out in .pdfscroll */
 .viewer.pdfmode { display: flex; flex-direction: column; overflow: hidden; }
 .pdfctl { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
@@ -315,6 +333,20 @@ details.fmd .fm { margin-top: 6px; }
 .rdmarks { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
 .rdmark { position: absolute; background: rgba(255, 208, 0, .38); mix-blend-mode: multiply; border-radius: 2px; }
 .rdmark.box { background: rgba(79, 107, 237, .10); mix-blend-mode: normal; outline: 1.5px solid var(--accent); }
+.rdmark.k-claim { background: rgba(52, 199, 89, .30); }      /* an agent's marks, by kind; yours stay yellow */
+.rdmark.k-method { background: rgba(64, 156, 255, .28); }
+.rdmark.k-result { background: rgba(175, 82, 222, .24); }
+.rdmark.k-limit { background: rgba(255, 99, 71, .28); }
+.rdmark.saved.box { background: rgba(255, 208, 0, .14); outline: 1.5px solid rgba(214, 160, 0, .9); }
+.pdfbox.nomarks .rdmark.saved { display: none; }
+.pdfctl #pmarks.off { opacity: .4; }
+.asktip { display: flex; gap: 4px; }
+.askpop.markpop { width: min(480px, calc(100vw - 16px)); }
+.askpop .ah .grow { flex: 1; }
+.askpop.markpop .q { font-size: 12px; color: var(--ink-2); border-left: 2px solid var(--line-2); padding-left: 8px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.askpop .mn { max-height: min(46vh, 420px); overflow: auto; font-size: 13px; }
+.askpop .mn:empty { display: none; }
+.askpop .mw { font-size: 12px; }
 .asktip, .askpop { position: fixed; z-index: 40; }
 .asktip .btn { box-shadow: var(--shadow-pop); }
 .askpop { width: min(420px, calc(100vw - 16px)); background: var(--raised); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); padding: 10px; display: flex; flex-direction: column; gap: 8px; }

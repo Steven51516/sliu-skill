@@ -68,7 +68,7 @@ export function openArchive(session, uuid, opt = {}) {
 function switchTo(pane) {
   clearTimeout(C.timer);
   Object.assign(C, { pane, items: [], tools: new Map(), offset: null, session: null, status: null, queued: [], screen: null, fallback: null, cut: false, err: null,
-    around: null, livePane: null, turnFiles: new Set() });
+    around: null, livePane: null, turnFiles: new Set(), asked: "", said: "" });
   const a = agentByPane(pane);
   C.project = a ? a.project : null;              // links and @ mentions follow the agent's project, not the page's
   C.label = a ? agentLabel(a) : null;
@@ -128,6 +128,12 @@ function ingest(items) {
     if (it.k === "user") {
       const i = C.queued.findIndex((q) => q.trim() === it.text.trim());
       if (i >= 0) C.queued.splice(i, 1);
+      C.asked = it.text; C.said = "";
+    }
+    if (it.k === "assistant") C.said = it.text;
+    if (it.k === "turn" && C.asked && C.said) {              // the reader pins a reply to its passage; the paper list reloads
+      document.dispatchEvent(new CustomEvent("rd:turn", { detail: { pane: C.pane, asked: C.asked, said: C.said } }));
+      C.asked = "";
     }
     C.items.push(it);
     fresh.push(it);

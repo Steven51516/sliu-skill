@@ -25,12 +25,22 @@ at that moment. Its sessions are those whose first prompt names the ticket's fol
 team-worker starts them), found here and on each herdr machine by `rg_trace.py`, which runs there over ssh so only the
 steps cross.
 
-PDFs: the file viewer opens a PDF in a reader (`web/js/reader.js`, PDF.js) whose text can be selected. Select a
-passage and press **Ask**, or use **Box & ask** to drag a box around an equation or a figure: the passage (or a crop of
-the box, drawn again at 3x), its page and your question go to the session you pick, or start a new one. A paper kept
-as a folder with `paper.pdf` beside a `note.md` gets **Delete paper**, which moves that folder to the trash
-(`extras/trash.py`: undone with `trash --restore <path>`). Markdown in the viewer and in chat draws math (`$…$`,
-`$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and the pictures a note links beside it.
+PDFs: the file viewer opens a PDF in a reader (`web/js/reader.js`, PDF.js) whose text can be selected; pinch, or the
+wheel with ⌘, zooms it. Select a passage and press **Ask**, or use **Box & ask** to drag a box around an equation or a
+figure: the passage (or a crop of the box, drawn again at 3x), its page and your question go to the session you pick;
+with no session in the project, a Claude session starts with the question. **Marks** are the highlights kept beside the
+PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
+session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
+result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note; the eye in
+the header hides them. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
+the pictures a note links beside it.
+
+Papers: a project with `library = true` is a paper library. It has its own entry in the sidebar and opens as a page
+(`web/js/papers.js`, `/api/papers`): the papers on the left (a folder each under its `Papers/`, holding `paper.pdf` and
+a `note.md` whose front matter gives title, authors, date, concepts and verdict), searched and filtered by concept,
+the paper or its note on the right. **Note** and **Paper** switch between the two, **Add** hands a new paper to the
+`read-paper` skill, **Delete paper** moves the folder to the trash (`extras/trash.py`: undone with
+`trash --restore <path>`).
 
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).
 `research-gui` opens the app if installed; `--browser` uses a browser tab; `--serve` runs only the backend;

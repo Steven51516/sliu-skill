@@ -21,3 +21,8 @@ server_maps = "maps"                   # where map folders live under server_roo
 shared = ["common"]                    # server folders pinned beside every map's code
 # claude_args = ["--model", "opus"]    # per project, overrides defaults.claude_args
 # [projects.example.role_env.desk]     # per project, overrides a role's defaults
+
+# A folder of papers, one folder each (paper.pdf, note.md) under its Papers/: shown as its own page, not among the projects
+# [projects.papers]
+# path = "~/papers"
+# library = true

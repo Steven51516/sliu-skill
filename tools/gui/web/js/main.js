@@ -30,7 +30,8 @@ Object.assign(hooks, {
     poll(true);
   },
   openPath: (project, rel, side = "local") => {
-    if (S.route.view === "files" && S.route.project === project && document.getElementById("viewer")) return openFile(side, rel);
+    const here = S.route.view === "files" || (S.route.view === "project" && document.getElementById("plist"));   // the files page, or a paper library's own
+    if (here && S.route.project === project && document.getElementById("viewer")) return openFile(side, rel);
     openPathLater(side, rel); go({ project, view: "files" });
   },
 });

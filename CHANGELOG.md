@@ -5,6 +5,13 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk keeps what you read.** A question about a passage left no trace on the paper. The reader now keeps
+  marks beside the PDF (`<name>.marks.json`): a passage you highlight or ask about stays highlighted, the session's reply
+  is pinned to it when its turn ends, and an agent can mark claims, the method, results and limitations. A project
+  with `library = true` is a paper library with its own sidebar entry and page (papers on the left, searched and
+  filtered by concept; the paper or its note on the right). Asking with no session starts a Claude session with the
+  question instead of opening the New session dialog; pinch or ⌘-wheel zooms the paper; clicking Ask did nothing after
+  a real click (its mouse-up closed the question box).
 - **Research Desk reads papers.** A PDF opened in the built-in viewer could not be asked about: its text sat in an
   iframe the page cannot see into. The file viewer now draws PDFs with PDF.js: select a passage and press **Ask**, or
   **Box & ask** an equation or a figure, and the passage (or a crop), its page and your question go to a session.

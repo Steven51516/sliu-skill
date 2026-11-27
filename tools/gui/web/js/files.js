@@ -113,17 +113,19 @@ function drawTree(tr) {
   if (sb) sb.onclick = () => hooks.openTerminal({ kind: "ssh", project: S.route.project, path: tr.root, server: S.data.server, label: `ssh ${S.data.server}:${tr.root.split("/").pop() || "~"}` });
 }
 
+export { renderViewer };
 export function openFile(side, path) {
   clearInterval(F.follow);
   F.viewer = { side, path };
   Object.values(F.trees).forEach(drawTree);
   renderViewer();
+  hooks.fileOpened?.(side, path);                    // the paper list marks its row (papers.js)
 }
 
 function renderViewer() {
   const el = $("#viewer");
   if (!el) return;
-  if (!F.viewer) { el.innerHTML = `<div class="empty big">Pick a file on the left.<br><span style="font-size:12px">Folders load when opened. Server files are read-only and cached until ${icon("refresh")}.</span></div>`; return; }
+  if (!F.viewer) { el.innerHTML = el.dataset.empty ? `<div class="empty big">${el.dataset.empty}</div>` : `<div class="empty big">Pick a file on the left.<br><span style="font-size:12px">Folders load when opened. Server files are read-only and cached until ${icon("refresh")}.</span></div>`; return; }
   showDoc(el, F.viewer.side, F.viewer.path);
 }
 
@@ -157,13 +159,14 @@ export async function showDoc(el, side, path, opt = {}) {
     el.classList.add("pdfmode");
     el.innerHTML = head + `<div class="pdfbox"><div class="spin"></div><div class="pdfscroll"><div class="pdfViewer"></div></div></div>`;
     wire();
-    const free = await showPdf(el, { side, path, url: `/api/raw?${q}`, gone: (dir) => {      // its folder went to the trash
+    const free = await showPdf(el, { side, path, url: `/api/raw?${q}`, open: (to) => openFile(side, to), gone: (dir) => {      // its folder went to the trash
       F.viewer = null;
       Object.values(F.trees).filter((tr) => tr.side === "local").forEach((tr) => {
         Object.keys(tr.nodes).forEach((k) => { if (k === dir || k.startsWith(dir + "/")) delete tr.nodes[k]; });
         Object.keys(tr.nodes).filter((k) => tr.nodes[k].open || k === tr.root).forEach((k) => loadDir(tr, k, true));
       });
       renderViewer();
+      hooks.papersChanged?.();
     } });
     if (el._req === req) el._free = free; else free?.();
     return;
@@ -213,6 +216,18 @@ export async function showDoc(el, side, path, opt = {}) {
     b.title = "Circle what's wrong on a copy and ask a session to fix this figure";
     b.onclick = () => markFigure({ side, path, src: `data:${f.mime};base64,${f.data}` });
     $(".vhead", el).insertBefore(b, $("#vvs", el));
+  }
+  if (!opt.bare && side === "local" && name === "note.md") {   // a paper's note (beside its paper.pdf): the paper is one click away
+    const dir = path.split("/").slice(0, -1).join("/");
+    get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
+      if (el._req !== req || !j.entries.some((e) => e.name === "paper.pdf") || !$("#vvs", el)) return;
+      const b = document.createElement("button");
+      b.className = "btn sm";
+      b.innerHTML = `${icon("doc")} Paper`;
+      b.title = "Open this paper's PDF";
+      b.onclick = () => openFile(side, `${dir}/paper.pdf`);
+      $(".vhead", el).insertBefore(b, $("#vvs", el));
+    }).catch(() => {});
   }
   if (!opt.bare && f.kind === "log") {                 // follow: refetch every 5 s while this file stays open
     const b = document.createElement("button");
