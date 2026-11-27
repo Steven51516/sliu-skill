@@ -133,6 +133,7 @@ def read_branch(path, size):
 
 def strip_tags(text):
     text = re.sub(r"<system-reminder>.*?</system-reminder>", "", text, flags=re.S)
+    text = re.sub(r"</?pasted_content[^>]*>", "", text)      # Claude Code wraps a pasted (multi-line) message in these
     return text.strip()
 
 

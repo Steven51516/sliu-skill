@@ -280,7 +280,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
           hooks.openChat(pane, { focus: false });
         }
         // the passage stays marked, waiting for the reply: `question` is what the reply will answer (ended, below)
-        if (keep) change({ put: ctx.old ? { ...ctx.old, question: asked, crop: crop || ctx.old.crop } : kept(ctx.mark, { kind: "ask", quote: ctx.quote || "", box: !!ctx.image, question: asked, ...(crop ? { crop } : {}) }) });
+        if (keep) change({ put: ctx.old ? { ...ctx.old, kind: ctx.old.by === "agent" ? ctx.old.kind : "ask", question: asked, crop: crop || ctx.old.crop } : kept(ctx.mark, { kind: "ask", quote: ctx.quote || "", box: !!ctx.image, question: asked, ...(crop ? { crop } : {}) }) });
         closeTip();
       } catch (e) { toast(e.message, "err", 6000); send.disabled = false; }
     };
@@ -339,8 +339,8 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   let again = 0;
   const ended = ({ detail: t }) => {
     if (!alive() || !keep) return;
-    const asked = norm(t.asked);
-    saved.filter((m) => m.kind === "ask" && m.question && (m.crop ? asked.includes(m.crop) : asked.includes(norm(m.quote).slice(0, 120)) && asked.endsWith(norm(m.question))))
+    const asked = norm(t.asked.replace(/<\/?pasted_content[^>]*>/g, " "));   // Claude Code wraps a pasted message in these
+    saved.filter((m) => m.question && (m.crop ? asked.includes(m.crop) : asked.includes(norm(m.quote).slice(0, 120)) && asked.endsWith(norm(m.question))))
       .forEach((m) => { m.note = (m.note ? m.note + "\n\n---\n\n" : "") + `**${m.question}**\n\n${t.said}`; m.question = ""; change({ put: m }); });
     clearTimeout(again);
     again = setTimeout(loadMarks, 1200);
