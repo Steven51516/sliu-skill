@@ -85,6 +85,16 @@ export async function showPdf(el, { side, path, url, gone }) {
   bus.on("scalechanging", (e) => { auto = e.presetValue === "auto"; });
   const ro = new ResizeObserver(() => { if (auto && pv.pagesCount) fit(); });
   ro.observe(scroll);
+  // pinch on the trackpad, or ⌘/Ctrl with the wheel, zooms about the pointer (the page would zoom the whole window)
+  let want = 0, settle = 0;
+  scroll.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    want = Math.max(0.25, Math.min(6, (want || pv.currentScale) * Math.exp(-e.deltaY / 100)));   // small steps add up
+    pv.updateScale({ scaleFactor: want / pv.currentScale, origin: [e.clientX, e.clientY], drawingDelay: 250 });
+    clearTimeout(settle);
+    settle = setTimeout(() => { want = 0; }, 300);
+  }, { passive: false });
 
   // ----- what is being asked about, drawn over its page (pdf.js rebuilds a page's layers when it redraws) -----
   function paint(n) {
@@ -144,13 +154,16 @@ export async function showPdf(el, { side, path, url, gone }) {
     });
     return out;
   }
-  const onUp = (e) => setTimeout(() => {                       // anywhere: a drag may end outside the page
-    if (boxing || !alive() || tip?.contains(e.target)) return;
+  const onUp = (e) => {                                        // anywhere: a drag may end outside the page
+    const mine = !!tip?.contains(e.target);                    // a click in the tip itself, read now: the click replaces the tip
+    setTimeout(() => {
+    if (boxing || !alive() || mine) return;
     const s = selection();
-    if (!s) return closeTip();
+    if (!s) { if (tip?.className === "asktip") closeTip(); return; }
     const go = pop(`<button class="btn sm primary" id="ask-go">${icon("chat")} Ask</button>`, s.at, "asktip");
     $("#ask-go", go).onclick = () => { setMarks(s.marks); document.getSelection().removeAllRanges(); askBox(s.at, { pages: s.pages, quote: s.quote }); };
-  }, 0);
+    }, 0);
+  };
   document.addEventListener("mouseup", onUp);
 
   // ----- ask about a boxed region: an equation, a figure, a table -----
