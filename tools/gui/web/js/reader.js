@@ -140,11 +140,16 @@ export async function showPdf(el, { side, path, url, gone, open }) {
     if (!keep) return;
     try { saved = (await get("/api/marks", { project: S.route.project, path })).marks || []; }
     catch (_) { keep = false; $("#pmarks", el)?.remove(); return; }   // a backend from before marks: read and ask as before
-    if (alive()) repaint();
+    if (!alive()) return;
+    repaint();
+    if (saved.some((m) => m.question)) (hooks.chatTurns?.() || []).forEach(pin);   // replies that came before this paper was open
   }
-  async function change(body) {                                // put a mark or delete one; the backend answers with them all
-    try { saved = (await post("/api/marks", { project: S.route.project, path, ...body })).marks || []; repaint(); return true; }
-    catch (e) { toast(`The highlight wasn't saved: ${e.message}`, "err", 6000); return false; }
+  let queue = Promise.resolve();                               // one change at a time: the backend rewrites the whole file
+  function change(body) {                                      // put a mark or delete one; the backend answers with them all
+    return (queue = queue.then(async () => {
+      try { saved = (await post("/api/marks", { project: S.route.project, path, ...body })).marks || []; repaint(); return true; }
+      catch (e) { toast(`The highlight wasn't saved: ${e.message}`, "err", 6000); return false; }
+    }));
   }
   loadMarks();
   const frame = (pg) => { const r = pg.getBoundingClientRect(); return { x: r.left + pg.clientLeft, y: r.top + pg.clientTop, w: pg.clientWidth, h: pg.clientHeight }; };
@@ -322,7 +327,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
         <button class="btn ghost sm icon" id="ask-x" title="Close (Esc)">${icon("x")}</button></div>
       ${m.quote ? `<div class="q">${esc(m.quote)}</div>` : ""}
       ${own ? `<textarea id="mk-note" rows="2" placeholder="Your note…">${esc(m.note || "")}</textarea><div class="af"><span class="grow"></span><button class="btn sm primary" id="mk-save">Save</button></div>` : `<div class="mn"></div>`}
-      ${m.question ? `<div class="muted mw">Waiting for the reply to: ${esc(m.question)}. It is pinned here when that session's turn ends with its chat open.</div>` : ""}`, at, "askpop markpop");
+      ${m.question ? `<div class="muted mw">No reply pinned yet to “${esc(m.question)}”. It is pinned when the session has replied and its chat is open here.</div>` : ""}`, at, "askpop markpop");
     if (!own && m.note) md($(".mn", p), m.note);
     $("#ask-x", p).onclick = closeTip;
     $("#mk-del", p).onclick = () => { closeTip(); change({ delete: m.id }); };
@@ -334,14 +339,18 @@ export async function showPdf(el, { side, path, url, gone, open }) {
       catch (err) { setMarks([]); toast(`Couldn't crop that region: ${err.message}`, "err", 6000); }
     };
   }
-  // A session's turn ended (chat.js): its reply is pinned to the passage it was asked about, and marks an agent wrote
-  // in that turn are fetched. A conversation read again later pins the replies that were missed.
+  // A reply is pinned to the passage it was asked about: when a session's turn ends (chat.js), and, for replies that
+  // came while this paper was closed, from the turns of the conversation the chat shows (loadMarks). Marks an agent
+  // wrote in a turn are fetched when it ends.
   let again = 0;
-  const ended = ({ detail: t }) => {
-    if (!alive() || !keep) return;
+  function pin(t) {
     const asked = norm(t.asked.replace(/<\/?pasted_content[^>]*>/g, " "));   // Claude Code wraps a pasted message in these
     saved.filter((m) => m.question && (m.crop ? asked.includes(m.crop) : asked.includes(norm(m.quote).slice(0, 120)) && asked.endsWith(norm(m.question))))
       .forEach((m) => { m.note = (m.note ? m.note + "\n\n---\n\n" : "") + `**${m.question}**\n\n${t.said}`; m.question = ""; change({ put: m }); });
+  }
+  const ended = ({ detail: t }) => {
+    if (!alive() || !keep) return;
+    pin(t);
     clearTimeout(again);
     again = setTimeout(loadMarks, 1200);
   };

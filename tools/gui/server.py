@@ -2113,6 +2113,7 @@ def papers_list(p):
 # reply), box (a region, no quote), crop (the region's picture as it was sent)}]}
 
 MARK_KINDS = {"claim", "method", "result", "limit", "ask", "note"}
+_marks_lock = threading.Lock()      # a change reads the file, edits one mark and writes it all back
 
 
 def marks_file(p, rel):
@@ -2155,6 +2156,11 @@ def clean_mark(m):
 def marks_change(b):
     """Put one mark (in place of the one with its id) or delete one by id; answers with all of them."""
     p, rel = project(b.get("project")), clean_rel(b.get("path"))
+    with _marks_lock:
+        return marks_put(p, rel, b)
+
+
+def marks_put(p, rel, b):
     path, marks = marks_file(p, rel), marks_read(p, rel)["marks"]
     if b.get("delete"):
         marks = [m for m in marks if m.get("id") != b["delete"]]

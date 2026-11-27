@@ -141,6 +141,19 @@ function ingest(items) {
   return fresh;
 }
 
+// The turns of the conversation shown that have ended: what was asked and the last thing said in reply (the reader
+// pins a reply to its passage from these when a paper is opened after the reply came).
+hooks.chatTurns = () => {
+  const out = [];
+  let asked = "", said = "";
+  for (const it of C.items) {
+    if (it.k === "user") { asked = it.text; said = ""; }
+    else if (it.k === "assistant") said = it.text;
+    else if (it.k === "turn" && asked && said) { out.push({ pane: C.pane, asked, said }); asked = ""; }
+  }
+  return out;
+};
+
 // ---------- rendering ----------
 
 function render() {

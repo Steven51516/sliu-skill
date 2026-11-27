@@ -8,7 +8,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 - **Research Desk**: a reply is pinned to its passage again. Claude Code wraps a pasted (multi-line) message in
   `<pasted_content>` tags in its transcript, so a question sent from the reader no longer ended with the question and
   two real replies stayed unpinned; the tags are ignored when matching and taken out of chat bubbles. A question
-  asked from an existing highlight is pinned too (it kept the highlight's kind and was skipped).
+  asked from an existing highlight is pinned too (it kept the highlight's kind and was skipped). A reply that came
+  before its paper was opened is pinned when the paper opens (the chat loads at start, so its "turn ended" had already
+  passed), and changes to a paper's marks are made one at a time (two at once lost one).
 - **Research Desk keeps what you read.** A question about a passage left no trace on the paper. The reader now keeps
   marks beside the PDF (`<name>.marks.json`): a passage you highlight or ask about stays highlighted, the session's reply
   is pinned to it when its turn ends, and an agent can mark claims, the method, results and limitations. A project
