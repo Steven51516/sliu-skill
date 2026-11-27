@@ -7,7 +7,11 @@
                                      told to work the ticket and to report to the calling driver with one line:
                                      `done|running|ask|blocked <id>: <path of the file that holds the result>`,
                                      or `handback <id>: <request>` for a request beyond its ticket
-  team-worker --close <ticket id>    end the worker in the tab labelled <id> and close its tab; refuses while it works
+  team-worker --close <ticket id>    end the worker in the tab labelled <id> and close its tab. Exits 3, "try again
+                                     later", while the worker works, and the first time its session still holds a
+                                     background command (Claude Code does not exit over one): it is then asked, once,
+                                     to stop what it started. Exits 1 when it keeps one after that: left open, and no
+                                     further exit is typed into it until it has done something
   team-worker --rescue <ticket id>   the worker in the tab labelled <id>: exited and its own session resumed on Sonnet 5.5
                                      at high effort, keeping its chat, then told to continue (after a safeguard stop)
 
@@ -23,6 +27,13 @@ import sys
 import time
 
 MODEL, EFFORT, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "medium", "sonnet", "high"   # the driver already planned the ticket
+LATER = 3                              # --close exit code: not closed yet, the same call will work later
+CLOSING = os.path.join("scratch", "agents", "team-worker.closing.json")   # {pane: the worker asked to stop its background commands}
+STOP = ("closing {tid}: this session is being ended and its tab closed, but Claude Code does not exit while a background "
+        "command of the session runs. Stop every background command you started in this session (a waiter, a monitor, "
+        "a poll loop) and start nothing else. A job that must outlive you is a detached one on the server, recorded in "
+        "the ticket's `jobs:`; if a command of yours is the job itself, leave it running and name it. Reply with one "
+        "line: what you stopped, what you left.")
 DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)|"
                   r"sign in with chatgpt|run codex login", re.I)
 
@@ -38,8 +49,9 @@ def herdr(*args, timeout=150):
     return subprocess.run(["herdr", *args], capture_output=True, text=True, timeout=timeout)
 
 
-def fail(why):
-    sys.exit(f"team-worker: {why}")
+def fail(why, code=1):
+    print(f"team-worker: {why}", file=sys.stderr)
+    sys.exit(code)
 
 
 def ticket_id(path):
@@ -152,15 +164,69 @@ def finished_tabs():
 
 
 def close(tid):
+    """End the worker and close its tab. A session that still holds a background command is never forced: Claude Code
+    asks before exiting over one, and Stay is the answer. Before this asked the worker anything, every caller typed
+    /exit again on every pass, for good (2026-11-27: 8 finished workers, 4 to 16 exits each, their waiters polling a
+    server for up to 81 hours). Now the worker is asked once to stop what it started; the next call closes it. One that
+    keeps a command after that is left, and no exit is typed into it again until its state has changed."""
     tab, a = worker_tab(tid)
     if a and a.get("agent_status") in ("working", "blocked"):
-        fail(f"{tid} is {a['agent_status']} in {a['pane_id']}: let it finish or answer it first")
-    if a and not leave(a["pane_id"]):
-        fail(f"{tid} has background work running, which closing would stop: left open in {a['pane_id']}")
+        fail(f"{tid} is {a['agent_status']} in {a['pane_id']}: let it finish or answer it first", LATER)
+    if a:
+        pane, book = a["pane_id"], closing()
+        session = (a.get("agent_session") or {}).get("value")
+        was = book.get(pane) if (book.get(pane) or {}).get("session") == session else None
+        kept = f"{tid} keeps a background command after it was asked to stop them ({(was or {}).get('asked')}): left open in {pane}"
+        if was and was.get("left") and was.get("seq") == a.get("state_change_seq"):
+            fail(f"{kept}; nothing has changed in it since, so no exit was typed. Its last line says what it keeps")
+        if not leave(pane):
+            seq = (agent_in(pane) or {}).get("state_change_seq")
+            if was:
+                closing({**book, pane: {**was, "left": True, "seq": seq}})
+                fail(f"{kept}. Its last line says what it keeps")
+            if a.get("agent") == "claude" and ask_to_stop(pane, tid):
+                closing({**book, pane: {"ticket": tid, "session": session, "asked": time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())}})
+                fail(f"{tid} has background work running, which closing would stop: asked it in {pane} to stop its "
+                     f"background commands. Run this again once it has answered", LATER)
+            fail(f"{tid} has background work running, which closing would stop: left open in {pane}")
+        if pane in book:
+            closing({p: v for p, v in book.items() if p != pane})
     r = herdr("tab", "close", tab)
     if r.returncode != 0:
         fail(f"could not close the tab of {tid}: {(r.stderr or r.stdout).strip()[:200]}")
     print(f"team-worker: closed the tab of {tid}")
+
+
+def closing(book=None):
+    """The workers asked to stop their background commands, by pane (CLOSING, in the project): read, or written when
+    `book` is given. An entry holds the ticket, the session, when it was asked, and, once it was left open, herdr's
+    state counter for the pane at that moment."""
+    if book is None:
+        try:
+            with open(CLOSING) as f:
+                return json.load(f)
+        except (OSError, ValueError):
+            return {}
+    os.makedirs(os.path.dirname(CLOSING), exist_ok=True)
+    with open(CLOSING + ".tmp", "w") as f:
+        json.dump(book, f, indent=1)
+    os.replace(CLOSING + ".tmp", CLOSING)
+
+
+def agent_in(pane):
+    agents = json.loads(herdr("agent", "list").stdout or "{}").get("result", {}).get("agents", [])
+    return next((a for a in agents if a.get("pane_id") == pane), None)
+
+
+def ask_to_stop(pane, tid):
+    """Tell a worker that backed out of its exit to stop its background commands. True when it took the prompt."""
+    time.sleep(2)                                         # the exit dialog has just been dismissed
+    r = herdr("agent", "prompt", pane, STOP.format(tid=tid), "--wait", "--until", "working", "--timeout", "60000")
+    if r.returncode != 0 and "stalled" in (r.stdout + r.stderr):
+        herdr("pane", "send-keys", pane, "Enter")
+        time.sleep(3)
+        return (agent_in(pane) or {}).get("agent_status") == "working"
+    return r.returncode == 0
 
 
 def leave(pane):
@@ -169,13 +235,13 @@ def leave(pane):
     herdr("agent", "prompt", pane, "/exit")
     for _ in range(10):
         time.sleep(2)
-        agents = json.loads(herdr("agent", "list").stdout or "{}").get("result", {}).get("agents", [])
-        a = next((a for a in agents if a.get("pane_id") == pane), None)
+        a = agent_in(pane)
         if not a:
             return True                                   # the session is gone: the pane is a shell again
         if a.get("agent_status") == "blocked":
             break
     herdr("pane", "send-keys", pane, "esc")               # still there after 20 s: at the dialog, or it never took /exit
+    time.sleep(1)
     return False
 
 

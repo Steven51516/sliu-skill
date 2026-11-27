@@ -5,6 +5,12 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **`team-worker --close`** asks a worker that still holds a background command to stop it, once, and says "try
+  again later" (exit 3); the next call closes it. Before, it only backed out, and every pass of the driver and of
+  `team-watch` typed an exit into the worker again: eight finished workers got 4 to 16 exits each and stayed open for
+  days, each holding a poll loop that never ended. A worker that keeps a command after being asked is left, and no
+  exit is typed into it again until its state changes. `team-watch` tries again 10 minutes after "later".
+  `tools/tests/team_close_test.py` (run by `scripts/check.py`) covers it with a stand-in for herdr.
 - **Research Desk**: a big map opens readable. An 83-ticket map opened at 60% (ticket text about 7 px), most of it
   one column of the resolved tickets that link to nothing. The first view now opens at 85% or more, on what is live
   (the open ticket, else one that needs you, is running or is ready), and settled tickets with no link to another are

@@ -30,8 +30,10 @@ the map.
   to work the ticket and report back to you, and fails loudly if the worker did not start.
 - **On `done` or `running`**: the driver checks the ticket as `research-drive` says, then ends the worker with
   `team-worker --close <ticket id>` (it refuses while the worker is working). First check that no job depends on that
-  session: a session's cleanup can stop jobs it launched. Every open tab is a live process: `team-watch` closes a worker's
-  tab itself once its ticket is closed and it has sat idle for 30 minutes.
+  session: a session's cleanup can stop jobs it launched. A worker whose session still holds a background command is
+  not closed: `team-worker` asks it, once, to stop what it started, and the same call closes it after it has answered.
+  Every open tab is a live process: `team-watch` closes a worker's tab itself once its ticket is closed and it has sat
+  idle for 30 minutes.
 - **On `ask` or `blocked`**: the tab stays open; the driver tells the desk which tab, and the human answers there.
 - **On `handback`** (the human asked the worker, in its tab, for something beyond its ticket): the driver takes it as the
   human's request: a trivial edit it does itself, anything else becomes a ticket draft (`to-tickets`).
