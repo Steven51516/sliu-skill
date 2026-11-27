@@ -26,3 +26,5 @@ shared = ["common"]                    # server folders pinned beside every map'
 # [projects.papers]
 # path = "~/papers"
 # library = true
+# add = "/your-reading-skill"      # what Add sends, followed by the paper you name (default: plain words)
+# teach = "/your-teaching-skill"   # what Teach me sends, followed by the paper's folder (default: plain words)

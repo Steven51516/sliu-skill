@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a paper library's **Add** and **Teach me** send the commands its `add` and `teach` settings name.
+  They asked in plain words, which reaches a skill only if the agent may start it by itself; a skill started only by
+  its command (no description loaded in every session) was never reached.
 - **Research Desk**: reading mode. In a 1050-pixel window the sidebar and the paper list left the paper 538 pixels
   (60% zoom). The file viewer's first button hides both while a file is open (the paper gets 1049 pixels, 123%) and
   becomes "‹ Papers" (or "‹ Files") to bring them back; the choice is kept. In a library the header drops VS Code and

@@ -41,9 +41,9 @@ the pictures a note links beside it.
 Papers: a project with `library = true` is a paper library. It has its own entry in the sidebar and opens as a page
 (`web/js/papers.js`, `/api/papers`): the papers on the left (a folder each under its `Papers/`, holding `paper.pdf` and
 a `note.md` whose front matter gives title, authors, date, concepts and verdict), searched and filtered by concept,
-the paper or its note on the right. **Note** and **Paper** switch between the two, **Teach me** asks a session to teach the
-paper one step at a time, **Add** asks a session to read a new paper
-into the library, **Delete paper** moves the folder to the trash (`extras/trash.py`: undone with
+the paper or its note on the right. **Note** and **Paper** switch between the two. **Add** asks a session to read a new paper into
+the library and **Teach me** to teach the open paper one step at a time: in plain words, or with the commands the
+project's `add` and `teach` settings name (a skill that is started only by its command). **Delete paper** moves the folder to the trash (`extras/trash.py`: undone with
 `trash --restore <path>`).
 
 Projects: `~/.config/research-gui/projects.toml` (template `projects.example.toml`, also editable in Settings).

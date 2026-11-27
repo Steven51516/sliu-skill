@@ -87,6 +87,8 @@ def load_config():
         p.setdefault("server_maps", "maps")
         p["muted"] = p.get("inbox") is False       # inbox = false: its tickets stay out of the Inbox and alerts
         p["library"] = p.get("library") is True    # library = true: a folder of papers, shown as its own page (papers_list)
+        for k in ("add", "teach"):                 # what its Add and Teach me buttons send, before the paper (a /skill)
+            p[k] = str(p.get(k) or "").strip()[:200]
     return cfg
 
 
@@ -1028,7 +1030,7 @@ def project_state(p, with_agents=True):
             "server_maps": p["server_maps"], "shared": p["shared"], "maps": out_maps, "waiting": waiting,
             "problems": problems, "agents": agents, "herdr_error": herdr_err, "changes": changes_since(p, out_maps), "codex": codex,
             "keychain": keychain_has(), "dry_run": ARGS.dry_run, "remote": remote_info(p) if p.get("remote_host") else None,
-            "muted": p["muted"], "library": p["library"]}
+            "muted": p["muted"], "library": p["library"], "add": p["add"], "teach": p["teach"]}
 
 
 def projects_summary():

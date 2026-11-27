@@ -63,6 +63,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   links.setDocument(doc, null);
 
   const key = `pdf.${S.route.project}:${side}:${path}`;       // the page you were on, kept per file
+  const label = path.split("/").slice(-2, -1)[0] || "reader";  // a session started from here is named after the paper's folder
   const marks = [];                                            // what is being asked about: {page, rects: [{l,t,w,h}]} in page fractions
   let keep = side === "local";                                 // marks are kept for a PDF on this Mac
   let saved = [], boxing = false;                              // saved: the marks kept beside the PDF
@@ -87,15 +88,9 @@ export async function showPdf(el, { side, path, url, gone, open }) {
   const dir = path.split("/").slice(0, -1).join("/");
   if (side === "local" && dir && $(".vhead #vvs", el)) get("/api/tree", { project: S.route.project, side, path: dir }).then((j) => {
     if (!alive() || !j.entries.some((e) => e.name === "note.md")) return;
-    if (S.data.library) {                                      // in a paper library: a session teaches the paper, in plain words (a skill for it picks them up)
+    if (S.data.library) {                                      // in a paper library: a session teaches the paper (`teach` in the project's config: the command of a skill for it)
       $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pteach" title="Have a session teach you this paper, one step at a time, in the chat">${icon("spark")} Teach me</button>`);
-      $("#pteach", el).onclick = async () => {
-        const text = `Teach me this paper, one step at a time: ${S.data.path}/${dir}`, { pick } = sessions();
-        try {
-          if (!pick) await startSession(text);
-          else { await post("/api/chat/send", { pane: pick.pane, text }); markSent(pick.pane); hooks.openChat(pick.pane, { focus: false }); }
-        } catch (e) { toast(e.message, "err", 6000); }
-      };
+      $("#pteach", el).onclick = () => hooks.tellProject(S.route.project, `${S.data.teach || "Teach me this paper, one step at a time:"} ${S.data.path}/${dir}`, label);
     }
     if (open) {
       $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pnote" title="Open this paper's note">${icon("doc")} Note</button>`);
@@ -299,7 +294,7 @@ export async function showPdf(el, { side, path, url, gone, open }) {
           asked = q.value.trim() || "Explain this passage.";
           text = askText(file, where, ctx.quote.length > 6000 ? ctx.quote.slice(0, 6000) + "…" : ctx.quote, asked);
         }
-        if (!pane) await startSession(`${LEAD}\n\n${text}`);
+        if (!pane) await hooks.startWith(S.route.project, `${LEAD}\n\n${text}`, label);   // none: a new Claude session, its first message the question
         else {
           await post("/api/chat/send", { pane, text });
           markSent(pane);
@@ -311,23 +306,6 @@ export async function showPdf(el, { side, path, url, gone, open }) {
       } catch (e) { toast(e.message, "err", 6000); send.disabled = false; }
     };
     setTimeout(() => q.focus(), 0);
-  }
-
-  // No session to ask: a new Claude session in the project, its first message the question; the chat opens on it.
-  async function startSession(text) {
-    const { job } = await post("/api/session", { project: S.route.project, kind: "claude", prompt: text, label: (path.split("/").slice(-2, -1)[0] || "reader").slice(0, 28) });
-    toast("Starting a Claude session…", "", 5000);
-    (async () => {
-      for (;;) {
-        const j = await get("/api/job", { id: job });
-        if (!j.done) { await new Promise((r) => setTimeout(r, 800)); continue; }
-        hooks.refresh();
-        if (!j.ok) toast(`The session did not start: ${j.log[j.log.length - 1] || ""}`, "err", 8000);
-        else if (j.panes[0]) setTimeout(() => hooks.openChat(j.panes[0], { focus: false }), 1500);
-        else toast("Dry run: no session was started", "", 5000);
-        return;
-      }
-    })().catch((e) => toast(e.message, "err", 6000));
   }
 
   // ----- a kept mark: its note (the pinned reply, the agent's gloss, or your own words), ask again, delete -----

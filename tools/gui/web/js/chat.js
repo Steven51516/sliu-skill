@@ -55,6 +55,33 @@ export function askProject(project, text = "") {
 }
 export const askLabel = (project) => (deskPane(project) ? "Ask the desk" : "Ask Claude");
 
+// Send it now, with no box to fill: to the session the chat shows if it is the project's, else its desk, else its most
+// recently active session; with none, a new Claude session whose first message it is. The chat opens on the reply.
+export async function tellProject(project, text, label = "") {
+  const mine = allAgents().filter((a) => a.project === project && a.status !== "ended" && (!a.remote || a.live));
+  const to = mine.find((a) => a.pane === C.pane) || mine.find((a) => a.role === "desk")
+    || [...mine].sort((a, b) => (Date.parse(b.turn_end || 0) || 0) - (Date.parse(a.turn_end || 0) || 0))[0];
+  try {
+    if (to) { await post("/api/chat/send", { pane: to.pane, text }); markSent(to.pane); openChat(to.pane, { focus: false }); }
+    else await startWith(project, text, label);
+  } catch (e) { toast(e.message, "err", 6000); }
+}
+export async function startWith(project, text, label = "") {
+  const { job } = await post("/api/session", { project, kind: "claude", prompt: text, label: label.slice(0, 28) });
+  toast("Starting a Claude session…", "", 5000);
+  (async () => {
+    for (;;) {
+      const j = await get("/api/job", { id: job });
+      if (!j.done) { await new Promise((r) => setTimeout(r, 800)); continue; }
+      hooks.refresh();
+      if (!j.ok) toast(`The session did not start: ${j.log[j.log.length - 1] || ""}`, "err", 8000);
+      else if (j.panes[0]) setTimeout(() => openChat(j.panes[0], { focus: false }), 1500);
+      else toast("Dry run: no session was started", "", 5000);
+      return;
+    }
+  })().catch((e) => toast(e.message, "err", 6000));
+}
+
 // a saved conversation around one message (a search hit), read-only
 export function openArchive(session, uuid, opt = {}) {
   C.open = true;
