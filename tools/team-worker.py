@@ -29,16 +29,18 @@ import time
 MODEL, EFFORT, RESCUE_MODEL, RESCUE_EFFORT = "claude-opus-5-5", "medium", "sonnet", "high"   # the driver already planned the ticket
 LATER = 3                              # --close exit code: not closed yet, the same call will work later
 CLOSING = os.path.join("scratch", "agents", "team-worker.closing.json")   # {pane: the worker asked to stop its background commands}
-# Asked by its driver only "what runs?", a worker checked `jobs`, found nothing and kept its poll loop (2026-11-26): the
-# prompt names where the tasks are listed.
+# The question says how to find the tasks and whose they are. Asked only "what runs?", a worker checked `jobs`, found
+# nothing and kept its poll loop (2026-11-26); told only where they are listed, two of eight long sessions took their
+# own 36 and 50 hour old loops for the harness's shells and kept them (2026-11-27).
+FIND = ("To find them run `pgrep -lf -P $PPID` in a shell command: every `zsh -c` or `bash -c` child of this session's "
+        "process, other than the one running that command, is a background task this session started, however old; "
+        "what it runs is at the end of its line, after `eval`. One your stop tool no longer knows, end with "
+        "`pkill -P <pid>; kill <pid>`.")
 STOP = ("closing {tid}: this session is being ended and its tab closed, but Claude Code does not exit while a background "
-        "task of the session runs (the `1 shell` in your status line). Stop every one you started (a waiter, a monitor, "
-        "a poll loop) with your tool that stops a background task. `jobs` does not show them; `pgrep -lf -P $PPID` in "
-        "a shell command does: they are the shells among this session's child processes. Start nothing else. A job "
-        "that must outlive you is a detached one on the server, recorded in the ticket's `jobs:`; if a task of yours is "
-        "the job itself, leave it running and name it. Reply with one line: what you stopped, what you left.")
-DEAD = re.compile(r"login expired|please run /login|invalid api key|not logged in|authentication (failed|error)|"
-                  r"sign in with chatgpt|run codex login", re.I)
+        "task of the session runs (the `1 shell` in your status line). Stop every one of them (a waiter, a monitor, a "
+        "poll loop) with your tool that stops a background task, and start nothing else. " + FIND + " A job that must "
+        "outlive you is a detached one on the server, recorded in the ticket's `jobs:`; if a task of yours is the job "
+        "itself, leave it running and name it. Reply with one line: what you stopped, what you left.")
 
 
 def codex_args(effort):

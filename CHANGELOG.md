@@ -10,8 +10,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   `team-watch` typed an exit into the worker again: eight finished workers got 4 to 16 exits each and stayed open for
   days, each holding a poll loop that never ended. A worker that keeps a command after being asked is left, and no
   exit is typed into it again until its state changes. `team-watch` tries again 10 minutes after "later". The
-  question names where the tasks are listed (a worker asked only "what runs?" checked `jobs` and kept its loop), and
-  it is sent once herdr no longer reports the exit dialog (herdr refuses a prompt until then).
+  question says how to find the tasks and that every shell child of the session's process is one of its own (asked
+  only "what runs?", a worker checked `jobs` and kept its loop; two long sessions took their own loops for the
+  harness's shells), and it is sent once herdr no longer reports the exit dialog (herdr refuses a prompt until then).
   `tools/tests/team_close_test.py` (run by `scripts/check.py`) covers it with a stand-in for herdr.
 - **Research Desk**: a big map opens readable. An 83-ticket map opened at 60% (ticket text about 7 px), most of it
   one column of the resolved tickets that link to nothing. The first view now opens at 85% or more, on what is live
