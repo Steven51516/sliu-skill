@@ -2097,9 +2097,13 @@ def library_item(root, path):
     else:
         return None
     try:
-        meta = tracker.parse_front_matter(about)[0] if about else {}
+        meta, body = tracker.parse_front_matter(about) if about else ({}, "")
     except (OSError, UnicodeDecodeError):
-        meta = {}
+        meta, body = {}, ""
+    # why the note gives its verdict: the note's own line `**Verdict**: ...`, as plain words
+    why = re.search(r"^\s*[-*]?\s*\*\*Verdict\*\*\s*:?\s*(.+)$", body, re.M | re.I) if meta.get("verdict") else None
+    why = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", why.group(1)).replace("`", "").replace("*", "") if why else ""
+    why = re.sub(r"^\W*%s\W*" % re.escape(str(meta.get("verdict"))), "", why, flags=re.I).strip() if why else ""
     marks = 0
     if main.lower().endswith(".pdf"):
         try:
@@ -2112,7 +2116,7 @@ def library_item(root, path):
     rel = lambda x: os.path.relpath(x, root)                                               # noqa: E731
     plain = os.path.splitext(name)[0].replace("-", " ").replace("_", " ")
     return {"path": rel(path), "folder": folder, "title": text("title") or plain[:1].upper() + plain[1:],
-            "authors": text("authors", "instructor"), "date": text("date"), "verdict": text("verdict"),
+            "authors": text("authors", "instructor"), "date": text("date"), "verdict": text("verdict"), "verdict_why": why[:400],
             "concepts": [str(c).strip("[]") for c in (concepts if isinstance(concepts, list) else [concepts])][:12],
             "main": rel(main), "docs": [rel(os.path.join(path, d)) for d in docs][:40], "marks": marks,
             "added": os.path.getmtime(about or main)}

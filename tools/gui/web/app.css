@@ -1135,3 +1135,12 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 #ch-body .oneoff { margin: 10px auto 4px; max-width: 420px; text-align: center; font-size: 12px; line-height: 1.5; color: var(--muted); }
 #ch-body .oneoff a { color: var(--ink-2); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
 #ch-body .oneoff a:hover { color: var(--ink); }
+
+/* the reader's key (reader.js): the highlight colours this paper carries, over its corner */
+.hkey { z-index: 100000; gap: 4px; padding: 4px 6px; user-select: none; background: var(--raised); backdrop-filter: none; box-shadow: var(--elev-lift); color: var(--ink); }   /* over pdf.js links, which number their z-index upward */
+.hkey span { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; transition: background-color .12s var(--ease), opacity .12s var(--ease); }
+.hkey span:hover { background: var(--hover); }
+.hkey span.off { opacity: .45; text-decoration: line-through; }
+.hkey b { margin-left: 5px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.prow .pm .pv { text-transform: none; white-space: nowrap; }
+.prow .pm .pv.v-skip { color: var(--muted); }

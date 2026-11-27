@@ -91,7 +91,17 @@ export async function showPdf(el, { side, path, url }) {
     ["method", "Method", "the mechanism, or a design choice"], ["result", "Result", "a headline number"], ["limit", "Limitation", "a limit or an assumption it admits"]];
   const group = (m) => (HUES.some(([k]) => k === m.kind) ? m.kind : "you");
   const hidden = new Set(store("pdf.hide") || []);
-  const showGroups = () => { HUES.forEach(([k]) => box.classList.toggle("hide-" + k, hidden.has(k))); $("#pmarks", el)?.classList.toggle("off", hidden.size === HUES.length); };
+  const showGroups = () => { HUES.forEach(([k]) => box.classList.toggle("hide-" + k, hidden.has(k))); $("#pmarks", el)?.classList.toggle("off", hidden.size === HUES.length); drawKey(); };
+  // The key, in view over the paper's corner while it carries a session's highlights: which colours are here, what each
+  // means (the tooltip), how many; a click hides or shows a kind. Your own yellow alone needs none.
+  const keyEl = box.appendChild(document.createElement("div"));
+  keyEl.className = "floatbar legend hkey";
+  function drawKey() {
+    const n = (k) => saved.filter((m) => group(m) === k).length, here = HUES.filter(([k]) => n(k));
+    keyEl.style.display = here.some(([k]) => k !== "you") ? "" : "none";
+    keyEl.innerHTML = here.map(([k, name, what]) => `<span class="${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${name}: ${what}. Click to ${hidden.has(k) ? "show" : "hide"} these."><i class="hue k-${k}"></i>${name}<b>${n(k)}</b></span>`).join("");
+    keyEl.querySelectorAll("[data-k]").forEach((s) => s.onclick = () => { hidden.has(s.dataset.k) ? hidden.delete(s.dataset.k) : hidden.add(s.dataset.k); store("pdf.hide", [...hidden]); showGroups(); });
+  }
   if ($("#vtools", el)) {
     $("#vtools", el).insertAdjacentHTML("afterbegin", `<span class="pdfctl">
       <span class="segc zoom"><button id="pz-out" title="Zoom out">−</button><button id="pz-val" title="Fit the width">100%</button><button id="pz-in" title="Zoom in">+</button></span>
@@ -155,6 +165,7 @@ export async function showPdf(el, { side, path, url }) {
     const pages = new Set([...saved, ...marks, ...also].map((m) => m.page));
     scroll.querySelectorAll(".rdmarks").forEach((l) => pages.add(+l.closest(".page").dataset.pageNumber));
     pages.forEach(paint);
+    drawKey();
   }
   function setMarks(list) {
     const old = marks.splice(0, marks.length, ...list);

@@ -15,6 +15,14 @@ const words = (k) => k.replace(/[-_]/g, " ");
 // a document's name as a reader says it: "paper.pdf" is the Paper, "lectures-01-12.md" is Lectures 01 12
 const DOCS = { "paper.pdf": "Paper", "note.md": "Note", "index.md": "Overview", "README.md": "Overview" };
 const docName = (p) => { const f = p.split("/").pop(), w = words(f.replace(/\.[^.]+$/, "")); return DOCS[f] || w[0].toUpperCase() + w.slice(1); };
+// A note's verdict (its front matter's `verdict`, set by the session that read the item): what the list calls it, and
+// what that means. The note's own reason, when it gives one, is the tooltip.
+const VERDICT = { study: ["Worth studying", "worth a close read; Teach me goes through it step by step"], enough: ["Note is enough", "the note covers what you need from it"],
+  skip: ["Skip", "not worth your time; a candidate to delete"] };
+function verdict(i) {
+  const [name, means] = VERDICT[i.verdict.toLowerCase()] || [i.verdict, ""], why = i.verdict_why ? (i.verdict_why.length > 260 ? i.verdict_why.slice(0, 259) + "…" : i.verdict_why) : "";
+  return `<span class="pv v-${esc(i.verdict.replace(/\W/g, ""))}" title="${esc(`The verdict of the session that read it: ${name.toLowerCase()}${means ? " (" + means + ")" : ""}.${why ? " " + why : ""}`)}">${esc(name)}</span>`;
+}
 const itemOf = (path) => L.cols?.flatMap((c) => c.items).find((i) => (i.folder ? path.startsWith(i.path + "/") : path === i.path));
 
 export function renderLibrary(full = true) {
@@ -103,7 +111,7 @@ function rows() {
     const meta = [year(i), who(i)].filter(Boolean).join(" · "), more = i.concepts.length - 2;
     return `<div class="prow ${on(i) ? "on" : ""}" tabindex="0" data-p="${esc(i.path)}">
       <div class="pt">${esc(i.title)}</div>
-      ${meta || i.verdict || i.marks ? `<div class="pm"><span>${esc(meta)}</span>${i.verdict ? `<span class="pv v-${esc(i.verdict.replace(/\W/g, ""))}">${esc(i.verdict)}</span>` : ""}<span class="grow"></span>${i.marks ? `<span class="pk" title="${i.marks} highlight${i.marks > 1 ? "s" : ""}">${icon("mark")}${i.marks}</span>` : ""}</div>` : ""}
+      ${meta || i.verdict || i.marks ? `<div class="pm"><span>${esc(meta)}</span>${i.verdict ? verdict(i) : ""}<span class="grow"></span>${i.marks ? `<span class="pk" title="${i.marks} highlight${i.marks > 1 ? "s" : ""}">${icon("mark")}${i.marks}</span>` : ""}</div>` : ""}
       ${i.concepts.length ? `<div class="pc">${i.concepts.slice(0, 2).map((k) => `<span>${esc(words(k))}</span>`).join("")}${more > 0 ? `<span title="${esc(i.concepts.slice(2).map(words).join(", "))}">+${more}</span>` : ""}</div>` : ""}
       ${on(i) && i.docs.length > 1 ? `<div class="pd">${i.docs.map((d) => `<a class="${d === open ? "on" : ""}" data-d="${esc(d)}">${icon(d.endsWith(".pdf") ? "doc" : "file")}${esc(docName(d))}</a>`).join("")}</div>` : ""}</div>`;
   }).join("") : `<div class="empty big"><b>${items.length ? "Nothing matches" : "Nothing here yet"}</b><span>${items.length ? "Try other words, or clear the filter." : "Add to this collection with the button above."}</span></div>`;

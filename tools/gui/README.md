@@ -37,14 +37,17 @@ a paper has its own session, named after its folder, and one is started with the
 PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
 session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
 result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it);
-**Highlights** in the header says what each colour means and shows or hides each kind. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
+**Highlights** in the header says what each colour means and shows or hides each kind; while a paper carries a
+session's highlights, a key over its corner names the colours that are there. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
 the pictures a note links beside it.
 
 Library: a project with `library = true` is a library of documents. It has its own entry in the sidebar and opens as a
 page (`web/js/library.js`, `/api/library`). Its top-level folders are its **collections** (papers, courses, anything);
 a collection's **items** are its folders, each with its documents (the Markdown and PDF files in it), and the Markdown,
 PDF and text files directly in it. The list shows one collection, searched and filtered by the concepts its items'
-front matter names; the document opens on the right, and an item's other documents are listed under it. **Add** asks a
+front matter names; the document opens on the right, and an item's other documents are listed under it. A note whose
+front matter has `verdict` (`study`, `enough` or `skip`) shows it in words (Worth studying, Note is enough, Skip),
+with the note's own `**Verdict**:` line as the reason. **Add** asks a
 session to add something to the collection (several lines: a session each, started in turn) and **Teach me** to teach the open item (your request, which you can edit
 first): in plain words, or with the commands the collection's `add` and `teach` settings name (a skill started only
 by its command). **Delete**, under More in the header, moves the item to the trash
