@@ -31,8 +31,8 @@
 ## Models and effort
 - Desks and drivers: Opus 5.5 at xhigh. Workers: Opus 5.5 at medium. Subagents: Sonnet 5.5 at high. The launchers pin
   these; a model or effort changed by hand in one session is not a new default.
-- A driver or worker stopped by a false-positive biology safeguard resumes on Sonnet 5.5 at high (`team-watch`,
-  `team-worker --rescue`). A Codex review or re-check always runs at xhigh.
+- Opus 5.5 stays the default. Only a driver or worker that a false-positive biology safeguard stopped, or dropped to
+  Opus 4.8, moves to Sonnet 5.5 at high (`team-watch`, `team-worker --rescue`). A Codex review or re-check always runs at xhigh.
 
 ## Communication
 - Lead with the result or the decision you need, then the evidence, then the details.

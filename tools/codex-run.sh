@@ -11,7 +11,7 @@
 set -euo pipefail
 D="${1:?usage: codex-run <run dir> [--resume]}"; MODE="${2:-}"
 [[ -d "$D" ]] || { echo "codex-run: no run dir $D"; exit 1; }
-ABS_D="$(cd "$D" && pwd)"
+ABS_D="$(cd "$D" && pwd)"; D="$ABS_D"   # every path below is absolute: a relative run dir (even ".") works
 M="${CODEX_MODEL:-gpt-6-astra}"; E="${CODEX_EFFORT:-xhigh}"
 PREAMBLE="Do only the task below, tightly scoped; no unrelated refactors. No hashes, manifests, receipts or checks beyond
 what done lists. Read the files the brief names and what the task needs, not other agents' logs, memory or chat history.
@@ -25,6 +25,7 @@ RC=0
 BEFORE="$(ls -A "$PWD")"
 tidy() {  # move files Codex wrote into the project folder (new since the start, named in its log) into the run dir
   local f to moved=""
+  [[ "$PWD" -ef "$ABS_D" ]] && return 0   # run from inside the run dir: its files are already where they belong
   while IFS= read -r f; do
     [[ -f "$PWD/$f" ]] || continue
     printf '%s\n' "$BEFORE" | grep -qxF -- "$f" && continue
@@ -47,7 +48,9 @@ else
 fi
 tidy
 # Codex answered but could not run anything (seen in a container: no code-mode host, no sandbox namespace): not "done"
-if grep -qE "failed to spawn code-mode host|codex-code-mode-host missing|bwrap: No permissions to create a new namespace" "$LOG"; then
+# The same words quoted from a file Codex read are not a failure: it counts only when no tool call succeeded.
+if grep -qE "failed to spawn code-mode host|codex-code-mode-host missing|bwrap: No permissions to create a new namespace" "$LOG" \
+   && ! grep -q "^ succeeded in " "$LOG"; then
   echo "codex-run: Codex could not start its tools on this machine (see $LOG); run it on a host where Codex works"; exit 1
 fi
 grep -q "^model: $M" "$LOG" || { echo "codex-run: model is not $M in $LOG"; exit 1; }
