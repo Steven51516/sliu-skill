@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: **End** in the chat header closes a plain session's tab (`/api/session-end`). A paper's session
+  is often for one question, and there was no way to close it from the app; what it wrote stays (replies pinned to the
+  paper, lessons, the conversation). It asks first when the session is working or its project is not a paper library.
 - **Research Desk**: each paper has its own session. Ask and Teach me went to whichever session the chat showed, so a
   second paper's questions landed in the first paper's conversation. They now go to the session named after the
   paper's folder, or start one; Add starts a session of its own for each paper.

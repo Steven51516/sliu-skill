@@ -195,6 +195,7 @@ function render() {
       <span class="grow"></span>
       ${a?.role === "btw" ? `<button class="btn sm" id="ch-btw-close" title="Close this side chat and delete its conversation">${icon("trash")} Close &amp; delete</button>`
         : canBtw(a) ? `<button class="btn ghost sm icon" id="ch-btw" title="btw: fork a side chat with this session (read-only, deleted when you close it)">${icon("plus")}</button>` : ""}
+      ${a && !a.role && !a.remote ? `<button class="btn sm" id="ch-end" title="End this session and close its tab. What it wrote stays: replies pinned to a paper, lessons, and the conversation (Search conversations).">End</button>` : ""}
       <button class="btn ghost sm icon" id="ch-verbose" title="${S.prefs.verbose ? "Fold tool calls" : "Show every tool call"}">${icon(S.prefs.verbose ? "eye" : "code")}</button>
       <button class="btn ghost sm icon" id="ch-term" title="Open its terminal here">${icon("term")}</button>
       <button class="btn ghost sm icon" id="ch-more" title="More">${icon("more")}</button>
@@ -212,6 +213,7 @@ function render() {
   $("#ch-term").onclick = () => C.pane && hooks.openTerminal({ kind: "attach", pane: C.pane, label: agentLabel(a) });
   $("#ch-verbose").onclick = () => { S.prefs.verbose = !S.prefs.verbose; savePrefs(); render(); };
   if ($("#ch-btw")) $("#ch-btw").onclick = () => startBtw(C.pane);
+  if ($("#ch-end")) $("#ch-end").onclick = () => endSession(C.pane);
   if ($("#ch-btw-close")) $("#ch-btw-close").onclick = () => closeBtw(C.pane);
   $("#ch-more").onclick = (e) => popMenu(e.currentTarget, [
     { label: "Focus in herdr", icon: "ext", run: () => post("/api/focus", { pane: C.pane }).then(() => toast("Focused in herdr")).catch((x) => toast(x.message, "err")) },
@@ -350,6 +352,20 @@ function updateTool(t) {
   const i = t.el.querySelector(".ti");
   i.className = "ti " + (t.result ? (t.result.error ? "err" : "ok") : "wait");
   i.textContent = t.result ? (t.result.error ? "✕" : "✓") : "●";
+}
+
+// End a session: its tab closes and the agent in it ends; its conversation and what it wrote stay. Asked first when it
+// is still working, or when its project is not a paper library (where a session is often for one question).
+export async function endSession(pane) {
+  const a = agentByPane(pane), working = a?.status === "working";
+  const library = S.summary?.projects.find((p) => p.name === a?.project)?.library;
+  if ((working || !library) && !window.confirm(working ? "It is still working. End this session anyway?" : "End this session and close its tab? Its conversation stays saved.")) return;
+  try {
+    const r = await post("/api/session-end", { pane, force: working });
+    toast(r.dry_run ? "Dry run: the session was not ended" : "Session ended. Its conversation and what it wrote are kept.", "", 5000);
+    hooks.refresh();
+    if (!r.dry_run && pane === C.pane) closeChat();
+  } catch (e) { toast(e.message, "err", 7000); }
 }
 
 // btw: fork a session into a side chat beside it (its conversation so far; read-only tools; deleted when closed)

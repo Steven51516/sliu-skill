@@ -2376,6 +2376,26 @@ def chat_send(b):
     return {"ok": True, "cleared": cleared}
 
 
+def session_end(b):
+    """Close a session's herdr tab: the agent in it ends. Its conversation stays on disk (the search finds it), and so
+    does everything it wrote."""
+    pane = b.get("pane") or ""
+    if pane.startswith("remote:"):
+        raise ApiError(400, "it runs on another host: end it there")
+    a, _ = live_agent(pane)
+    m, _rp = split_pane(pane)
+    if a.get("agent_status") == "working" and not b.get("force"):
+        raise ApiError(409, "it is still working")
+    if ARGS.dry_run:
+        return {"dry_run": True}
+    try:
+        herdr("tab", "close", a["tab_id"], timeout=20, machine=m)
+    except HerdrError as e:
+        raise ApiError(502, str(e))
+    refreshed(m)
+    return {"ok": True}
+
+
 def chat_keys(b):
     keys = b.get("keys") or []
     if not keys or any(k not in KEYS for k in keys):
@@ -3213,6 +3233,8 @@ class Handler(BaseHTTPRequestHandler):
             return chat_send(b)
         if path == "/api/chat/keys":
             return chat_keys(b)
+        if path == "/api/session-end":
+            return session_end(b)
         if path == "/api/chat/text":
             return chat_text(b)
         if path == "/api/notify":
