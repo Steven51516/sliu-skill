@@ -5,6 +5,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: **Teach me** opens a box with the request ("Teach me this paper step by step."), to edit before
+  it goes: your level, what to focus on. It went off at once, and the session then asked why the paper was being
+  studied.
 - **Research Desk**: a paper library's **Add** and **Teach me** send the commands its `add` and `teach` settings name.
   They asked in plain words, which reaches a skill only if the agent may start it by itself; a skill started only by
   its command (no description loaded in every session) was never reached.

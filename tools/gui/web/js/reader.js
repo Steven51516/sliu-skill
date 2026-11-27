@@ -4,6 +4,7 @@
 // Marks are the highlights kept beside the PDF in <name>.marks.json (/api/marks): what you highlighted or asked about,
 // with the session's reply pinned to it, and what an agent marked (a claim, the method, a result, a limitation).
 import { S, $, esc, get, post, toast, icon, md, hooks, store, allAgents, agentLabel, markSent } from "./core.js";
+import { ask } from "./dialogs.js";
 
 const V = "/vendor/pdfjs/";
 const KINDS = { claim: "Claim", method: "Method", result: "Result", limit: "Limitation", ask: "Asked", note: "Highlight" };
@@ -90,7 +91,12 @@ export async function showPdf(el, { side, path, url, gone, open }) {
     if (!alive() || !j.entries.some((e) => e.name === "note.md")) return;
     if (S.data.library) {                                      // in a paper library: a session teaches the paper (`teach` in the project's config: the command of a skill for it)
       $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pteach" title="Have a session teach you this paper, one step at a time, in the chat">${icon("spark")} Teach me</button>`);
-      $("#pteach", el).onclick = () => hooks.tellProject(S.route.project, `${S.data.teach || "Teach me this paper, one step at a time:"} ${S.data.path}/${dir}`, label);
+      $("#pteach", el).onclick = async () => {               // your request, to edit before it goes: your level, what to focus on
+        const words = await ask({ title: "Teach me this paper", label: "Your request. Edit it if you like: your level, what to focus on, the language.",
+          value: "Teach me this paper step by step.", ok: "Start", hint: "⌘↩ starts it." });
+        const paper = `${S.data.path}/${dir}`;
+        if (words) hooks.tellProject(S.route.project, S.data.teach ? `${S.data.teach} ${paper} ${words.replace(/\s+/g, " ")}` : `${words}\n\nThe paper: ${paper}`, label);
+      };
     }
     if (open) {
       $(".vhead #vvs", el).insertAdjacentHTML("beforebegin", `<button class="btn sm" id="pnote" title="Open this paper's note">${icon("doc")} Note</button>`);
