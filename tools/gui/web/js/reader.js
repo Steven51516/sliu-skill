@@ -118,7 +118,7 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     $("#vtools", el).insertAdjacentHTML("afterbegin", `<span class="pdfctl">
       <span class="segc zoom"><button id="pz-out" title="Zoom out">−</button><button id="pz-val" title="Fit the width">100%</button><button id="pz-in" title="Zoom in">+</button></span>
       <span class="pgn" id="pg-n"></span>
-      ${keep ? `<button class="btn ghost sm" id="pmarks" title="Highlights: what the colours mean, and which to show">${icon("eye")}<span class="lbl opt">Highlights</span></button>` : ""}
+      <button class="btn ghost sm" id="pmarks" title="View: the colour of the pages (easier on the eyes), and which highlights to show">${icon("eye")}<span class="lbl opt">View</span></button>
       <button class="btn sm" id="pbox" title="Drag a box around an equation or a figure and ask about it. For text, select it and press Ask.">${icon("mark")}<span class="lbl">Box &amp; ask</span></button></span>`);
     $("#pz-out", el).onclick = () => pv.decreaseScale();
     $("#pz-in", el).onclick = () => pv.increaseScale();
@@ -127,12 +127,23 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     showGroups();
     if ($("#pmarks", el)) $("#pmarks", el).onclick = (e) => (tip?.classList.contains("hues") ? closeTip() : legend(e.currentTarget));
   }
-  function legend(anchor) {                                    // what each colour means, how many there are, which are shown
+  // The colour of the pages, for every PDF: white as the paper is, a soft cream or green (easier on the eyes), or dark
+  // (light text on dark). Auto follows the app: dark pages in its dark theme. Chosen in the View popover.
+  const TINTS = [["auto", "Auto", "Dark pages in the dark theme, white in the light one"], ["white", "White", "As the paper is"], ["warm", "Warm", "A soft cream"],
+    ["green", "Green", "A soft green, easy on the eyes"], ["dark", "Dark", "Light text on dark pages"]];
+  const tint = () => (TINTS.some(([k]) => k === store("pdf.tint")) ? store("pdf.tint") : "auto");
+  const showTint = () => TINTS.forEach(([k]) => box.classList.toggle("tint-" + k, k === tint()));
+  showTint();
+  function legend(anchor) {                                    // the page colour; what each highlight colour means, how many there are, which are shown
     const n = (k) => saved.filter((m) => group(m) === k).length;
-    const p = pop(`<div class="ah"><b>Highlights</b><span class="grow"></span><button class="btn ghost sm" id="lg-all">${hidden.size ? "Show all" : "Hide all"}</button></div>
-      ${HUES.map(([k, name, what]) => `<div class="lg ${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${hidden.has(k) ? "Show" : "Hide"} these"><span class="hue k-${k}"></span><span class="ln"><b>${name}</b><span class="muted">${what}</span></span><span class="muted">${n(k) || ""}</span></div>`).join("")}`,
+    const p = pop(`<div class="ah"><b>Page colour</b></div>
+      <div class="tints">${TINTS.map(([k, name, what]) => `<button class="tintc ${k === tint() ? "on" : ""}" data-t="${k}" title="${what}"><i class="t-${k}"></i>${name}</button>`).join("")}</div>
+      ${!keep ? "" : `<div class="ah"><b>Highlights</b><span class="grow"></span><button class="btn ghost sm" id="lg-all">${hidden.size ? "Show all" : "Hide all"}</button></div>
+      ${HUES.map(([k, name, what]) => `<div class="lg ${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${hidden.has(k) ? "Show" : "Hide"} these"><span class="hue k-${k}"></span><span class="ln"><b>${name}</b><span class="muted">${what}</span></span><span class="muted">${n(k) || ""}</span></div>`).join("")}`}`,
       anchor.getBoundingClientRect(), "askpop hues");
     const set = (fn) => { fn(); store("pdf.hide", [...hidden]); showGroups(); legend(anchor); };
+    p.querySelectorAll(".tintc").forEach((b) => b.onclick = () => { store("pdf.tint", b.dataset.t); showTint(); legend(anchor); });
+    if (!keep) return;
     $("#lg-all", p).onclick = () => set(() => { const all = hidden.size > 0; hidden.clear(); if (!all) HUES.forEach(([k]) => hidden.add(k)); });
     p.querySelectorAll(".lg").forEach((r) => r.onclick = () => set(() => (hidden.has(r.dataset.k) ? hidden.delete(r.dataset.k) : hidden.add(r.dataset.k))));
   }
@@ -186,7 +197,7 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
   async function loadMarks() {
     if (!keep) return;
     try { saved = (await get("/api/marks", { project: S.route.project, path })).marks || []; }
-    catch (_) { keep = false; $("#pmarks", el)?.remove(); return; }   // a backend from before marks: read and ask as before
+    catch (_) { keep = false; return; }                          // a backend from before marks: read and ask as before
     if (!alive()) return;
     repaint();
     if (saved.some((m) => m.question)) (hooks.chatTurns?.() || []).forEach(pin);   // replies that came before this paper was open

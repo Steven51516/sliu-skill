@@ -37,8 +37,9 @@ a paper has its own session, named after its folder, and one is started with the
 PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
 session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
 result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it);
-**Highlights** in the header says what each colour means and shows or hides each kind; while a paper carries a
-session's highlights, a key over its corner names the colours that are there. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
+**View** in the header sets the colour of the pages (Auto: dark pages in the dark theme; White; Warm; Green; Dark),
+says what each highlight colour means and shows or hides each kind; while a paper carries a session's highlights, a
+key over its corner names the colours that are there. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
 the pictures a note links beside it.
 
 Library: a project with `library = true` is a library of documents. It has its own entry in the sidebar and opens as a
