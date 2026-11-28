@@ -128,17 +128,16 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     if ($("#pmarks", el)) $("#pmarks", el).onclick = (e) => (tip?.classList.contains("hues") ? closeTip() : legend(e.currentTarget));
   }
   // The colour of the pages, for every PDF, chosen in the View popover. A light colour is the page's own, with the
-  // paper multiplied onto it; Night and Dark invert the paper. The values are ones in use elsewhere, not made up here:
+  // paper multiplied onto it; Night and Dark invert the paper. The values are a reading platform's, not made up here:
   // 晋江文学城's reader themes (each theme's reading background, and its night mode's #AEAEAE text on #1A1A1A; read from
-  // its reader script, 2026-11), and the two eye-care colours passed around on Chinese forums, 豆沙绿 (known by its
-  // Windows settings: hue 85, saturation 123, luminance 205) and 杏仁黄. A matter of taste: none is shown to protect
-  // the eyes. Auto follows the app: dark pages in its dark theme.
+  // its reader script, 2026-11). A matter of taste: none is shown to protect the eyes. Auto follows the app: dark
+  // pages in its dark theme.
   const TINTS = [["auto", "Auto", "", "dark pages in the dark theme, white in the light one"], ["white", "White", "#FFFFFF", "as the paper is"],
-    ["jgreen", "Pale green", "#EEFAEE", "晋江's reading green"], ["green", "Bean green", "#C7EDCC", "豆沙绿: Windows hue 85, saturation 123, luminance 205"],
-    ["jbeige", "Beige", "#FFF7EB", "晋江's beige theme"], ["warm", "Almond", "#FAF9DE", "杏仁黄: Windows hue 39, saturation 177, luminance 222"],
+    ["jgreen", "Green", "#EEFAEE", "晋江's reading green, its default"], ["jbeige", "Beige", "#FFF7EB", "晋江's beige theme"],
     ["jkhaki", "Khaki", "#F2ECDC", "晋江's khaki theme"], ["jblue", "Blue", "#D8EDF0", "晋江's blue theme"],
     ["night", "Night", "", "晋江's night mode: #AEAEAE text on #1A1A1A"], ["dark", "Dark", "", "light text on dark, at full contrast"]];
-  const tint = () => TINTS.find(([k]) => k === store("pdf.tint")) || TINTS[0];
+  const WAS = { green: "jgreen", warm: "jbeige" };              // two colours of an earlier version: its nearest of these
+  const tint = () => TINTS.find(([k]) => k === (WAS[store("pdf.tint")] || store("pdf.tint"))) || TINTS[0];
   // Brightness dims the pages under their colour: a page that is dark text on a mid tone is neither the glare of
   // white nor light text on black (a plain bright page is where floaters in the eye show most; no colour is known to help).
   const dim = () => Math.min(100, Math.max(40, +store("pdf.dim") || 100));
