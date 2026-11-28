@@ -5,6 +5,11 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: the app's text is one step larger. Most of what you read sat at 12 to 12.5px (63% of the text
+  on a project's page was under 13px, 61% in Settings, 41% beside the chat): every size up to 19px is raised by 1px,
+  and the tiniest (10 to 10.5px) to 11.5px, so chat and ticket text are 15 to 15.5px, row titles 15px, their
+  second lines 13.5px. Left as they were: the graph's nodes (they zoom), icons and glyphs, and the footer. The whole
+  window still zooms with ⌘+ and ⌘−.
 - **Research Desk**: names are shown whole in the library. The list's header cut its collection's name to "Pap…"
   beside five buttons: the name now has the first row with Add, and the star, filter and order buttons sit beside the
   search. The viewer's header cut the title to "A meta-i…" and ran its last buttons off the edge in a narrow window:

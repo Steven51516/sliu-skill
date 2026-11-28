@@ -204,7 +204,7 @@ function render() {
   el.innerHTML = `<div class="chat-head">
       <div class="picker" id="ch-pick" title="Switch agent">${a ? avatar(a) : `<span class="avatar">?</span>`}
         <div class="txt"><div class="l1">${esc(a ? agentLabel(a) : (C.pane || "").startsWith("session:") ? (C.label || "Saved conversation") + " · saved" : C.label ? C.label + " (ended)" : "No agent")}${machineTag(a)}${C.project && C.project !== S.route.project ? ` <span class="muted" style="font-weight:400">· ${esc(C.project)}</span>` : ""}</div><div class="l2" id="ch-sub"></div></div>
-        <span class="muted" style="font-size:10px">▾</span></div>
+        <span class="muted" style="font-size:11.5px">▾</span></div>
       <span class="grow"></span>
       ${a?.role === "btw" ? `<button class="btn sm" id="ch-btw-close" title="Close this side chat and delete its conversation">${icon("trash")} Close &amp; delete</button>`
         : canBtw(a) ? `<button class="btn ghost sm icon" id="ch-btw" title="btw: fork a side chat with this session (read-only, deleted when you close it)">${icon("plus")}</button>` : ""}
@@ -430,7 +430,7 @@ function renderLive() {
       : `<div class="oneoff">${esc(one.text)} <a>Keep it open</a></div>`);
     body.querySelector(".oneoff a").onclick = () => { hooks.keepSession(agentByPane(C.pane), !one.kept); renderLive(); };
   }
-  if (C.fallback && !C.items.length) body.insertAdjacentHTML("beforeend", `<div class="fallback"><div class="msg note">No transcript for this agent: its screen</div><pre class="mono" style="white-space:pre-wrap;font-size:11.5px">${esc(C.fallback)}</pre></div>`);
+  if (C.fallback && !C.items.length) body.insertAdjacentHTML("beforeend", `<div class="fallback"><div class="msg note">No transcript for this agent: its screen</div><pre class="mono" style="white-space:pre-wrap;font-size:12.5px">${esc(C.fallback)}</pre></div>`);
   C.queued.forEach((q) => body.insertAdjacentHTML("beforeend", `<div class="msg user queued" title="Queued: the agent reads it when its turn ends"><div class="bubble">${esc(q)}</div></div>`));
   if (C.status === "working") body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>${esc(C.title || "Working")}</div>`);
   else if (codex) body.insertAdjacentHTML("beforeend", `<div class="working"><span class="dots"><span></span><span></span><span></span></span>Waiting on Codex (${esc(codex.replace("Codex running · ", ""))}); it reports back when the job ends</div>`);
@@ -534,7 +534,7 @@ function promptCard(screen, menuCmd = null) {
     ${opts.length ? `<div class="opts">${opts.map((o) => `<button class="btn" data-key="${o.k}"><kbd>${o.k}</kbd> ${esc(o.t)}</button>`).join("")}</div>` : ""}
     <div class="keys"><button class="btn sm" data-key="up">↑</button><button class="btn sm" data-key="down">↓</button>
       <button class="btn sm" data-key="enter">Enter</button><button class="btn sm" data-key="tab">Tab</button><button class="btn sm" data-key="esc">Esc</button>
-      <input id="pc-text" placeholder="Type an answer…" style="flex:1;min-width:120px;height:24px;padding:2px 8px;font-size:12px">
+      <input id="pc-text" placeholder="Type an answer…" style="flex:1;min-width:120px;height:24px;padding:2px 8px;font-size:13px">
       <button class="btn sm" id="pc-type">Send</button></div></div>`;
 }
 

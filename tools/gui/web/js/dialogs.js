@@ -56,7 +56,7 @@ export async function startTeam(project, map = null) {
     return true;
   };
   if (!(await load())) return;
-  d.insertAdjacentHTML("beforeend", `<div class="df"><span class="grow muted" style="font-size:12px">Sessions run in herdr; closing the app leaves them running.</span>
+  d.insertAdjacentHTML("beforeend", `<div class="df"><span class="grow muted" style="font-size:13px">Sessions run in herdr; closing the app leaves them running.</span>
     <button class="btn" id="dlg-cancel">Close</button>${plan.steps.length ? `<button class="btn primary" id="dlg-go">${icon("play")} ${plan.dry_run ? "Dry run" : "Start"}</button>` : ""}</div>`);
   $("#dlg-cancel", d).onclick = closeDialog;
   if ($("#dlg-go", d)) $("#dlg-go", d).onclick = (e) => {
@@ -97,7 +97,7 @@ export async function newSession(project, preset = null, fill = {}) {
         <div class="opt" data-k="codex"><b>Codex</b><span>codex CLI</span></div>
         <div class="opt" data-k="shell"><b>Shell</b><span>a herdr shell tab</span></div></div>
       <div id="ns-claude"><div id="ns-preset-f"><label class="f">Start with</label><select id="ns-preset">${PRESETS.map((p) => `<option value="${p.id}" ${p === pre ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select>
-        <div class="muted" id="ns-hint" style="font-size:12px;margin-top:4px"></div></div>
+        <div class="muted" id="ns-hint" style="font-size:13px;margin-top:4px"></div></div>
         <div id="ns-map-f"><label class="f">Map</label><select id="ns-map">${maps.map((m) => `<option value="${esc(m.path.replace(/\/map\.md$/, ""))}">${esc(m.id)} · ${esc(m.title)}</option>`).join("")}</select></div>
         <div id="ns-ticket-f"><label class="f">Ticket</label><select id="ns-ticket">${tickets.map((t) => `<option value="${esc(t.path.replace(/\/ticket\.md$/, ""))}">${esc(t.id)} · ${esc(t.title)}</option>`).join("")}</select></div>
         <div id="ns-text-f"><label class="f" id="ns-text-l">Text</label><textarea id="ns-text" rows="3"></textarea></div></div>
@@ -152,7 +152,7 @@ export function ask({ title, label = "", placeholder = "", value = "", multiline
     const d = dialog(`<div class="dh">${esc(title)}</div><div class="db">${label ? `<label class="f">${esc(label)}</label>` : ""}
       ${multiline ? `<textarea id="ask-in" rows="4" placeholder="${esc(placeholder)}">${esc(value)}</textarea>` : `<input id="ask-in" placeholder="${esc(placeholder)}" value="${esc(value)}">`}
       ${check ? `<label class="askchk"><input type="checkbox" id="ask-chk" ${check.on ? "checked" : ""}><span>${esc(check.label)}</span></label>` : ""}
-      ${hint ? `<div class="muted" style="font-size:12px;margin-top:6px">${esc(hint)}</div>` : ""}</div>
+      ${hint ? `<div class="muted" style="font-size:13px;margin-top:6px">${esc(hint)}</div>` : ""}</div>
       <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${esc(ok)}</button></div>`, { width: 520 });
     const inp = $("#ask-in", d);
     const done = (v) => { const on = $("#ask-chk", d)?.checked; closeDialog(); resolve(check && v ? { text: v, checked: !!on } : v); };
@@ -170,11 +170,11 @@ export function newProject() {
   const d = dialog(`<div class="dh">New project</div><div class="db">
       <label class="f">Name</label><input id="np-name" placeholder="prot-design" autocomplete="off" spellcheck="false">
       <label class="f">Inside folder</label><input id="np-parent" value="${esc(root)}">
-      <div class="muted" style="font-size:12px;margin-top:4px" id="np-where"></div>
+      <div class="muted" style="font-size:13px;margin-top:4px" id="np-where"></div>
       <label class="f">Direction in one line (optional)</label><input id="np-dir" placeholder="e.g. design binders for X with Y, beat Z on W">
       <label class="f">Server (ssh alias, optional)</label><input id="np-server" placeholder="gpu-server">
       <label class="f">Code folder on the server</label><input id="np-root" placeholder="~/code/&lt;name&gt;">
-      <div class="muted" style="font-size:12px;margin-top:10px">Creates the folder and adds it here, then starts a Claude session in it with
+      <div class="muted" style="font-size:13px;margin-top:10px">Creates the folder and adds it here, then starts a Claude session in it with
         <code>/research-init</code>, which sets up the scope, tracker and docs by asking you, a section at a time, in the chat.</div></div>
     <div class="df"><span class="grow"></span><button class="btn" id="dlg-cancel">Cancel</button><button class="btn primary" id="dlg-go">${icon("plus")} Create</button></div>`, { width: 540 });
   const where = () => { const n = $("#np-name", d).value.trim() || "<name>"; $("#np-where", d).textContent = `→ ${$("#np-parent", d).value.trim().replace(/\/$/, "")}/${n}`;
@@ -228,7 +228,7 @@ export function rememberPreset(id) { store("preset", id); }
 export async function peekJob(host, session) {
   const d = dialog(`<div class="dh">tmux ${esc(session)} <span class="muted" style="font-weight:400">on ${esc(host)}</span></div>
     <div class="db"><pre id="pk" style="max-height:52vh;overflow:auto;white-space:pre"><span class="spin"></span></pre></div>
-    <div class="df"><span class="grow muted" id="pk-st" style="font-size:12px"></span><button class="btn" id="pk-ref">${icon("refresh")} Refresh</button>
+    <div class="df"><span class="grow muted" id="pk-st" style="font-size:13px"></span><button class="btn" id="pk-ref">${icon("refresh")} Refresh</button>
       <button class="btn" id="pk-att">${icon("term")} Attach</button><button class="btn primary" id="dlg-cancel">Close</button></div>`, { width: 900 });
   const load = async () => {
     try {

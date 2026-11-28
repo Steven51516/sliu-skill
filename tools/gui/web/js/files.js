@@ -126,7 +126,7 @@ export function openFile(side, path) {
 function renderViewer() {
   const el = $("#viewer");
   if (!el) return;
-  if (!F.viewer) { el.innerHTML = el.dataset.empty ? `<div class="empty big">${el.dataset.empty}</div>` : `<div class="empty big">Pick a file on the left.<br><span style="font-size:12px">Folders load when opened. Server files are read-only and cached until ${icon("refresh")}.</span></div>`; return; }
+  if (!F.viewer) { el.innerHTML = el.dataset.empty ? `<div class="empty big">${el.dataset.empty}</div>` : `<div class="empty big">Pick a file on the left.<br><span style="font-size:13px">Folders load when opened. Server files are read-only and cached until ${icon("refresh")}.</span></div>`; return; }
   showDoc(el, F.viewer.side, F.viewer.path);
 }
 
@@ -359,7 +359,7 @@ function renderCsv(el, text, sep) {
   const head = rows[0];
   let body = rows.slice(1), sortCol = -1, asc = true;
   const draw = () => {
-    el.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:6px">${body.length.toLocaleString()} rows${body.length > 2000 ? ", first 2,000 shown" : ""} · click a header to sort</div>
+    el.innerHTML = `<div class="muted" style="font-size:13px;margin-bottom:6px">${body.length.toLocaleString()} rows${body.length > 2000 ? ", first 2,000 shown" : ""} · click a header to sort</div>
       <table class="csv"><tr>${head.map((h, i) => `<th data-i="${i}">${esc(h)}${i === sortCol ? (asc ? " ▲" : " ▼") : ""}</th>`).join("")}</tr>
       ${body.slice(0, 2000).map((r) => `<tr>${r.map((c) => `<td class="mono">${esc(c)}</td>`).join("")}</tr>`).join("")}</table>`;
     el.querySelectorAll("th").forEach((th) => th.onclick = () => {

@@ -55,8 +55,8 @@ function renderHead(m) {
       <div class="sub"><span class="mono">${esc(m.id)}</span> · ${pill(m.driven ? "working" : m.status, m.driven ? "driver live" : m.status)}
         ${m.status === "paused" ? `<span class="muted">${esc((m.status_text || "").replace(/^paused\s*/, ""))}</span>` : ""}
         · ${done}/${n} resolved${running ? ` · ${running} running` : ""}${ready ? ` · ${ready} ready` : ""}${waiting ? ` · <span class="err">${waiting} need you</span>` : ""}</div>
-      <div class="mdest" style="margin-top:6px;color:var(--ink-2);font-size:12.5px;max-width:980px">${esc(m.status === "closed" ? "Outcome: " + (m.outcome || "") : m.destination)}</div>
-      ${workersOf(m).length ? `<div class="actions mworkers" style="margin-top:8px"><span class="muted" style="font-size:12px">Workers</span>${workersOf(m).map((w) =>
+      <div class="mdest" style="margin-top:6px;color:var(--ink-2);font-size:13.5px;max-width:980px">${esc(m.status === "closed" ? "Outcome: " + (m.outcome || "") : m.destination)}</div>
+      ${workersOf(m).length ? `<div class="actions mworkers" style="margin-top:8px"><span class="muted" style="font-size:13px">Workers</span>${workersOf(m).map((w) =>
         `<button class="btn sm" data-wpane="${esc(w.pane)}" title="${esc(w.ticket_title || "")} · ${esc(AGENT_WORD[w.status] || w.status)}"><span class="dot ${safeCls(w.status)}"></span>${esc(w.ticket)}</button>`).join("")}</div>` : ""}</div>
     <div class="actions">
       ${live && !m.driven ? `<button class="btn primary" id="mh-driver">${icon("play")} Start driver</button>` : ""}
@@ -279,7 +279,7 @@ function renderTicket(m) {
       <span class="pill plain">${esc(t.type || "")}</span><span class="grow"></span><button class="btn ghost sm icon" id="tp-close" title="Close">${icon("x")}</button></div>
     <h3>${esc(t.title)}</h3>
     ${t.verdict ? `<div class="verdict">${esc(t.verdict)}</div>` : ""}
-    ${t.blocked_by.length ? `<div class="muted" style="font-size:12px;margin:-2px 0 8px">Blocked by ${t.blocked_by.map((b) => `<a data-goto="${esc(b)}" class="mono">${esc(b)}</a>`).join(", ")}</div>` : ""}
+    ${t.blocked_by.length ? `<div class="muted" style="font-size:13px;margin:-2px 0 8px">Blocked by ${t.blocked_by.map((b) => `<a data-goto="${esc(b)}" class="mono">${esc(b)}</a>`).join(", ")}</div>` : ""}
     <div class="actions">
       ${open && t.type !== "grilling" && !wk && !m.driven ? `<button class="btn sm primary" id="tp-work">${icon("play")} Work on it</button>` : ""}
       ${t.waiting ? `<button class="btn sm primary" id="tp-answer">${icon("chat")} ${hooks.deskPane(S.route.project) ? "Answer with the desk" : "Answer"}</button>` : ""}
@@ -344,7 +344,7 @@ async function renderTrace(el, m, t, fresh) {
   const key = `${S.route.project}|${m.folder}|${t.folder}`;
   let hit = TR.cache.get(key);
   if (!hit || fresh || Date.now() - hit.at > 30000) {          // a live worker keeps adding steps: read again after 30 s
-    if (!hit) el.innerHTML = `<div class="spin"></div><div class="muted" style="text-align:center;font-size:12px">Reading the sessions that worked ${esc(t.id)}…</div>`;
+    if (!hit) el.innerHTML = `<div class="spin"></div><div class="muted" style="text-align:center;font-size:13px">Reading the sessions that worked ${esc(t.id)}…</div>`;
     try { hit = { at: Date.now(), d: await get("/api/ticket-trace", { project: S.route.project, map: m.folder, ticket: t.folder }) }; TR.cache.set(key, hit); }
     catch (e) { if (el.isConnected) el.innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
     if (!el.isConnected || M.ttab !== "trace") return;
@@ -366,7 +366,7 @@ function drawTrace(el, d, m, t) {
       ${KINDS.map(([k, l]) => n(k) ? `<button class="chip ${TR.hide.has(k) ? "" : "on"}" data-k="${k}">${l} <b>${n(k)}</b></button>` : "").join("")}
       ${failed ? `<button class="chip fail ${TR.failed ? "on" : ""}" data-failed="1">Failed only <b>${failed}</b></button>` : ""}
       <span class="grow"></span><button class="btn ghost sm icon" id="tr-ref" title="Read again">${icon("refresh")}</button></div>
-    ${d.errors.length ? `<div class="err" style="font-size:12px;margin:6px 0">${d.errors.map(esc).join("<br>")}</div>` : ""}
+    ${d.errors.length ? `<div class="err" style="font-size:13px;margin:6px 0">${d.errors.map(esc).join("<br>")}</div>` : ""}
     ${d.sessions.length ? d.sessions.map((s, si) => `<details class="tr-s" ${si === d.sessions.length - 1 || d.sessions.length <= 2 ? "open" : ""}>
       <summary><span class="dot ${safeCls(s.status || "done")}"></span><b>${esc(name(s))}</b>${s.where !== "this Mac" ? ` <span class="htag">${esc(s.where)}</span>` : ""}
         <span class="muted tr-span">${esc(span(s.first, s.last))} · ${s.events.filter((e) => !["say", "prompt", "gap", "compact"].includes(e.k)).length} steps</span>

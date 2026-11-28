@@ -62,14 +62,14 @@ export function renderOverview() {
       <div class="grid">${open.map(mapCard).join("") || `<div class="card empty">No open map. Chart one with “New map from an idea”.</div>`}</div>
     </div><div>
       <div class="sec"><h2>${d.remote ? `Sessions on ${esc(d.remote.host)}` : d.team ? "Team" : "Sessions"}${!d.remote && placesOf(d.agents) ? ` <span class="htag" title="where these sessions run">${esc(placesOf(d.agents))}</span>` : ""}</h2><span class="meta">${d.herdr_error ? `<span class="err">herdr: ${esc(d.herdr_error)}</span>` : ""}</span></div>
-      <div class="card rows">${d.remote ? (d.agents.length ? teamRows(d.agents) : "") + `<div class="empty" style="font-size:12px">Sessions on ${esc(d.remote.host)} active in the last day, read from their conversations (mirrored every minute): read-only here. To talk to one, <a id="ov-ssh2">open a terminal there</a>.</div>`
+      <div class="card rows">${d.remote ? (d.agents.length ? teamRows(d.agents) : "") + `<div class="empty" style="font-size:13px">Sessions on ${esc(d.remote.host)} active in the last day, read from their conversations (mirrored every minute): read-only here. To talk to one, <a id="ov-ssh2">open a terminal there</a>.</div>`
         : teamRows(d.agents) || `<div class="empty">Nobody is working here. <a id="ov-team2">Start the team</a> or open a new session.</div>`}</div>
       ${d.remote ? "" : `<div class="sec"><h2>GPUs</h2><span class="grow"></span><a href="#/gpus" class="meta">every node</a></div><div class="card pad" id="ov-gpus">${gpuCache.all || `<div class="spin"></div>`}</div>`}
       <div class="sec" id="milestones"><h2>Milestones</h2><span class="meta">closed maps</span></div>
       <div class="card pad"><div class="timeline">${closed.map((m) => `<div class="tl" data-map="${esc(m.folder)}"><div class="h"><span class="mid">${esc(m.id)}</span>${esc(m.title)}</div>
         <div class="d">${esc(m.updated || "")}</div><div class="o">${esc(plain(m.outcome) || "(no outcome recorded)")}</div></div>`).join("") || `<div class="muted">None yet.</div>`}</div></div>
       ${d.problems.length ? `<div class="sec"><h2>Tracker warnings</h2></div><div class="card pad"><details><summary>${d.problems.length} from <code>research-status --check</code></summary>
-        <ul style="padding-left:18px;font-size:12px">${d.problems.map((p) => `<li class="mono">${esc(p)}</li>`).join("")}</ul></details></div>` : ""}
+        <ul style="padding-left:18px;font-size:13px">${d.problems.map((p) => `<li class="mono">${esc(p)}</li>`).join("")}</ul></details></div>` : ""}
     </div></div></div>`;
   wire(host);
   const team = () => hooks.startTeam(d.name);
@@ -125,7 +125,7 @@ function changesBlock(ch, tickets) {
       return `<div class="row click" data-map="${esc(c.map_folder)}" data-ticket="${esc(c.folder || "")}"><span class="mono muted">${esc(c.id)}</span>
         <div class="grow"><div class="t1">${esc(c.title)}</div><div class="t2">${esc(t.verdict || "resolved — open it for the answer")}</div></div>${pill("resolved")}</div>`; }).join("")}</div>` : ""}
     ${rest.length ? `<details class="card" style="padding:4px 0;margin-top:${results.length ? 8 : 0}px" ${results.length ? "" : "open"}>
-      <summary class="muted" style="padding:6px 14px;font-size:12.5px">${rest.length} other change${rest.length > 1 ? "s" : ""}</summary>${rest.slice(0, 40).map(row).join("")}</details>` : ""}`;
+      <summary class="muted" style="padding:6px 14px;font-size:13.5px">${rest.length} other change${rest.length > 1 ? "s" : ""}</summary>${rest.slice(0, 40).map(row).join("")}</details>` : ""}`;
 }
 
 // map destinations and outcomes are markdown; cards show them as plain text
@@ -153,7 +153,7 @@ function agentRow(a, sub = false) {
   return `<div class="row click" data-pane="${esc(a.pane)}" style="${sub ? "padding-left:40px" : ""}">${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}</div>
     <div class="t2 one ${loopDead(a) ? "err" : ""}">${modelTag(a)}${S.data && placesOf(S.data.agents).includes(" + ") ? machineTag(a) : ""}${esc(a.status === "blocked" ? "waiting for your answer" : [loopNote(a), codexNote(a), (a.role === "worker" ? a.ticket_title : "") || a.title].filter(Boolean).join(" · "))}</div></div>
     ${loopDead(a) && a.status !== "working" ? `<button class="btn sm primary" data-restart="${esc(a.pane)}" title="Send ${esc(a.loop.prompt)}">Restart loop</button>` : ""}${pill(a.status, a.codex?.length ? "Codex" : AGENT_WORD[a.status] || a.status)}
-    ${a.remote ? `<span class="meta muted" style="font-size:11.5px;white-space:nowrap">${esc(ago(a.last_active))}</span>` : `<button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button>`}</div>`;
+    ${a.remote ? `<span class="meta muted" style="font-size:12.5px;white-space:nowrap">${esc(ago(a.last_active))}</span>` : `<button class="btn ghost sm icon" data-term="${esc(a.pane)}" title="Open its terminal">${icon("term")}</button>`}</div>`;
 }
 function teamRows(agents) {
   // desk, each driver followed by the workers it opened, then the rest
@@ -214,7 +214,7 @@ export function renderInbox() {
   host.innerHTML = `<div class="page" style="max-width:920px">
     <div class="ph"><div class="grow"><h1>Inbox</h1><div class="sub">Everything waiting on you, across projects</div></div>
 </div>
-    ${!sum.projects.length ? `<div class="card pad" style="padding:22px 24px"><h2 style="margin:0 0 6px;font-size:16px">Welcome to Research Desk</h2>
+    ${!sum.projects.length ? `<div class="card pad" style="padding:22px 24px"><h2 style="margin:0 0 6px;font-size:17px">Welcome to Research Desk</h2>
       <div class="muted" style="margin-bottom:12px">Add a project folder that uses the research harness (it has <code>maps/</code>), and its maps, tickets, agents and files appear here.</div>
       <button class="btn primary" id="ib-add">${icon("plus")} Add a project</button></div>` : none ? `<div class="card empty big">${icon("check")} All clear. Nothing is waiting on you.</div>` : ""}
     ${blocked.length ? `<div class="sec"><h2>Waiting for your answer</h2><span class="meta">agents stopped at a prompt</span></div><div class="card rows">${blocked.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
@@ -226,7 +226,7 @@ export function renderInbox() {
     ${loops.length ? `<div class="sec"><h2>Loops that went quiet</h2><span class="meta">a pass is overdue, or Claude returned an API error</span></div><div class="card rows">${loops.map((a) => `<div class="row click" data-pane="${esc(a.pane)}">
       ${avatar(a)}<div class="grow"><div class="t1">${esc(agentLabel(a))}${a.project ? ` · <span class="muted">${esc(a.project)}</span>` : ""}</div><div class="t2 err">${esc(loopNote(a))}</div></div>
       <button class="btn sm primary" data-restart="${esc(a.pane)}">Restart loop</button></div>`).join("")}</div>` : ""}
-    ${muted.length ? `<div class="muted" style="font-size:12px;margin:14px 2px 0">${icon("belloff")} Muted: ${muted.map((p) => `<a href="${href({ project: p.name })}">${esc(p.name)}</a> (${p.waiting.filter((w) => w.kind !== "agent").length})`).join(", ")}. Unmute from its page.</div>` : ""}
+    ${muted.length ? `<div class="muted" style="font-size:13px;margin:14px 2px 0">${icon("belloff")} Muted: ${muted.map((p) => `<a href="${href({ project: p.name })}">${esc(p.name)}</a> (${p.waiting.filter((w) => w.kind !== "agent").length})`).join(", ")}. Unmute from its page.</div>` : ""}
     ${tickets.length ? `<div class="sec"><h2>Decisions waiting</h2><span class="meta">grilling tickets and needs-you items</span></div><div class="card rows">${tickets.map((w) => `<div class="row click" data-project="${esc(w.project)}" data-map="${esc(w.map_folder)}" data-ticket="${esc(w.folder || "")}">
       ${pill("waiting", w.project)}<div class="grow"><div class="t1">${esc(w.text)}</div><div class="t2 mono">${esc(w.id || w.map)}</div></div></div>`).join("")}</div>` : ""}
     ${changed.length ? `<div class="sec"><h2>Changed since you last looked</h2></div><div class="card rows">${changed.map((p) => `<a class="row click" href="${href({ project: p.name })}" style="color:inherit;text-decoration:none">
@@ -277,13 +277,13 @@ export async function renderGpus(fresh = false, quiet = false) {
     <div class="sec" style="margin-top:0"><h2>Your jobs</h2><span class="meta">${mine.length ? `${mine.length} GPU${mine.length > 1 ? "s" : ""}` : "none running"}</span></div>
     ${mine.length ? `<div class="card rows">${mine.map(({ h, x, me }) => `<div class="row"><b class="mono">${esc(h)}</b><span class="mono muted">GPU ${x.index}</span>
       <div class="grow"><div class="bar" style="max-width:260px"><span style="width:${x.util}%;background:var(--c-work)"></span></div></div>
-      <span class="muted" style="font-size:12px">${x.util}% · ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB · pid ${esc(x.procs.filter((p) => p.user === me).map((p) => p.pid).join(", "))}</span></div>`).join("")}</div>` : ""}
+      <span class="muted" style="font-size:13px">${x.util}% · ${(x.mem / 1024).toFixed(0)}/${(x.total / 1024).toFixed(0)} GB · pid ${esc(x.procs.filter((p) => p.user === me).map((p) => p.pid).join(", "))}</span></div>`).join("")}</div>` : ""}
     ${Object.entries(data.pools).map(([pool, hosts]) => {
       const all = hosts.flatMap((h) => data.by[h]?.gpus || []);
       const model = (hosts.map((h) => data.by[h]?.gpus?.[0]?.name).find(Boolean) || "").replace(/^NVIDIA\s+/, "");
       return `<div class="sec"><h2>${esc(pool)}</h2><span class="meta">${all.filter(isFree).length} of ${all.length} free · ${all.filter((x) => x.mine).length} yours${model ? " · " + esc(model) : ""}</span></div>
       <div class="card rows">${hosts.map((h) => { const g = data.by[h] || {};
-        if (g.error) return `<div class="row grow-row"><b class="mono gname">${esc(h)}</b><span class="err" style="font-size:12px">${esc(g.error)}</span></div>`;
+        if (g.error) return `<div class="row grow-row"><b class="mono gname">${esc(h)}</b><span class="err" style="font-size:13px">${esc(g.error)}</span></div>`;
         const gs = g.gpus || [];
         return `<div class="row grow-row"><b class="mono gname">${esc(h)}</b><div class="gcells">${gs.map((x) => cell(h, x)).join("")}</div>
           <span class="gfree">${gs.filter(isFree).length}/${gs.length} free</span></div>`; }).join("")}</div>`;
@@ -305,9 +305,9 @@ async function loadMiniGpus() {
     el.innerHTML = gpuCache.all = `<div class="rows">${Object.entries(data.pools).map(([pool, hosts]) => {
       const all = hosts.flatMap((h) => data.by[h]?.gpus || []);
       return `<div class="row" style="padding:6px 0"><b style="width:80px">${esc(pool)}</b><div class="grow"><div class="bar"><span style="width:${100 * (all.length - all.filter(isFree).length) / Math.max(1, all.length)}%;background:var(--c-work)"></span></div></div>
-        <span class="muted" style="font-size:12px;white-space:nowrap">${all.filter(isFree).length}/${all.length} free · ${all.filter((x) => x.mine).length} yours</span></div>`; }).join("")}</div>
-      <div class="muted" style="font-size:11.5px;margin-top:4px">${mine ? `${mine} GPU${mine > 1 ? "s" : ""} running your jobs` : "No GPU is running your jobs"}</div>`;
-  } catch (e) { if ($("#ov-gpus")) $("#ov-gpus").innerHTML = `<div class="err" style="font-size:12px">${esc(e.message)}</div>`; }
+        <span class="muted" style="font-size:13px;white-space:nowrap">${all.filter(isFree).length}/${all.length} free · ${all.filter((x) => x.mine).length} yours</span></div>`; }).join("")}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${mine ? `${mine} GPU${mine > 1 ? "s" : ""} running your jobs` : "No GPU is running your jobs"}</div>`;
+  } catch (e) { if ($("#ov-gpus")) $("#ov-gpus").innerHTML = `<div class="err" style="font-size:13px">${esc(e.message)}</div>`; }
 }
 
 // ---------- search across a project's conversations ----------
@@ -333,12 +333,12 @@ export function renderSearch() {
     const mark = (s) => terms.reduce((h, t) => h.replace(new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), (m) => `<mark>${m}</mark>`), esc(s));
     const groups = new Map();
     r.hits.forEach((h) => { if (!groups.has(h.session)) groups.set(h.session, []); groups.get(h.session).push(h); });
-    $("#sres").innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:8px">${r.hits.length} matches in ${groups.size} conversation${groups.size === 1 ? "" : "s"} · ${r.ms} ms</div>`
+    $("#sres").innerHTML = `<div class="muted" style="font-size:13px;margin-bottom:8px">${r.hits.length} matches in ${groups.size} conversation${groups.size === 1 ? "" : "s"} · ${r.ms} ms</div>`
       + [...groups.values()].map((hs) => `<div class="card" style="margin-bottom:10px"><div class="shead">${icon(hs[0].codex ? "code" : "chat")}<b>${esc(hs[0].title || "Untitled conversation")}</b>
           ${hs[0].live_pane ? `<span class="pill s-working">live · ${esc(hs[0].live_label || "")}</span>` : ""}<span class="grow"></span><span class="muted">${esc(ago(hs[0].ts))}</span></div>
         <div class="rows">${hs.slice(0, 6).map((h) => `<div class="row click" data-s="${esc(h.session)}" data-u="${esc(h.uuid)}">
           <span class="pill plain" style="min-width:64px;justify-content:center">${esc(h.role === "from" ? "message" : h.role === "user" ? "you" : "agent")}</span>
-          <div class="grow"><div class="t2" style="color:var(--ink-2);-webkit-line-clamp:3">${mark(h.snippet)}</div></div><span class="muted" style="font-size:11px">${esc(ago(h.ts))}</span></div>`).join("")}
+          <div class="grow"><div class="t2" style="color:var(--ink-2);-webkit-line-clamp:3">${mark(h.snippet)}</div></div><span class="muted" style="font-size:12px">${esc(ago(h.ts))}</span></div>`).join("")}
           ${hs.length > 6 ? `<div class="empty" style="padding:6px 14px">${hs.length - 6} more in this conversation</div>` : ""}</div></div>`).join("")
       || `<div class="empty big">Nothing found.</div>`;
     $("#sres").querySelectorAll("[data-s]").forEach((el) => el.onclick = () => {
@@ -367,17 +367,17 @@ async function renderNotify() {
         your tap comes back to them as a message. Open questions stay in the chat.</span></span></label>
       <table class="ntable"><tr><th>When</th><th title="A macOS notification banner (needs the app open, the window may be hidden)">Mac banner</th>
         <th title="A sound on the Mac (works with the app closed)">Mac sound</th><th title="A push to your phone through Moshi">Phone (Moshi)</th></tr>
-      ${d.kinds.map((k) => `<tr class="${k.inbox ? "inbox" : ""}"><td><b>${esc(k.label)}</b>${k.inbox ? ` <span class="tag">Inbox</span>` : ""}<div class="muted" style="font-size:12px">${esc(k.meaning)}</div></td>
+      ${d.kinds.map((k) => `<tr class="${k.inbox ? "inbox" : ""}"><td><b>${esc(k.label)}</b>${k.inbox ? ` <span class="tag">Inbox</span>` : ""}<div class="muted" style="font-size:13px">${esc(k.meaning)}</div></td>
         <td>${box(k.kind, "banner")}</td>
         <td class="snd">${box(k.kind, "sound")}<select data-snd="${k.kind}">${d.sounds.map((s) => `<option ${s === st.events[k.kind].sound ? "selected" : ""}>${s}</option>`).join("")}</select>
           <button class="btn ghost sm icon" data-play="${k.kind}" title="Play">${icon("play")}</button></td>
         <td>${box(k.kind, "push")}</td></tr>`).join("")}</table>
       <div class="ntfoot">
-        ${d.push_ready ? `<span class="pill s-idle">Moshi connected</span>` : `<span class="pill s-blocked">no Moshi token</span> <span class="muted" style="font-size:12px">store it with <code>security add-generic-password -a "$USER" -s moshi-push -w</code></span>`}
+        ${d.push_ready ? `<span class="pill s-idle">Moshi connected</span>` : `<span class="pill s-blocked">no Moshi token</span> <span class="muted" style="font-size:13px">store it with <code>security add-generic-password -a "$USER" -s moshi-push -w</code></span>`}
         <label><input type="checkbox" id="nt-away" ${st.push_away_only ? "checked" : ""}> Push only when I've been away from the Mac for
           <input type="number" id="nt-mins" min="1" max="120" value="${st.away_minutes}" style="width:56px;padding:2px 6px"> min</label>
         <span class="grow"></span><button class="btn sm" id="nt-test" ${d.push_ready ? "" : "disabled"}>Send a test push</button></div>
-      <div class="muted" style="font-size:12px;padding:0 16px 14px">Pushes are bundled (several within 20 s become one) and capped at ${st.push_max_per_hour} an hour.
+      <div class="muted" style="font-size:13px;padding:0 16px 14px">Pushes are bundled (several within 20 s become one) and capped at ${st.push_max_per_hour} an hour.
         Sounds and pushes come from the backend, so they work with the window closed. Claude Code's own hook sounds (CLAUDE_BELL) are separate.</div>`;
     card.querySelectorAll("[data-ch]").forEach((c) => c.onchange = () => {
       const rule = st.events[c.dataset.k];
@@ -427,11 +427,11 @@ export async function renderSettings() {
       <span class="k">Projects file</span><span class="mono">${esc(cfg.path)}</span></div>
     <div class="sec"><h2>Pictures for review</h2><span class="meta">so a session working on this app's look can see it</span></div>
     <div class="card pad" style="display:flex;flex-direction:column;gap:10px">
-      <div class="muted" style="font-size:12.5px">Chrome opens this app's main screens in the background and saves a picture of each in <code>tools/gui/.shots</code>. Nothing is clicked or sent; the pictures stay on this Mac and are never committed.</div>
-      <div class="actions"><button class="btn" id="st-shots">Take pictures now</button><span class="muted" id="st-shots-msg" style="font-size:12.5px"></span></div>
+      <div class="muted" style="font-size:13.5px">Chrome opens this app's main screens in the background and saves a picture of each in <code>tools/gui/.shots</code>. Nothing is clicked or sent; the pictures stay on this Mac and are never committed.</div>
+      <div class="actions"><button class="btn" id="st-shots">Take pictures now</button><span class="muted" id="st-shots-msg" style="font-size:13.5px"></span></div>
       <label><input type="checkbox" id="st-shots-allow"> Let a session ask for a new round by itself (it can only get these same pictures)</label></div>
     <div class="sec"><h2>Projects</h2><span class="grow"></span><button class="btn sm" id="st-add">${icon("plus")} Add a project</button></div>
-    <div class="card pad"><div class="muted" style="font-size:12px;margin-bottom:8px">The whole file: projects, servers, Claude flags and per-role environment. Saved only if it parses; the old copy is kept as <code>.bak</code>.</div>
+    <div class="card pad"><div class="muted" style="font-size:13px;margin-bottom:8px">The whole file: projects, servers, Claude flags and per-role environment. Saved only if it parses; the old copy is kept as <code>.bak</code>.</div>
       <textarea class="code" id="st-cfg" spellcheck="false">${esc(cfg.text)}</textarea>
       <div class="actions" style="margin-top:8px"><button class="btn primary" id="st-save">Save</button><span class="muted" id="st-msg"></span></div></div></div>`;
   const pref = (id, k) => { $(id).onchange = (e) => { S.prefs[k] = e.target.checked; savePrefs(); }; };

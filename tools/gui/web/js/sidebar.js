@@ -90,9 +90,9 @@ export function renderSidebar() {
       for (const w of workers.filter((x) => x.driver === d.pane)) { html += row(w, true); placed.add(w.pane); }
     }
     const loose = workers.filter((w) => !placed.has(w.pane));
-    if (loose.length) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">Workers without a live driver</div>` + loose.map((w) => { placed.add(w.pane); return row(w, true); }).join("");
+    if (loose.length) html += `<div class="side-sec" style="padding-top:6px;font-size:11.5px">Workers without a live driver</div>` + loose.map((w) => { placed.add(w.pane); return row(w, true); }).join("");
     const rest = agents.filter((a) => !placed.has(a.pane));
-    if (rest.length && placed.size) html += `<div class="side-sec" style="padding-top:6px;font-size:10.5px">Other sessions</div>`;
+    if (rest.length && placed.size) html += `<div class="side-sec" style="padding-top:6px;font-size:11.5px">Other sessions</div>`;
     html += rest.map((a) => row(a)).join("");
   } else html += agents.map((a) => row(a)).join("");
   html += `</div><div class="side-foot">
