@@ -132,17 +132,22 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
   const TINTS = [["auto", "Auto", "Dark pages in the dark theme, white in the light one"], ["white", "White", "As the paper is"], ["warm", "Warm", "A soft cream"],
     ["green", "Green", "A soft green, easy on the eyes"], ["dark", "Dark", "Light text on dark pages"]];
   const tint = () => (TINTS.some(([k]) => k === store("pdf.tint")) ? store("pdf.tint") : "auto");
-  const showTint = () => TINTS.forEach(([k]) => box.classList.toggle("tint-" + k, k === tint()));
+  // Brightness dims the pages under their colour: a page that is dark text on a mid tone is neither the glare of
+  // white nor light text on black (a plain bright page is where floaters in the eye show most; no colour is known to help).
+  const dim = () => Math.min(100, Math.max(40, +store("pdf.dim") || 100));
+  const showTint = () => { TINTS.forEach(([k]) => box.classList.toggle("tint-" + k, k === tint())); box.style.setProperty("--pg-dim", dim() / 100); };
   showTint();
   function legend(anchor) {                                    // the page colour; what each highlight colour means, how many there are, which are shown
     const n = (k) => saved.filter((m) => group(m) === k).length;
     const p = pop(`<div class="ah"><b>Page colour</b></div>
       <div class="tints">${TINTS.map(([k, name, what]) => `<button class="tintc ${k === tint() ? "on" : ""}" data-t="${k}" title="${what}"><i class="t-${k}"></i>${name}</button>`).join("")}</div>
+      <label class="dimrow" title="Dim the pages. Dark text on a dimmed page is easier on the eyes than white, and easier to read than light text on black"><span>Brightness</span><input type="range" id="pg-dim" min="40" max="100" step="5" value="${dim()}"><span class="v" id="pg-dimv">${dim()}%</span></label>
       ${!keep ? "" : `<div class="ah"><b>Highlights</b><span class="grow"></span><button class="btn ghost sm" id="lg-all">${hidden.size ? "Show all" : "Hide all"}</button></div>
       ${HUES.map(([k, name, what]) => `<div class="lg ${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${hidden.has(k) ? "Show" : "Hide"} these"><span class="hue k-${k}"></span><span class="ln"><b>${name}</b><span class="muted">${what}</span></span><span class="muted">${n(k) || ""}</span></div>`).join("")}`}`,
       anchor.getBoundingClientRect(), "askpop hues");
     const set = (fn) => { fn(); store("pdf.hide", [...hidden]); showGroups(); legend(anchor); };
     p.querySelectorAll(".tintc").forEach((b) => b.onclick = () => { store("pdf.tint", b.dataset.t); showTint(); legend(anchor); });
+    $("#pg-dim", p).oninput = (e) => { store("pdf.dim", +e.target.value); showTint(); $("#pg-dimv", p).textContent = dim() + "%"; };
     if (!keep) return;
     $("#lg-all", p).onclick = () => set(() => { const all = hidden.size > 0; hidden.clear(); if (!all) HUES.forEach(([k]) => hidden.add(k)); });
     p.querySelectorAll(".lg").forEach((r) => r.onclick = () => set(() => (hidden.has(r.dataset.k) ? hidden.delete(r.dataset.k) : hidden.add(r.dataset.k))));
