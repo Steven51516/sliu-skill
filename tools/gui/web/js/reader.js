@@ -164,7 +164,14 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     p.querySelectorAll(".lg").forEach((r) => r.onclick = () => set(() => (hidden.has(r.dataset.k) ? hidden.delete(r.dataset.k) : hidden.add(r.dataset.k))));
   }
 
-  bus.on("pagesinit", () => { fit(); const p = store(key); if (p > 1 && p <= pv.pagesCount) pv.currentPageNumber = p; pageLabel(); });
+  // Where you were in this file: how far down (a share of its length, so it holds across a resize), else its page.
+  bus.on("pagesinit", () => {
+    fit();
+    const y = +store(key + ":y"), p = store(key);
+    if (y > 0 && y < 1) requestAnimationFrame(() => { scroll.scrollTop = y * scroll.scrollHeight; });
+    else if (p > 1 && p <= pv.pagesCount) pv.currentPageNumber = p;
+    pageLabel();
+  });
   bus.on("scalechanging", (e) => { const v = $("#pz-val", el); if (v) v.textContent = Math.round(e.scale * 100) + "%"; });
   bus.on("pagechanging", (e) => { store(key, e.pageNumber); pageLabel(); });
   bus.on("pagerendered", (e) => paint(e.pageNumber));
@@ -440,7 +447,12 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
       change({ delete: id });
     }
   };
-  const onScroll = () => { if (tip?.className === "asktip") closeTip(); };
+  let place = 0;
+  const onScroll = () => {
+    if (tip?.className === "asktip") closeTip();
+    clearTimeout(place);
+    place = setTimeout(() => { if (alive() && scroll.scrollHeight > scroll.clientHeight) store(key + ":y", +(scroll.scrollTop / scroll.scrollHeight).toFixed(5)); }, 300);
+  };
   document.addEventListener("mousedown", outside, true);
   document.addEventListener("keydown", esc2);
   scroll.addEventListener("scroll", onScroll);

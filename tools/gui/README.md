@@ -60,7 +60,8 @@ sends, and the paper comes in unmarked. An unmarked paper offers **Highlight thi
 More, to redo a marked one): a session of its own, sent the `highlight` command and the item, which ends itself when
 its marks are there. **Delete**, under More in the header, moves the item to the trash
 (`extras/trash.py`: undone with `trash --restore <path>`). An item has its own session, named after it. The app keeps no copy of a library: it reads
-the folder you point it at.
+the folder you point it at. It does keep your place: the document you had open opens again when you come back, and
+each file returns to where you had scrolled.
 
 One-off sessions of a library end themselves (`web/js/oneoff.js`), keeping what they wrote. An **Add** session ends
 when it has finished and an item it wrote is in the library; one that added nothing stays open and says so, and one

@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: the library keeps its place. Leaving Documents for another page and coming back showed "Pick a
+  document" again; it now reopens the document you had open, also after the app was closed, and each file returns
+  to where you had scrolled (a PDF to the same spot on its page, a note to its offset). A document that is gone opens
+  nothing.
 - **Research Desk**: the app's text is one step larger. Most of what you read sat at 12 to 12.5px (63% of the text
   on a project's page was under 13px, 61% in Settings, 41% beside the chat): every size up to 19px is raised by 1px,
   and the tiniest (10 to 10.5px) to 11.5px, so chat and ticket text are 15 to 15.5px, row titles 15px, their

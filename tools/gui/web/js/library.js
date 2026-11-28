@@ -59,7 +59,11 @@ export function renderLibrary(full = true) {
     const all = [...$("#prows").querySelectorAll(".prow")], at = all.indexOf(document.activeElement);
     if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); (all[at + (e.key === "ArrowDown" ? 1 : -1)] || all[at])?.focus(); }
   };
-  hooks.fileOpened = rows;
+  // The library keeps its place: the document you had open is open again when you come back to it, from another
+  // page or after the app was closed (the reader keeps the page and the scroll of each file).
+  hooks.fileOpened = (side, path) => { if (S.route.project === L.project && side === "local" && path) store("library.open." + L.project, { path }); rows(); };
+  const was = store("library.open." + project);
+  if (!filesState.viewer && was?.path) filesState.viewer = { side: "local", path: was.path };
   hooks.libraryChanged = load;
   hooks.itemStar = (path) => { const i = itemOf(path); return i ? { on: !!i.starred, set: (on) => star(i, on) } : null; };   // the open document's star (files.js)
   hooks.docTitle = (side, path) => {                           // what the viewer's header calls an open document
@@ -80,7 +84,11 @@ async function load() {
   const first = !L.cols;
   L.cols = r.collections;
   rows();
-  if (first && filesState.viewer) renderViewer();              // the open document's title comes from the list
+  if (filesState.viewer?.side === "local" && !itemOf(filesState.viewer.path)) {    // what was open is gone (deleted, renamed)
+    filesState.viewer = null;
+    store("library.open." + project, null);
+    renderViewer();
+  } else if (first && filesState.viewer) renderViewer();       // the open document's title comes from the list
 }
 document.addEventListener("rd:turn", () => { if ($("#plist") && S.route.project === L.project) load(); });   // a session may have added an item
 

@@ -322,6 +322,12 @@ export async function showDoc(el, side, path, opt = {}) {
     if (opt.follow) F.follow = setInterval(() => { if (!el.isConnected) return clearInterval(F.follow); showDoc(el, side, path, { ...opt, fresh: true, quiet: true }); }, 5000);
   }
   el.appendChild(body);
+  if (!opt.bare) {                                           // a document keeps its place: where you had scrolled to, per file
+    const at = `scroll.${S.route.project}:${side}:${path}`;
+    if (!opt.quiet) el.scrollTop = +store(at) || 0;
+    let t = 0;
+    el.onscroll = () => { clearTimeout(t); t = setTimeout(() => { if (el.isConnected && F.viewer?.path === path) store(at, Math.round(el.scrollTop) || null); }, 300); };
+  }
   if (f.tail && !opt.bare) el.scrollTop = el.scrollHeight;
 }
 
