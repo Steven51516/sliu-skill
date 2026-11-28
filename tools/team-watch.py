@@ -307,11 +307,30 @@ def screen_tail(pane, n=14):
     return [line.rstrip() for line in out.splitlines() if line.strip()][-n:]
 
 
+def input_box(tail):
+    """What Claude Code's input box shows: the last box between ─── rules, starting at ❯ ("" for an empty one)."""
+    rules = [i for i, line in enumerate(tail) if line.strip() and set(line.strip()) <= {"─"}]
+    box = tail[rules[-2] + 1:rules[-1]] if len(rules) >= 2 else []
+    if not box or not box[0].lstrip().startswith("❯"):
+        return ""
+    text = "\n".join([box[0].split("❯", 1)[1]] + box[1:]).strip()
+    return "" if re.fullmatch(r'Try ".*"', text) else text
+
+
 def typed(pane, command):
-    """Type a slash command into a session and see it through. Claude Code asks before a /model that changes the model
-    of a conversation it has cached ("Switch model? ... > 1. Yes, switch to Sonnet 5.5  2. No, go back"); with nobody
-    to answer, the session sat at the question, and the /effort typed next was refused (2026-11-27). Enter on the marked
-    Yes answers it. False when the session is left at a question: one with another choice marked, or another question."""
+    """Type a slash command into a session and see it through. Two things went wrong when it was only typed:
+    - Claude Code asks before a /model that changes the model of a conversation it has cached ("Switch model? ...
+      > 1. Yes, switch to Sonnet 5.5  2. No, go back"); with nobody to answer, the session sat at the question and the
+      /effort typed next was refused (2026-11-27). Enter on the marked Yes answers it;
+    - a command can be left typed and unsent, and the next one was then sent with it as one line, "/model
+      claude-sonnet-5-5/effort high" (2026-11-26). Enter sends a command still in the box, and what the box showed
+      before is cleared first.
+    False when the session is left at a question: one with another choice marked, or another question."""
+    left = input_box(screen_tail(pane))
+    if left:
+        for _ in range(left.count("\n") + 1):
+            herdr("agent", "send-keys", pane, "ctrl+u", "backspace")      # Ctrl+U clears a line, ⌫ joins it to the one before
+        note(f"{pane}: its input box showed {left[:80]!r} before `{command}` was typed: cleared")
     herdr("agent", "prompt", pane, command)
     for look in range(12):
         time.sleep(1.5)
@@ -319,6 +338,8 @@ def typed(pane, command):
         if any("Switch model?" in line for line in tail):
             if not any("❯" in line and "Yes" in line for line in tail):
                 return False
+            herdr("pane", "send-keys", pane, "Enter")
+        elif command in input_box(tail):
             herdr("pane", "send-keys", pane, "Enter")
         elif look and (agent_at(pane) or {}).get("agent_status") != "blocked":
             return True

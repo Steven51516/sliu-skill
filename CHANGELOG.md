@@ -9,7 +9,9 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
   Claude Code now asks before a `/model` that changes a cached conversation's model; the watch typed `/model` and
   `/effort` four seconds apart, so the session sat at the question, the `/effort` was refused, the saved default was
   not put back, and the log said "switched in place". It now presses Enter on the marked Yes, sets the effort after
-  the question has closed, and alerts (`question`) when a session is left at a question it does not answer.
+  the question has closed, and alerts (`question`) when a session is left at a question it does not answer. A command
+  left typed and unsent is sent by itself (the two once went out as one line, `/model claude-sonnet-5-5/effort high`),
+  and what the input box showed before is cleared first.
   `tools/tests/team_switch_test.py`; `scripts/check.py` runs every test in `tools/tests/`.
 - **Research Desk**: star the items of a library you like: a star on each row and on the open document, and a filter
   that shows only the starred. Stars are kept in the library itself (`.starred.json`), so they travel with it. Needs

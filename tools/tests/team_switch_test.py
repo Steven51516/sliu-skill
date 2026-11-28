@@ -8,7 +8,9 @@ A fake herdr stands in for one session. Checks, on team-watch's switch_in_place:
 - the question with Yes marked gets Enter, and /effort is typed only after it has closed;
 - with no question, both commands are typed and no key is pressed;
 - with another choice marked, nothing is pressed, /effort is not typed, and the human is told (a `question` alert)
-  instead of "switched in place".
+  instead of "switched in place";
+- a command left typed and unsent is sent by itself, and what the input box showed before is cleared first: the two
+  commands once went out as one line, "/model claude-sonnet-5-5/effort high".
 
   python3 tools/tests/team_switch_test.py        (scripts/check.py runs it)
 """
@@ -27,12 +29,21 @@ ASK = ["  Switch model?", "  Your next response will be slower and use more toke
        "  {a} 1. Yes, switch to Sonnet 5.5", "  {b} 2. No, go back", "  Enter to confirm · Esc to cancel"]
 
 
+RULE = "─" * 40
+
+
 class Herdr:
     """One Claude session in pane w1:p1. `asks`: it shows the question after /model; `marked`: the choice the question
-    opens on (1 is Yes)."""
+    opens on (1 is Yes); `box`: what its input box shows at the start; `stalls`: its first command stays typed, unsent."""
 
-    def __init__(self, asks=True, marked=1):
-        self.asks, self.marked, self.asking, self.did = asks, marked, False, []
+    def __init__(self, asks=True, marked=1, box="", stalls=False):
+        self.asks, self.marked, self.box, self.stalls = asks, marked, box, stalls
+        self.asking, self.did, self.sent = False, [], []
+
+    def send(self):
+        line, self.box = self.box, ""
+        self.sent.append(line)
+        self.asking = self.asks and line.startswith("/model")
 
     def __call__(self, *args, timeout=150):
         out = ""
@@ -41,14 +52,22 @@ class Herdr:
                 self.did.append("refused " + args[3])
                 return types.SimpleNamespace(returncode=1, stdout="", stderr="agent_blocked")
             self.did.append(args[3])
-            self.asking = self.asks and args[3].startswith("/model")
-        elif args[:2] == ("pane", "send-keys"):
-            self.did.append(f"<{args[3]}>")
-            if args[3] == "Enter" and self.marked == 1:
-                self.asking = False
+            self.box += args[3]
+            if self.stalls:
+                self.stalls = False
+            else:
+                self.send()
+        elif args[1:2] == ("send-keys",):
+            self.did.append(f"<{' '.join(args[3:])}>")
+            if "ctrl+u" in args[3:]:
+                self.box = ""
+            elif args[3] == "Enter" and self.asking:
+                self.asking = self.marked != 1
+            elif args[3] == "Enter" and self.box:
+                self.send()
         elif args[:2] == ("agent", "read"):
             lines = [l.format(a="❯" if self.marked == 1 else " ", b="❯" if self.marked == 2 else " ") for l in ASK] if self.asking \
-                else ["❯ /model claude-sonnet-5-5", "  ⎿  Set model to Sonnet 5.5", "❯", "  ⏵⏵ auto mode on"]
+                else [f"❯ {x}" for x in self.sent[-2:]] + [RULE, f"❯ {self.box}", RULE, "  ⏵⏵ auto mode on"]
             out = json.dumps({"result": {"text": "\n".join(lines)}})
         elif args[:2] == ("agent", "list"):
             out = json.dumps({"result": {"agents": [{"pane_id": "w1:p1", "agent_status": "blocked" if self.asking else "idle"}]}})
@@ -85,6 +104,16 @@ def main():
         switch(h, "s2")
         if h.did != ["/model claude-sonnet-5-5", f"/effort {watch.EFFORT}"]:
             problems.append(f"with no question, something else was typed or pressed: {h.did}")
+
+        h = Herdr(asks=False, stalls=True)                    # the first command stays typed: Enter sends it, alone
+        switch(h, "s4")
+        if h.sent != ["/model claude-sonnet-5-5", f"/effort {watch.EFFORT}"]:
+            problems.append(f"a command left unsent was not sent by itself: sent {h.sent}, did {h.did}")
+
+        h = Herdr(asks=False, box="half a sentence")          # what the box showed is cleared, not sent with the command
+        switch(h, "s5")
+        if h.sent != ["/model claude-sonnet-5-5", f"/effort {watch.EFFORT}"] or not h.did[0].startswith("<ctrl+u"):
+            problems.append(f"the command was typed onto what the input box held: sent {h.sent}, did {h.did}")
 
         h = Herdr(asks=True, marked=2)
         told = switch(h, "s3")
