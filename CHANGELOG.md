@@ -5,6 +5,11 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: a Markdown document in the viewer reads at Obsidian's sizes. Notes were 14px text across the
+  whole pane, with 19px and 16px headings; they are now Obsidian's defaults, read from its own stylesheet: 16px on a
+  1.5 line, a 700px column, headings on its scale (25.9, 23.4, 21.1px ...), bold at 600. A − 16 + control in the
+  header changes the text size, and a library note keeps its single line breaks, as Obsidian shows them. Chat, panels
+  and a highlight's note keep the compact size.
 - **Research Desk**: ← and → switch reading mode with a file open: ← puts the sidebar and the list away, → brings
   them back. Left alone while you type, under a dialog or a menu, and when a zoomed-in page can scroll sideways.
 - **Research Desk**: the highlight colours are the annotation colours of Zotero's PDF reader (yellow #FFD400, green

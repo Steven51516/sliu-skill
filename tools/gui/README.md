@@ -25,7 +25,8 @@ at that moment. Its sessions are those whose first prompt names the ticket's fol
 team-worker starts them), found here and on each herdr machine by `rg_trace.py`, which runs there over ssh so only the
 steps cross.
 
-The file viewer's header: reading mode (its first button, or ← and →, hides the sidebar and the list beside the viewer
+A Markdown document in the viewer reads at Obsidian's default sizes (16px on a 1.5 line, a 700px column, its heading
+scale), with a text-size control in the header; a library note keeps its single line breaks. The file viewer's header: reading mode (its first button, or ← and →, hides the sidebar and the list beside the viewer
 while a file is open, and brings them back), what is open (in a library, the item's title), the tools of its kind, its actions, and
 More (reload, VS Code, delete). In a narrow viewer the labelled buttons become icons. Tooltips are the app's own
 (`web/js/tips.js`): any `title` becomes one.

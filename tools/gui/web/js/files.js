@@ -262,7 +262,8 @@ export async function showDoc(el, side, path, opt = {}) {
   else if (f.kind === "too-big") body.innerHTML = `<div class="muted">Image too large to show (${fmtSize(f.size)}).</div>`;
   else if (f.kind === "markdown") {
     const dir = path.split("/").slice(0, -1).join("/");
-    md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter ?? (it ? "details" : undefined), skipKeys: opt.skipKeys, dropTitle: opt.dropTitle, onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
+    md(body.appendChild(document.createElement("div")), f.text, { frontMatter: opt.frontMatter ?? (it ? "details" : undefined), skipKeys: opt.skipKeys, dropTitle: opt.dropTitle, breaks: opt.breaks ?? !!it,   // a library note keeps its single line breaks, as Obsidian shows them
+       onLink: (h) => (opt.onLink ? opt.onLink(resolvePath(dir, h.split("#")[0]), side) : openFile(side, resolvePath(dir, h.split("#")[0]))) });
     body.querySelectorAll("img[src]").forEach((im) => {         // a picture beside the note: its bytes come from the project
       const src = im.getAttribute("src");
       if (!/^([a-z]+:|\/|#)/i.test(src)) im.src = "/api/raw?" + new URLSearchParams({ project: S.route.project, side, path: resolvePath(dir, decodeURIComponent(src)), token: tokenNow() });
@@ -288,6 +289,15 @@ export async function showDoc(el, side, path, opt = {}) {
   }
   el.innerHTML = head;
   wire();
+  if (f.kind === "markdown" && !opt.bare && $("#vtools", el)) {   // the size of a document's text: 16px as a note reads in Obsidian, yours to change
+    const size = () => Math.min(24, Math.max(12, +store("md.size") || 16)), show = () => { el.style.setProperty("--md-size", size() + "px"); const v = $("#vt-val", el); if (v) v.textContent = size(); };
+    $("#vtools", el).insertAdjacentHTML("afterbegin", `<span class="segc zoom" id="vtext"><button id="vt-dn" title="Smaller text">−</button><button id="vt-val" title="Text size. Click for 16, the usual size">16</button><button id="vt-up" title="Larger text">+</button></span>`);
+    const set = (n) => { store("md.size", n); show(); };
+    $("#vt-dn", el).onclick = () => set(size() - 1);
+    $("#vt-up", el).onclick = () => set(size() + 1);
+    $("#vt-val", el).onclick = () => set(16);
+    show();
+  }
   if (!opt.bare) $("#vsize", el).textContent = fmtSize(f.size);
   if (!opt.bare && f.kind === "image") {               // circle what's wrong and ask a session to fix it (annotate.js)
     const b = document.createElement("button");
