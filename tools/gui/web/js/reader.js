@@ -118,7 +118,7 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     $("#vtools", el).insertAdjacentHTML("afterbegin", `<span class="pdfctl">
       <span class="segc zoom"><button id="pz-out" title="Zoom out">−</button><button id="pz-val" title="Fit the width">100%</button><button id="pz-in" title="Zoom in">+</button></span>
       <span class="pgn" id="pg-n"></span>
-      <button class="btn ghost sm" id="pmarks" title="View: the colour of the pages (easier on the eyes), and which highlights to show">${icon("eye")}<span class="lbl opt">View</span></button>
+      <button class="btn ghost sm" id="pmarks" title="View: the colour and brightness of the pages, and which highlights to show">${icon("eye")}<span class="lbl opt">View</span></button>
       <button class="btn sm" id="pbox" title="Drag a box around an equation or a figure and ask about it. For text, select it and press Ask.">${icon("mark")}<span class="lbl">Box &amp; ask</span></button></span>`);
     $("#pz-out", el).onclick = () => pv.decreaseScale();
     $("#pz-in", el).onclick = () => pv.increaseScale();
@@ -127,10 +127,10 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     showGroups();
     if ($("#pmarks", el)) $("#pmarks", el).onclick = (e) => (tip?.classList.contains("hues") ? closeTip() : legend(e.currentTarget));
   }
-  // The colour of the pages, for every PDF: white as the paper is, a soft cream or green (easier on the eyes), or dark
-  // (light text on dark). Auto follows the app: dark pages in its dark theme. Chosen in the View popover.
+  // The colour of the pages, for every PDF: white as the paper is, a soft cream or green (a matter of taste: neither
+  // is shown to protect the eyes), or dark (light text on dark). Auto follows the app: dark pages in its dark theme. Chosen in the View popover.
   const TINTS = [["auto", "Auto", "Dark pages in the dark theme, white in the light one"], ["white", "White", "As the paper is"], ["warm", "Warm", "A soft cream"],
-    ["green", "Green", "A soft green, easy on the eyes"], ["dark", "Dark", "Light text on dark pages"]];
+    ["green", "Green", "A soft green"], ["dark", "Dark", "Light text on dark pages"]];
   const tint = () => (TINTS.some(([k]) => k === store("pdf.tint")) ? store("pdf.tint") : "auto");
   // Brightness dims the pages under their colour: a page that is dark text on a mid tone is neither the glare of
   // white nor light text on black (a plain bright page is where floaters in the eye show most; no colour is known to help).
@@ -141,7 +141,7 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     const n = (k) => saved.filter((m) => group(m) === k).length;
     const p = pop(`<div class="ah"><b>Page colour</b></div>
       <div class="tints">${TINTS.map(([k, name, what]) => `<button class="tintc ${k === tint() ? "on" : ""}" data-t="${k}" title="${what}"><i class="t-${k}"></i>${name}</button>`).join("")}</div>
-      <label class="dimrow" title="Dim the pages. Dark text on a dimmed page is easier on the eyes than white, and easier to read than light text on black"><span>Brightness</span><input type="range" id="pg-dim" min="40" max="100" step="5" value="${dim()}"><span class="v" id="pg-dimv">${dim()}%</span></label>
+      <label class="dimrow" title="Dim the pages: dark text on a mid tone, between the glare of white and light text on black"><span>Brightness</span><input type="range" id="pg-dim" min="40" max="100" step="5" value="${dim()}"><span class="v" id="pg-dimv">${dim()}%</span></label>
       ${!keep ? "" : `<div class="ah"><b>Highlights</b><span class="grow"></span><button class="btn ghost sm" id="lg-all">${hidden.size ? "Show all" : "Hide all"}</button></div>
       ${HUES.map(([k, name, what]) => `<div class="lg ${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${hidden.has(k) ? "Show" : "Hide"} these"><span class="hue k-${k}"></span><span class="ln"><b>${name}</b><span class="muted">${what}</span></span><span class="muted">${n(k) || ""}</span></div>`).join("")}`}`,
       anchor.getBoundingClientRect(), "askpop hues");
