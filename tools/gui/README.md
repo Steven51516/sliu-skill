@@ -37,8 +37,9 @@ a paper has its own session, named after its folder, and one is started with the
 PDF in `<name>.marks.json` (`/api/marks`): a passage you highlighted (with your own note) or asked about, where the
 session's reply is pinned when its turn ends with the chat open, and what an agent marked (a claim, the method, a
 result, a limitation; the file's format is at `marks_file` in `server.py`). Click a highlight for its note (Delete removes it);
-**View** in the header sets the colour of the pages (Auto: dark pages in the dark theme; White; Warm; Green; Dark)
-and their brightness (dark text on a dimmed page),
+**View** in the header sets the colour of the pages and their brightness (dark text on a dimmed page). The
+colours are ones in use elsewhere: Auto (dark pages in the dark theme), White, 晋江文学城's four reading themes and its
+night mode, the forum eye-care colours 豆沙绿 and 杏仁黄, and Dark. It also
 says what each highlight colour means and shows or hides each kind; while a paper carries a session's highlights, a
 key over its corner names the colours that are there. Markdown in the viewer and in chat draws math (`$…$`, `$$…$$`, `\(…\)`, `\[…\]`, by KaTeX) and
 the pictures a note links beside it.

@@ -6,8 +6,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 ## Unreleased
 
 - **Research Desk**: a PDF's pages follow the theme. In the dark theme the pages stayed white; they are now dark by
-  default (Auto), and View in the reader's header offers White, Warm, Green and Dark for every PDF (Warm and Green at
-  the values in common use: 杏仁黄 #FAF9DE and 豆沙绿 #C7EDCC, Windows hue 85, saturation 123, luminance 205), with a Brightness
+  default (Auto), and View in the reader's header offers ten page colours for every PDF, at values in use elsewhere:
+  晋江文学城's reading themes (pale green #EEFAEE, beige #FFF7EB, khaki #F2ECDC, blue #D8EDF0) and its night mode
+  (#AEAEAE on #1A1A1A), the forum eye-care colours 豆沙绿 #C7EDCC (Windows hue 85, saturation 123, luminance 205) and
+  杏仁黄 #FAF9DE, white, and a full-contrast dark; with a Brightness
   slider that dims the pages (dark text on a mid tone, between the glare of white and light text on black). Highlights
   stay readable on each.
 - **`team-watch`** answers Claude Code's "Switch model?" when it moves a fallen-back session to Sonnet in place.

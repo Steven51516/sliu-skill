@@ -1160,22 +1160,23 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 
 /* the colour of a PDF's pages (reader.js, the View popover): the page's own colour under a canvas that is multiplied
    onto it (cream, green) or inverted (dark). Marks are screened onto a dark page, where multiplying would hide them. */
-.pdfbox { --pg-bg: #fff; --pg-blend: normal; --pg-filter: none; --hl-blend: multiply; }
-.pdfbox.tint-warm { --pg-bg: #faf9de; --pg-blend: multiply; }      /* 杏仁黄 */
-.pdfbox.tint-green { --pg-bg: #c7edcc; --pg-blend: multiply; }     /* 豆沙绿 */
-.pdfbox.tint-dark { --pg-bg: #1c1c1e; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pdfbox.tint-auto { --pg-bg: #1c1c1e; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; } }
-:root[data-theme="dark"] .pdfbox.tint-auto { --pg-bg: #1c1c1e; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
+.pdfbox { --pg-bg: #fff; --pg-blend: multiply; --pg-filter: none; --hl-blend: multiply; }   /* a light colour: reader.js sets --pg-bg */
+.pdfbox[data-tint="dark"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
+/* 晋江's night mode: white becomes #1A1A1A and black #AEAEAE (invert, then scale: 255 * .784 * .13 = 26, 255 * .784 * .87 = 174) */
+.pdfbox[data-tint="night"] { --pg-bg: #1a1a1a; --pg-blend: normal; --pg-filter: invert(.87) brightness(.784) hue-rotate(180deg); --hl-blend: screen; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pdfbox[data-tint="auto"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; } }
+:root[data-theme="dark"] .pdfbox[data-tint="auto"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
 .pdfbox .pdfViewer .page { background-color: var(--pg-bg) !important; }   /* pdf.js makes a rendered page's background transparent */
 .pdfbox .pdfViewer .page canvas { filter: var(--pg-filter); mix-blend-mode: var(--pg-blend); }
 .pdfbox .rdmark:not(.box) { mix-blend-mode: var(--hl-blend); }
-.askpop.hues .tints { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 6px 8px; }
-.tintc { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px 0 7px; border: 0; border-radius: 7px; background: transparent; color: var(--ink-2); font: inherit; font-size: 12.5px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); transition: background-color .12s var(--ease), box-shadow .12s var(--ease); }
-.tintc:hover { background: var(--hover); }
-.tintc.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--ink-2); }
-.tintc i { width: 11px; height: 11px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45); background: #fff; }
-.tintc i.t-auto { background: linear-gradient(135deg, #fff 50%, #1c1c1e 50%); }
-.tintc i.t-warm { background: #faf9de; } .tintc i.t-green { background: #c7edcc; } .tintc i.t-dark { background: #1c1c1e; }
+.askpop.hues .tints { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 8px 10px; }
+.askpop.hues .tname { font-size: 12px; padding-right: 8px; }
+.tsw { width: 23px; height: 23px; padding: 0; border: 0; border-radius: 50%; background: #fff; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .5); transition: transform .12s var(--ease), box-shadow .12s var(--ease); }
+.tsw:hover { transform: scale(1.1); }
+.tsw.on { box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .5), 0 0 0 2px var(--raised), 0 0 0 3.5px var(--ink-2); }
+.tsw.t-auto { background: linear-gradient(135deg, #fff 50%, #1c1c1e 50%); }
+.tsw.t-night { background: radial-gradient(circle, #aeaeae 0 26%, #1a1a1a 30%); }     /* its text colour on its page */
+.tsw.t-dark { background: radial-gradient(circle, #e3e3e3 0 26%, #1c1c1e 30%); }
 .pdfbox .pdfViewer .page { filter: brightness(var(--pg-dim, 1)); }
 .dimrow { display: flex; align-items: center; gap: 10px; padding: 0 8px 10px; font-size: 12.5px; color: var(--ink-2); }
 .dimrow input[type=range] { flex: 1; min-width: 0; height: 18px; padding: 0; border: 0; box-shadow: none; background: transparent; accent-color: var(--ink-2); }

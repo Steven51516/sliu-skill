@@ -127,28 +127,38 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     showGroups();
     if ($("#pmarks", el)) $("#pmarks", el).onclick = (e) => (tip?.classList.contains("hues") ? closeTip() : legend(e.currentTarget));
   }
-  // The colour of the pages, for every PDF: white as the paper is, dark (light text on dark), or one of the two
-  // eye-care colours passed around on Chinese forums, at their usual values: 杏仁黄 (250, 249, 222) and 豆沙绿
-  // (199, 237, 204), the one known by its Windows settings, hue 85, saturation 123, luminance 205. A matter of taste:
-  // neither is shown to protect the eyes. Auto follows the app: dark pages in its dark theme. Chosen in the View popover.
-  const TINTS = [["auto", "Auto", "Dark pages in the dark theme, white in the light one"], ["white", "White", "As the paper is"], ["warm", "Warm", "杏仁黄, almond yellow: hue 39, saturation 177, luminance 222 in the Windows colour dialog (#FAF9DE)"],
-    ["green", "Green", "豆沙绿, bean green: hue 85, saturation 123, luminance 205 in the Windows colour dialog (#C7EDCC)"], ["dark", "Dark", "Light text on dark pages"]];
-  const tint = () => (TINTS.some(([k]) => k === store("pdf.tint")) ? store("pdf.tint") : "auto");
+  // The colour of the pages, for every PDF, chosen in the View popover. A light colour is the page's own, with the
+  // paper multiplied onto it; Night and Dark invert the paper. The values are ones in use elsewhere, not made up here:
+  // 晋江文学城's reader themes (each theme's reading background, and its night mode's #AEAEAE text on #1A1A1A; read from
+  // its reader script, 2026-11), and the two eye-care colours passed around on Chinese forums, 豆沙绿 (known by its
+  // Windows settings: hue 85, saturation 123, luminance 205) and 杏仁黄. A matter of taste: none is shown to protect
+  // the eyes. Auto follows the app: dark pages in its dark theme.
+  const TINTS = [["auto", "Auto", "", "dark pages in the dark theme, white in the light one"], ["white", "White", "#FFFFFF", "as the paper is"],
+    ["jgreen", "Pale green", "#EEFAEE", "晋江's reading green"], ["green", "Bean green", "#C7EDCC", "豆沙绿: Windows hue 85, saturation 123, luminance 205"],
+    ["jbeige", "Beige", "#FFF7EB", "晋江's beige theme"], ["warm", "Almond", "#FAF9DE", "杏仁黄: Windows hue 39, saturation 177, luminance 222"],
+    ["jkhaki", "Khaki", "#F2ECDC", "晋江's khaki theme"], ["jblue", "Blue", "#D8EDF0", "晋江's blue theme"],
+    ["night", "Night", "", "晋江's night mode: #AEAEAE text on #1A1A1A"], ["dark", "Dark", "", "light text on dark, at full contrast"]];
+  const tint = () => TINTS.find(([k]) => k === store("pdf.tint")) || TINTS[0];
   // Brightness dims the pages under their colour: a page that is dark text on a mid tone is neither the glare of
   // white nor light text on black (a plain bright page is where floaters in the eye show most; no colour is known to help).
   const dim = () => Math.min(100, Math.max(40, +store("pdf.dim") || 100));
-  const showTint = () => { TINTS.forEach(([k]) => box.classList.toggle("tint-" + k, k === tint())); box.style.setProperty("--pg-dim", dim() / 100); };
+  const showTint = () => {
+    const [k, , bg] = tint();
+    box.dataset.tint = bg ? "light" : k;                       // a light colour is set here; auto, night and dark are app.css's
+    if (bg) box.style.setProperty("--pg-bg", bg); else box.style.removeProperty("--pg-bg");
+    box.style.setProperty("--pg-dim", dim() / 100);
+  };
   showTint();
   function legend(anchor) {                                    // the page colour; what each highlight colour means, how many there are, which are shown
     const n = (k) => saved.filter((m) => group(m) === k).length;
-    const p = pop(`<div class="ah"><b>Page colour</b></div>
-      <div class="tints">${TINTS.map(([k, name, what]) => `<button class="tintc ${k === tint() ? "on" : ""}" data-t="${k}" title="${what}"><i class="t-${k}"></i>${name}</button>`).join("")}</div>
+    const p = pop(`<div class="ah"><b>Page colour</b><span class="grow"></span><span class="muted tname">${tint()[1]}</span></div>
+      <div class="tints">${TINTS.map(([k, name, bg, what]) => `<button class="tsw t-${k} ${k === tint()[0] ? "on" : ""}" data-t="${k}" title="${name}: ${what}${bg ? ` (${bg})` : ""}" ${bg ? `style="background:${bg}"` : ""}></button>`).join("")}</div>
       <label class="dimrow" title="Dim the pages: dark text on a mid tone, between the glare of white and light text on black"><span>Brightness</span><input type="range" id="pg-dim" min="40" max="100" step="5" value="${dim()}"><span class="v" id="pg-dimv">${dim()}%</span></label>
       ${!keep ? "" : `<div class="ah"><b>Highlights</b><span class="grow"></span><button class="btn ghost sm" id="lg-all">${hidden.size ? "Show all" : "Hide all"}</button></div>
       ${HUES.map(([k, name, what]) => `<div class="lg ${hidden.has(k) ? "off" : ""}" data-k="${k}" title="${hidden.has(k) ? "Show" : "Hide"} these"><span class="hue k-${k}"></span><span class="ln"><b>${name}</b><span class="muted">${what}</span></span><span class="muted">${n(k) || ""}</span></div>`).join("")}`}`,
       anchor.getBoundingClientRect(), "askpop hues");
     const set = (fn) => { fn(); store("pdf.hide", [...hidden]); showGroups(); legend(anchor); };
-    p.querySelectorAll(".tintc").forEach((b) => b.onclick = () => { store("pdf.tint", b.dataset.t); showTint(); legend(anchor); });
+    p.querySelectorAll(".tsw").forEach((b) => b.onclick = () => { store("pdf.tint", b.dataset.t); showTint(); legend(anchor); });
     $("#pg-dim", p).oninput = (e) => { store("pdf.dim", +e.target.value); showTint(); $("#pg-dimv", p).textContent = dim() + "%"; };
     if (!keep) return;
     $("#lg-all", p).onclick = () => set(() => { const all = hidden.size > 0; hidden.clear(); if (!all) HUES.forEach(([k]) => hidden.add(k)); });
