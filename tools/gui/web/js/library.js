@@ -24,11 +24,11 @@ export function renderLibrary(full = true) {
   $("#view").innerHTML = `<div class="page full"><div class="tabbody"><div class="files papers">
       <div class="plist" id="plist"><div class="phead">
           <div class="pline"><button class="pcol" id="pp-col" title="Switch collection: a folder of the library"><span id="pp-coln"></span><span class="n" id="pp-colc"></span>${icon("chev")}</button><span class="grow"></span>
+            <button class="btn sm primary" id="pp-add" title="Add to this collection">${icon("plus")}Add</button></div>
+          <div class="psrow"><label class="psearch">${icon("search")}<input id="pp-q" type="search" placeholder="Search" value="${esc(L.q)}"></label>
             <button class="btn ghost sm icon pstarf" id="pp-f" title="Show only the ones you starred">${icon("star")}</button>
             <button class="btn ghost sm icon" id="pp-c" title="Show one concept's items">${icon("filter")}</button>
-            <button class="btn ghost sm icon" id="pp-s" title="Order">${icon("sort")}</button>
-            <button class="btn sm primary" id="pp-add" title="Add to this collection">${icon("plus")}Add</button></div>
-          <label class="psearch">${icon("search")}<input id="pp-q" type="search" placeholder="Search" value="${esc(L.q)}"></label>
+            <button class="btn ghost sm icon" id="pp-s" title="Order">${icon("sort")}</button></div>
           <div class="pchips" id="pp-on"></div></div>
         <div class="prows" id="prows"><div class="empty"><span class="spin"></span></div></div></div>
       <div class="viewer" id="viewer" data-empty="<b>Pick a document</b><span>In a PDF, select text to ask about it, or box an equation or a figure. What you ask stays on the page as a highlight.</span>"></div></div></div></div>`;

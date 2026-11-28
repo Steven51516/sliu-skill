@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: names are shown whole in the library. The list's header cut its collection's name to "Pap…"
+  beside five buttons: the name now has the first row with Add, and the star, filter and order buttons sit beside the
+  search. The viewer's header cut the title to "A meta-i…" and ran its last buttons off the edge in a narrow window:
+  under 900px it takes two rows, the title on the first, the tools and actions on the second.
 - **Research Desk**: a Markdown document in the viewer reads at Obsidian's sizes. Notes were 14px text across the
   whole pane, with 19px and 16px headings; they are now Obsidian's defaults, read from its own stylesheet: 16px on a
   1.5 line, a 700px column, headings on its scale (25.9, 23.4, 21.1px ...), bold at 600. A − 16 + control in the
