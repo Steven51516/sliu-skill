@@ -11,7 +11,8 @@
 - every preset (presets/<name>/preset.json) parses, has an `about`, and names only presets and files that exist
 - the README names every skill and every preset
 - Research Desk never floods a remote host with ssh (tools/gui/tests/remote_calls_test.py, ~20 s)
-- closing a worker never types an exit over and over (tools/tests/team_close_test.py)
+- the team tools' own tests pass (tools/tests/*_test.py): closing a worker never types an exit over and over, and a
+  session switched to another model in place has Claude Code's question about it answered
 - every module of Research Desk's page parses as a module, when `node` is installed (a name declared twice in one
   scope is caught here, not in the browser)
 - every skill another file calls by name (`Skill tool with "x"`, "the `x` skill", `/x` in a code span or a prompt string)
@@ -150,12 +151,11 @@ def main():
                 if r.returncode:
                     why = next((l for l in r.stderr.splitlines() if "Error" in l), r.stderr.strip()[-200:])
                     problems.append(f"{f.relative_to(ROOT)}: does not parse as a module: {why}")
-    test = ROOT / "tools/tests/team_close_test.py"
-    if test.exists():
+    for test in sorted((ROOT / "tools/tests").glob("*_test.py")):      # each prints `<its name>: <problem>` lines
         r = subprocess.run([sys.executable, str(test)], capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
         if r.returncode:
-            problems += [l for l in r.stdout.splitlines() if l.startswith("team_close_test:") and "FAILED" not in l] \
-                or [f"team_close_test: exit {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"]
+            problems += [l for l in r.stdout.splitlines() if l.startswith(test.stem + ":") and "FAILED" not in l] \
+                or [f"{test.stem}: exit {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}"]
     for p in problems:
         print(p)
     print(f"check: {len(names)} skills, {len(problems)} problem(s)")

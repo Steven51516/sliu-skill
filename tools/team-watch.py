@@ -11,7 +11,8 @@ permission prompt (`blocked`) needs the human and is left alone.
 
 Stopped by a safeguard: the driver is idle and its session ended on a safeguard stop (Claude Code then waits for a human
 to retry or switch model). A session that Claude Code moved to its fallback model after a flag (its last reply came
-from Opus 4.x) is not exited: the watch types `/model` and `/effort` into it, so its background work goes on, and puts
+from Opus 4.x) is not exited: the watch types `/model` and `/effort` into it (and answers Claude Code's question about
+the switch), so its background work goes on, and puts
 the saved defaults those commands change back to what they were. It is exited and its own session resumed in the same pane on Sonnet 5.5 at high effort
 (`claude --resume <session> --model sonnet --effort high`), keeping its whole chat, then told to continue. It stays on
 Sonnet 5.5 until the human switches it back. At most 3 resumes per driver per run.
@@ -295,18 +296,46 @@ def user_defaults():
     return {k: v for k, v in d.items() if k == "model" or "effort" in k.lower()}
 
 
+def screen_tail(pane, n=14):
+    """The last lines on a pane's screen: where Claude Code shows a question."""
+    out = herdr("agent", "read", pane, timeout=20).stdout or ""
+    try:
+        res = json.loads(out).get("result", {})
+        out = res.get("text") or res.get("screen") or res.get("content") or ""
+    except (ValueError, AttributeError):
+        pass
+    return [line.rstrip() for line in out.splitlines() if line.strip()][-n:]
+
+
+def typed(pane, command):
+    """Type a slash command into a session and see it through. Claude Code asks before a /model that changes the model
+    of a conversation it has cached ("Switch model? ... > 1. Yes, switch to Sonnet 5.5  2. No, go back"); with nobody
+    to answer, the session sat at the question, and the /effort typed next was refused (2026-11-27). Enter on the marked
+    Yes answers it. False when the session is left at a question: one with another choice marked, or another question."""
+    herdr("agent", "prompt", pane, command)
+    for look in range(12):
+        time.sleep(1.5)
+        tail = screen_tail(pane)
+        if any("Switch model?" in line for line in tail):
+            if not any("❯" in line and "Yes" in line for line in tail):
+                return False
+            herdr("pane", "send-keys", pane, "Enter")
+        elif look and (agent_at(pane) or {}).get("agent_status") != "blocked":
+            return True
+    return False
+
+
 def switch_in_place(pane, who, reason, session):
     """Move a fallen-back session to Sonnet 5.5 at high without exiting it, so its background work goes on: `/model`
-    and `/effort` typed into it. Both commands also save the user's default for new sessions, so the saved model and
-    effort are put back to what they were. Once per fallback; True when it acted."""
+    and `/effort` typed into it, and Claude Code's question about the switch answered. Both commands also save the
+    user's default for new sessions, so the saved model and effort are put back to what they were. Once per fallback;
+    True when it acted. A session left at a question is the human's to answer: they are told."""
     if SWITCHED.get(pane) == session:
         return False
     SWITCHED[pane] = session
     before = user_defaults()
-    herdr("agent", "prompt", pane, "/model claude-sonnet-5-5")
-    time.sleep(4)
-    herdr("agent", "prompt", pane, f"/effort {EFFORT}")
-    time.sleep(4)
+    took = typed(pane, "/model claude-sonnet-5-5") and typed(pane, f"/effort {EFFORT}")
+    time.sleep(2)
     after, restored = user_defaults(), ""
     if before is not None and after is not None and before != after:
         try:
@@ -323,7 +352,11 @@ def switch_in_place(pane, who, reason, session):
             restored = "; saved defaults put back"
         except (OSError, ValueError) as e:
             restored = f"; could not put the saved defaults back ({e})"
-    note(f"{who} in {pane}: {reason}; switched in place to Sonnet 5.5 at {EFFORT} (/model, /effort){restored}")
+    if took:
+        note(f"{who} in {pane}: {reason}; switched in place to Sonnet 5.5 at {EFFORT} (/model, /effort){restored}")
+    else:
+        alert(f"{who} in {pane}: {reason}; the switch to Sonnet 5.5 at {EFFORT} waits at a question in its tab that "
+              f"the watch does not answer: answer it there{restored}", "question")
     return True
 
 
