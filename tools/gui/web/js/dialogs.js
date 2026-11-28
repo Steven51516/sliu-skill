@@ -216,7 +216,7 @@ export function addProject(pre = {}) {
 
 export function shortcuts() {
   const k = [["⌘K", "Search, jump, run an action"], ["⌘J", "Show or hide the chat"], ["⌃`", "Show or hide terminals"], ["⌘N", "New session"],
-    ["⌘1 … ⌘9", "Switch project"], ["⌃Tab", "Next session in the chat"], ["⌘I", "Inbox"], ["⇧⌘A", "Next thing that needs you"], ["Tab, ⏎", "Move between and open sessions and files"], ["⇧⌘H", "Show herdr (app)"], ["⌘,", "Settings"], ["⌘/", "This sheet"],
+    ["⌘1 … ⌘9", "Switch project"], ["⌃Tab", "Next session in the chat"], ["⌘I", "Inbox"], ["⇧⌘A", "Next thing that needs you"], ["Tab, ⏎", "Move between and open sessions and files"], ["← →", "With a file open: reading mode on, and off"], ["⇧⌘H", "Show herdr (app)"], ["⌘,", "Settings"], ["⌘/", "This sheet"],
     ["Esc", "Close a dialog · interrupt the agent (empty composer)"]];
   const d = dialog(`<div class="dh">Keyboard</div><div class="db"><div class="shortcuts">${k.map(([a, b]) => `<kbd>${esc(a)}</kbd><span>${esc(b)}</span>`).join("")}</div></div>
     <div class="df"><button class="btn" id="dlg-cancel">Close</button></div>`, { width: 460 });

@@ -188,6 +188,16 @@ function pairSwitch(el, side, path, alive) {
 
 // Reading mode: the app's sidebar and the list beside the viewer step aside (app.css), so the file has the width.
 const reading = () => !!store("reading");
+// ← and → switch reading mode from the keyboard while a file is open: ← puts the sidebar and the list away, → brings
+// them back. The arrows are left alone while you type, with a modifier held, under a dialog, a menu or a popover, and
+// when the document can itself move sideways (a zoomed-in page).
+document.addEventListener("keydown", (e) => {
+  if ((e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+  const b = document.querySelector("#viewer #vfocus"), wide = document.querySelector("#viewer .pdfscroll");
+  if (!b || e.target.closest?.("input, textarea, select, [contenteditable]") || !$("#overlay").hidden || document.querySelector("body > .menu, .askpop")) return;
+  if (wide && wide.scrollWidth > wide.clientWidth + 2) return;
+  if ((e.key === "ArrowLeft") !== reading()) { e.preventDefault(); b.click(); }
+});
 document.body.classList.toggle("reading", reading());
 
 const LANG = { py: "python", sh: "bash", bash: "bash", zsh: "bash", js: "javascript", mjs: "javascript", ts: "typescript", json: "json", jsonl: "json",
@@ -200,7 +210,7 @@ export async function showDoc(el, side, path, opt = {}) {
   const about = hooks.docTitle?.(side, path), it = libraryItem(side, path);   // in a library: the item's title (library.js)
   const called = about?.title || it?.name || name;         // what the open thing is called: its title, else its folder or file
   const mine = it ? hooks.itemStar?.(path) : null;         // its star, in a library whose list knows the item
-  const focusTip = () => (reading() ? `Show the sidebar and the ${lists.toLowerCase()} again` : "Reading mode: hide the sidebar and the list, for more room");
+  const focusTip = () => (reading() ? `Show the sidebar and the ${lists.toLowerCase()} again (→)` : "Reading mode: hide the sidebar and the list, for more room (←)");
   // the header: reading mode, what is open, the tools of its kind (#vtools: zoom, follow), its actions (#vacts), More
   const head = opt.bare ? "" : `<div class="vhead"><button class="btn ghost sm ${reading() ? "" : "icon"}" id="vfocus" title="${focusTip()}">${reading() ? `‹ ${lists}` : icon("side")}</button>
     <div class="vtitle" title="${esc(path)}"><span class="t">${esc(about?.title || name)}</span><span class="s"><span>${esc(about ? about.sub : (side === "local" ? "" : S.data.server + ":") + dir)}</span><span id="vsize"></span></span></div>

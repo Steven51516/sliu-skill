@@ -5,6 +5,8 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: ← and → switch reading mode with a file open: ← puts the sidebar and the list away, → brings
+  them back. Left alone while you type, under a dialog or a menu, and when a zoomed-in page can scroll sideways.
 - **Research Desk**: the highlight colours are the annotation colours of Zotero's PDF reader (yellow #FFD400, green
   #5FB236, blue #2EA8E5, purple #A28AE5, red #FF6666), drawn as it draws them: 40% and multiplied onto a light page, 30%
   and added onto a dark one. On every page colour each band differs from the page and from the other bands by a
