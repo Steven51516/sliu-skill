@@ -127,10 +127,12 @@ export async function showPdf(el, { side, path, url, highlight = null }) {
     showGroups();
     if ($("#pmarks", el)) $("#pmarks", el).onclick = (e) => (tip?.classList.contains("hues") ? closeTip() : legend(e.currentTarget));
   }
-  // The colour of the pages, for every PDF: white as the paper is, a soft cream or green (a matter of taste: neither
-  // is shown to protect the eyes), or dark (light text on dark). Auto follows the app: dark pages in its dark theme. Chosen in the View popover.
-  const TINTS = [["auto", "Auto", "Dark pages in the dark theme, white in the light one"], ["white", "White", "As the paper is"], ["warm", "Warm", "A soft cream"],
-    ["green", "Green", "A soft green"], ["dark", "Dark", "Light text on dark pages"]];
+  // The colour of the pages, for every PDF: white as the paper is, dark (light text on dark), or one of the two
+  // eye-care colours passed around on Chinese forums, at their usual values: 杏仁黄 (250, 249, 222) and 豆沙绿
+  // (199, 237, 204), the one known by its Windows settings, hue 85, saturation 123, luminance 205. A matter of taste:
+  // neither is shown to protect the eyes. Auto follows the app: dark pages in its dark theme. Chosen in the View popover.
+  const TINTS = [["auto", "Auto", "Dark pages in the dark theme, white in the light one"], ["white", "White", "As the paper is"], ["warm", "Warm", "杏仁黄, almond yellow: hue 39, saturation 177, luminance 222 in the Windows colour dialog (#FAF9DE)"],
+    ["green", "Green", "豆沙绿, bean green: hue 85, saturation 123, luminance 205 in the Windows colour dialog (#C7EDCC)"], ["dark", "Dark", "Light text on dark pages"]];
   const tint = () => (TINTS.some(([k]) => k === store("pdf.tint")) ? store("pdf.tint") : "auto");
   // Brightness dims the pages under their colour: a page that is dark text on a mid tone is neither the glare of
   // white nor light text on black (a plain bright page is where floaters in the eye show most; no colour is known to help).

@@ -1161,8 +1161,8 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 /* the colour of a PDF's pages (reader.js, the View popover): the page's own colour under a canvas that is multiplied
    onto it (cream, green) or inverted (dark). Marks are screened onto a dark page, where multiplying would hide them. */
 .pdfbox { --pg-bg: #fff; --pg-blend: normal; --pg-filter: none; --hl-blend: multiply; }
-.pdfbox.tint-warm { --pg-bg: #f5ecd7; --pg-blend: multiply; }
-.pdfbox.tint-green { --pg-bg: #cfe9cf; --pg-blend: multiply; }
+.pdfbox.tint-warm { --pg-bg: #faf9de; --pg-blend: multiply; }      /* 杏仁黄 */
+.pdfbox.tint-green { --pg-bg: #c7edcc; --pg-blend: multiply; }     /* 豆沙绿 */
 .pdfbox.tint-dark { --pg-bg: #1c1c1e; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pdfbox.tint-auto { --pg-bg: #1c1c1e; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; } }
 :root[data-theme="dark"] .pdfbox.tint-auto { --pg-bg: #1c1c1e; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
@@ -1175,7 +1175,7 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 .tintc.on { color: var(--ink); font-weight: 600; box-shadow: inset 0 0 0 1.5px var(--ink-2); }
 .tintc i { width: 11px; height: 11px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(128, 128, 128, .45); background: #fff; }
 .tintc i.t-auto { background: linear-gradient(135deg, #fff 50%, #1c1c1e 50%); }
-.tintc i.t-warm { background: #f5ecd7; } .tintc i.t-green { background: #cfe9cf; } .tintc i.t-dark { background: #1c1c1e; }
+.tintc i.t-warm { background: #faf9de; } .tintc i.t-green { background: #c7edcc; } .tintc i.t-dark { background: #1c1c1e; }
 .pdfbox .pdfViewer .page { filter: brightness(var(--pg-dim, 1)); }
 .dimrow { display: flex; align-items: center; gap: 10px; padding: 0 8px 10px; font-size: 12.5px; color: var(--ink-2); }
 .dimrow input[type=range] { flex: 1; min-width: 0; height: 18px; padding: 0; border: 0; box-shadow: none; background: transparent; accent-color: var(--ink-2); }
