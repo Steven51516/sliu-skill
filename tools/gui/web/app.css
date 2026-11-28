@@ -958,7 +958,9 @@ input[type=checkbox], input[type=radio] { box-shadow: none; padding: 0; border-r
    file path stood, tools in groups, rare actions under More, menus instead of form controls, colour only for a state
    or a highlight. Later rules win.
    =================================================================================================================== */
-:root { --hl-you: 255, 204, 0; --hl-claim: 52, 199, 89; --hl-method: 64, 156, 255; --hl-result: 175, 82, 222; --hl-limit: 255, 99, 71; }
+/* The highlight colours are the annotation colours of Zotero's PDF reader (yellow, green, blue, purple, red), drawn
+   as it draws them: 40% and multiplied onto a light page, 30% and added onto a dark one (--hl-a, --hl-blend below). */
+:root { --hl-you: 255, 212, 0; --hl-claim: 95, 178, 54; --hl-method: 46, 168, 229; --hl-result: 162, 138, 229; --hl-limit: 255, 102, 102; }
 
 /* the viewer's header: reading mode, what is open, the tools of its kind, its actions, More */
 .viewer { container: viewer / inline-size; }
@@ -1000,13 +1002,13 @@ input[type=checkbox], input[type=radio] { box-shadow: none; padding: 0; border-r
 
 /* marks over a page: yours are yellow, an agent's are coloured by kind; a group can be hidden (the legend) */
 .rdmarks { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
-.rdmark { position: absolute; background: rgba(var(--hl-you), .40); mix-blend-mode: multiply; border-radius: 2px; }
+.rdmark { position: absolute; background: rgba(var(--hl-you), var(--hl-a, .4)); mix-blend-mode: multiply; border-radius: 2px; }
 .rdmark.box { background: color-mix(in srgb, var(--accent) 10%, transparent); mix-blend-mode: normal; outline: 1.5px solid var(--accent); }
-.rdmark.k-claim { background: rgba(var(--hl-claim), .30); }
-.rdmark.k-method { background: rgba(var(--hl-method), .28); }
-.rdmark.k-result { background: rgba(var(--hl-result), .24); }
-.rdmark.k-limit { background: rgba(var(--hl-limit), .28); }
-.rdmark.saved.box { background: rgba(var(--hl-you), .14); outline: 1.5px solid rgba(214, 160, 0, .9); }
+.rdmark.k-claim { background: rgba(var(--hl-claim), var(--hl-a, .4)); }
+.rdmark.k-method { background: rgba(var(--hl-method), var(--hl-a, .4)); }
+.rdmark.k-result { background: rgba(var(--hl-result), var(--hl-a, .4)); }
+.rdmark.k-limit { background: rgba(var(--hl-limit), var(--hl-a, .4)); }
+.rdmark.saved.box { background: rgba(var(--hl-you), .14); outline: 1.5px solid rgba(214, 166, 0, .9); }
 .pdfbox.hide-you .rdmark.k-you, .pdfbox.hide-claim .rdmark.k-claim, .pdfbox.hide-method .rdmark.k-method,
 .pdfbox.hide-result .rdmark.k-result, .pdfbox.hide-limit .rdmark.k-limit { display: none; }
 .hue { width: 9px; height: 9px; border-radius: 3px; flex: none; background: rgb(var(--hl-you)); }
@@ -1159,13 +1161,14 @@ select:not([multiple]):not([size]) { appearance: none; -webkit-appearance: none;
 .phead .btn.pstarf.on { color: var(--star); background: color-mix(in srgb, var(--star) 14%, transparent); }
 
 /* the colour of a PDF's pages (reader.js, the View popover): the page's own colour under a canvas that is multiplied
-   onto it (cream, green) or inverted (dark). Marks are screened onto a dark page, where multiplying would hide them. */
-.pdfbox { --pg-bg: #fff; --pg-blend: multiply; --pg-filter: none; --hl-blend: multiply; }   /* a light colour: reader.js sets --pg-bg */
-.pdfbox[data-tint="dark"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
+   onto it (a light colour) or inverted (night, dark). Marks are added onto a dark page, where multiplying would hide
+   them. */
+.pdfbox { --pg-bg: #fff; --pg-blend: multiply; --pg-filter: none; --hl-blend: multiply; --hl-a: .4; }   /* a light colour: reader.js sets --pg-bg */
+.pdfbox[data-tint="dark"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: plus-lighter; --hl-a: .3; }
 /* 晋江's night mode: white becomes #1A1A1A and black #AEAEAE (invert, then scale: 255 * .784 * .13 = 26, 255 * .784 * .87 = 174) */
-.pdfbox[data-tint="night"] { --pg-bg: #1a1a1a; --pg-blend: normal; --pg-filter: invert(.87) brightness(.784) hue-rotate(180deg); --hl-blend: screen; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pdfbox[data-tint="auto"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; } }
-:root[data-theme="dark"] .pdfbox[data-tint="auto"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: screen; }
+.pdfbox[data-tint="night"] { --pg-bg: #1a1a1a; --pg-blend: normal; --pg-filter: invert(.87) brightness(.784) hue-rotate(180deg); --hl-blend: plus-lighter; --hl-a: .3; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pdfbox[data-tint="auto"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: plus-lighter; --hl-a: .3; } }
+:root[data-theme="dark"] .pdfbox[data-tint="auto"] { --pg-bg: #1c1c1e; --pg-blend: normal; --pg-filter: invert(.89) hue-rotate(180deg); --hl-blend: plus-lighter; --hl-a: .3; }
 .pdfbox .pdfViewer .page { background-color: var(--pg-bg) !important; }   /* pdf.js makes a rendered page's background transparent */
 .pdfbox .pdfViewer .page canvas { filter: var(--pg-filter); mix-blend-mode: var(--pg-blend); }
 .pdfbox .rdmark:not(.box) { mix-blend-mode: var(--hl-blend); }

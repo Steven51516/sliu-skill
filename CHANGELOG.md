@@ -5,6 +5,10 @@ Notable changes, newest first. Versions follow semver; a release moves the Unrel
 
 ## Unreleased
 
+- **Research Desk**: the highlight colours are the annotation colours of Zotero's PDF reader (yellow #FFD400, green
+  #5FB236, blue #2EA8E5, purple #A28AE5, red #FF6666), drawn as it draws them: 40% and multiplied onto a light page, 30%
+  and added onto a dark one. On every page colour each band differs from the page and from the other bands by a
+  colour difference of 16 or more, and text under a band keeps a contrast of 11:1 on light pages, 5.9:1 on Night.
 - **Research Desk**: a PDF's pages follow the theme. In the dark theme the pages stayed white; they are now dark by
   default (Auto), and View in the reader's header offers eight page colours for every PDF, at a reading platform's
   values: 晋江文学城's reading themes (green #EEFAEE, beige #FFF7EB, khaki #F2ECDC, blue #D8EDF0) and its night mode
